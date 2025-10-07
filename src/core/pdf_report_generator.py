@@ -625,16 +625,19 @@ class PDFReportGenerator:
                 score = rec.get('score', rec.get('investment_score', rec.get('dynamic_score', 0)))
                 confidence = rec.get('confidence', rec.get('confidence_level', 0.5))
                 
-                # Generate explanation based on score
-                if score >= 80:
+                # Generate explanation based on score (UPDATED for corrected scoring system)
+                # New thresholds: BUY ≥40, WATCH ≥25, PASS <25
+                if score >= 45:
                     explanation = f"<b>Strong Buy</b> ({confidence:.0%} confidence)"
-                elif score >= 60:
-                    explanation = f"<b>Hold/Monitor</b> ({confidence:.0%} confidence)"
+                elif score >= 40:
+                    explanation = f"<b>Buy</b> ({confidence:.0%} confidence)"
+                elif score >= 25:
+                    explanation = f"<b>Watch</b> ({confidence:.0%} confidence)"
                 else:
-                    explanation = f"<b>Weak</b> ({confidence:.0%} confidence)"
+                    explanation = f"<b>Pass</b> ({confidence:.0%} confidence)"
                 
                 # Add reason for low scores
-                if score < 60:
+                if score < 40:
                     reasons = []
                     if changes < 100:
                         reasons.append("Very low activity")
@@ -653,8 +656,8 @@ class PDFReportGenerator:
                     
                     if reasons:
                         explanation += f": {', '.join(reasons[:2])}"
-                elif score >= 80:
-                    # Highlight positives for high scores
+                elif score >= 50:
+                    # Highlight positives for exceptionally high scores (corrected system: typical max ~55)
                     reasons = []
                     price_trend = rec.get('price_trend_30d', 0)
                     if price_trend > 10:
