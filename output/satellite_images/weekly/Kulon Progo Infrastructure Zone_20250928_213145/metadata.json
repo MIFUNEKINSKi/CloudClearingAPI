@@ -1,0 +1,27 @@
+{
+  "region_name": "Kulon Progo Infrastructure Zone",
+  "week_a": "2025-06-23",
+  "week_b": "2025-06-30",
+  "saved_timestamp": "2025-09-28T21:31:49.657796",
+  "saved_images": {
+    "week_a_true_color": "output/satellite_images/weekly/Kulon Progo Infrastructure Zone_20250928_213145/Kulon Progo Infrastructure Zone_before_true_color_20250623.png",
+    "week_b_true_color": "output/satellite_images/weekly/Kulon Progo Infrastructure Zone_20250928_213145/Kulon Progo Infrastructure Zone_after_true_color_20250630.png",
+    "week_a_false_color": "output/satellite_images/weekly/Kulon Progo Infrastructure Zone_20250928_213145/Kulon Progo Infrastructure Zone_before_false_color_20250623.png",
+    "week_b_false_color": "output/satellite_images/weekly/Kulon Progo Infrastructure Zone_20250928_213145/Kulon Progo Infrastructure Zone_after_false_color_20250630.png",
+    "ndvi_change": "output/satellite_images/weekly/Kulon Progo Infrastructure Zone_20250928_213145/Kulon Progo Infrastructure Zone_ndvi_change_20250623_to_20250630.png"
+  },
+  "original_urls": {
+    "week_a_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/93b6db0a8db58c47c27a44df2cd3490b-e2a74edff37ae70a838d25a02caabb37:getPixels",
+    "week_b_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/03b013723d2bcebe41e2feecca0c26e2-2793c34f32ba32a926c5781214456464:getPixels",
+    "week_a_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/66f551359ee6c468d0592455d266ae92-608c6ddf3008325169f9b9d2c21c6954:getPixels",
+    "week_b_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/60ce117286a6e6f748cc54ed37428623-1cf17c3dc349967382b9b58c4cdab86d:getPixels",
+    "ndvi_change": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/193afea5666c63e7ca7bddad9f32861a-6ff5e421f17a92fc78a9ad5aabb8b2b0:getPixels",
+    "week_a_date": "2025-06-23",
+    "week_b_date": "2025-06-30",
+    "description": {
+      "true_color": "Natural color satellite imagery (Red, Green, Blue bands)",
+      "false_color": "False color imagery highlighting vegetation (NIR, Red, Green)",
+      "ndvi_change": "NDVI change map: Red=vegetation loss, Green=vegetation gain"
+    }
+  }
+}

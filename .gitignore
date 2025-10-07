@@ -1,0 +1,85 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/*.log
+server.log
+
+# Configuration (contains sensitive data)
+config/config.yaml
+config/config.production.yaml
+.env
+.env.local
+*.pem
+*.key
+
+# Google Earth Engine credentials
+.config/earthengine/
+credentials.json
+service-account-key.json
+
+# Data and Output (can be large)
+data/raw/
+data/processed/
+output/monitoring/*.json
+output/weekly_reports/*.json
+output/weekly_reports/*.pdf
+temp/
+
+# Test outputs
+test_*.log
+*.pyc
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json

@@ -1,0 +1,1194 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudClearing Satellite Imagery Viewer</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #2E86AB, #A23B72);
+            color: white;
+            border-radius: 10px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        .region-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .region-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        .region-card:hover {
+            transform: translateY(-5px);
+        }
+        .region-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2E86AB;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+        .region-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .stat-number {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #A23B72;
+        }
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .imagery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .image-container {
+            text-align: center;
+        }
+        .image-label {
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #555;
+        }
+        .satellite-image {
+            width: 100%;
+            height: 200px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+        .satellite-image:hover {
+            transform: scale(1.05);
+        }
+        .image-date {
+            font-size: 0.8em;
+            color: #888;
+            margin-top: 5px;
+        }
+        .no-imagery {
+            text-align: center;
+            color: #888;
+            font-style: italic;
+            padding: 40px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.9);
+        }
+        .modal-content {
+            margin: auto;
+            display: block;
+            width: 80%;
+            max-width: 700px;
+            margin-top: 5%;
+        }
+        .close {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: #bbb;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛰️ CloudClearing Satellite Imagery Viewer</h1>
+        <p>Analysis Period: 2025-06-23 to 2025-06-30 | Generated: September 28, 2025 at 09:36 PM</p>
+    </div>
+    
+    <div class="region-grid">
+
+        <div class="region-card">
+            <div class="region-title">Yogyakarta Urban</div>
+            <div class="region-stats">
+                <div class="stat-box">
+                    <div class="stat-number">4,831</div>
+                    <div class="stat-label">Changes</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">1038.0</div>
+                    <div class="stat-label">Hectares</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">Yogyakarta Region</div>
+                    <div class="stat-label">Type</div>
+                </div>
+            </div>
+            <div class="imagery-grid">
+                <div class="image-container">
+                    <div class="image-label">🌍 Before (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/b4ad521da6f2e6633e67ec2ec663fd36-e84965b52aeab6e07f612d80647dc79c:getPixels" 
+                         alt="Before - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/b4ad521da6f2e6633e67ec2ec663fd36-e84965b52aeab6e07f612d80647dc79c:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-23</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌍 After (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/22f1fe04e40f3ccf97b8aeb21e8646e8-fbc1feff1d4f9991ebb5c3cc03f8a478:getPixels" 
+                         alt="After - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/22f1fe04e40f3ccf97b8aeb21e8646e8-fbc1feff1d4f9991ebb5c3cc03f8a478:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-30</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌱 NDVI Change</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/0dc32cf49b0a5d39941f4d404b11dba9-63d52ec16580965134ba5c57de004301:getPixels" 
+                         alt="NDVI Change" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#d1ecf1; border:1px solid #bee5eb; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🌱 NDVI Change Analysis</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">Red areas = vegetation loss, Green areas = vegetation gain</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/0dc32cf49b0a5d39941f4d404b11dba9-63d52ec16580965134ba5c57de004301:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">Change Analysis</div>
+                </div>
+            </div>
+        </div>
+            
+        <div class="region-card">
+            <div class="region-title">Yogyakarta Periurban</div>
+            <div class="region-stats">
+                <div class="stat-box">
+                    <div class="stat-number">58,478</div>
+                    <div class="stat-label">Changes</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">6868.8</div>
+                    <div class="stat-label">Hectares</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">Yogyakarta Region</div>
+                    <div class="stat-label">Type</div>
+                </div>
+            </div>
+            <div class="imagery-grid">
+                <div class="image-container">
+                    <div class="image-label">🌍 Before (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/31f341768e3983e73938ea156950b4d4-6087496ced7b5128ee1909e7d7c6374b:getPixels" 
+                         alt="Before - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/31f341768e3983e73938ea156950b4d4-6087496ced7b5128ee1909e7d7c6374b:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-23</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌍 After (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/ac15be92ddce2272ac531e06990e28f9-18c1853c16b2c32e5be5f4795919636d:getPixels" 
+                         alt="After - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/ac15be92ddce2272ac531e06990e28f9-18c1853c16b2c32e5be5f4795919636d:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-30</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌱 NDVI Change</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/8c80e998fb535952a748a7ddb5d31788-9abf3b477217083b1219b4b0bc99ac94:getPixels" 
+                         alt="NDVI Change" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#d1ecf1; border:1px solid #bee5eb; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🌱 NDVI Change Analysis</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">Red areas = vegetation loss, Green areas = vegetation gain</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/8c80e998fb535952a748a7ddb5d31788-9abf3b477217083b1219b4b0bc99ac94:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">Change Analysis</div>
+                </div>
+            </div>
+        </div>
+            
+        <div class="region-card">
+            <div class="region-title">Sleman North</div>
+            <div class="region-stats">
+                <div class="stat-box">
+                    <div class="stat-number">23,176</div>
+                    <div class="stat-label">Changes</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">2852.0</div>
+                    <div class="stat-label">Hectares</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">Yogyakarta Region</div>
+                    <div class="stat-label">Type</div>
+                </div>
+            </div>
+            <div class="imagery-grid">
+                <div class="image-container">
+                    <div class="image-label">🌍 Before (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/d92a7a40ac1006a868d3bf233f28ff09-494c27051a6789935cb0dd4b70cfa8b2:getPixels" 
+                         alt="Before - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/d92a7a40ac1006a868d3bf233f28ff09-494c27051a6789935cb0dd4b70cfa8b2:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-23</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌍 After (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/b067e634fef575ae54029d9cc7d8845f-926e2f62d9608f3b118df1a8a39b2597:getPixels" 
+                         alt="After - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/b067e634fef575ae54029d9cc7d8845f-926e2f62d9608f3b118df1a8a39b2597:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-30</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌱 NDVI Change</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/1ae3d2c77e42dce947bd04b07ee44892-f2da3fa60e9d68264aa2e22b179ed502:getPixels" 
+                         alt="NDVI Change" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#d1ecf1; border:1px solid #bee5eb; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🌱 NDVI Change Analysis</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">Red areas = vegetation loss, Green areas = vegetation gain</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/1ae3d2c77e42dce947bd04b07ee44892-f2da3fa60e9d68264aa2e22b179ed502:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">Change Analysis</div>
+                </div>
+            </div>
+        </div>
+            
+        <div class="region-card">
+            <div class="region-title">Bantul South</div>
+            <div class="region-stats">
+                <div class="stat-box">
+                    <div class="stat-number">42,939</div>
+                    <div class="stat-label">Changes</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">5389.3</div>
+                    <div class="stat-label">Hectares</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">Yogyakarta Region</div>
+                    <div class="stat-label">Type</div>
+                </div>
+            </div>
+            <div class="imagery-grid">
+                <div class="image-container">
+                    <div class="image-label">🌍 Before (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/b3bb59371ca924735f00ded96a259189-e511babb33a17169569e4c211020c0b1:getPixels" 
+                         alt="Before - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/b3bb59371ca924735f00ded96a259189-e511babb33a17169569e4c211020c0b1:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-23</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌍 After (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/bdf174d394a561824f52d8fd2c6e1391-72c64d109beca56014338046fdafa157:getPixels" 
+                         alt="After - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/bdf174d394a561824f52d8fd2c6e1391-72c64d109beca56014338046fdafa157:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-30</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌱 NDVI Change</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/ad67850da818a3f8f0d3712e5892a7a2-a0bee8daa3f767c19953561f54f63676:getPixels" 
+                         alt="NDVI Change" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#d1ecf1; border:1px solid #bee5eb; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🌱 NDVI Change Analysis</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">Red areas = vegetation loss, Green areas = vegetation gain</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/ad67850da818a3f8f0d3712e5892a7a2-a0bee8daa3f767c19953561f54f63676:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">Change Analysis</div>
+                </div>
+            </div>
+        </div>
+            
+        <div class="region-card">
+            <div class="region-title">Kulonprogo West</div>
+            <div class="region-stats">
+                <div class="stat-box">
+                    <div class="stat-number">31,141</div>
+                    <div class="stat-label">Changes</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">3615.5</div>
+                    <div class="stat-label">Hectares</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">Yogyakarta Region</div>
+                    <div class="stat-label">Type</div>
+                </div>
+            </div>
+            <div class="imagery-grid">
+                <div class="image-container">
+                    <div class="image-label">🌍 Before (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/46c229c0cab97d74c1c1e67bbc76f049-cdf8a23c2e9dde7ccf798f4da0bef0cb:getPixels" 
+                         alt="Before - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/46c229c0cab97d74c1c1e67bbc76f049-cdf8a23c2e9dde7ccf798f4da0bef0cb:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-23</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌍 After (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/da4e9d93442130024ea42ea322278ff1-7157e125eeebba4e36d91b6c2979f75e:getPixels" 
+                         alt="After - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/da4e9d93442130024ea42ea322278ff1-7157e125eeebba4e36d91b6c2979f75e:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-30</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌱 NDVI Change</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/cd926758047a30711872ec725d7e739c-ce824aecece8a8a3f28fbf9d3c9c0e06:getPixels" 
+                         alt="NDVI Change" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#d1ecf1; border:1px solid #bee5eb; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🌱 NDVI Change Analysis</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">Red areas = vegetation loss, Green areas = vegetation gain</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/cd926758047a30711872ec725d7e739c-ce824aecece8a8a3f28fbf9d3c9c0e06:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">Change Analysis</div>
+                </div>
+            </div>
+        </div>
+            
+        <div class="region-card">
+            <div class="region-title">Gunungkidul East</div>
+            <div class="region-stats">
+                <div class="stat-box">
+                    <div class="stat-number">47,116</div>
+                    <div class="stat-label">Changes</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">4498.8</div>
+                    <div class="stat-label">Hectares</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">Yogyakarta Region</div>
+                    <div class="stat-label">Type</div>
+                </div>
+            </div>
+            <div class="imagery-grid">
+                <div class="image-container">
+                    <div class="image-label">🌍 Before (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/b6b277472d542e73eaef54019b494f30-824c3582f7fdf8b5b2f1ca9080ec0845:getPixels" 
+                         alt="Before - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/b6b277472d542e73eaef54019b494f30-824c3582f7fdf8b5b2f1ca9080ec0845:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-23</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌍 After (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/7c9b7293d7be589cea3668706579ac51-a5731ddd885072bf79c4d1612e84e31e:getPixels" 
+                         alt="After - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/7c9b7293d7be589cea3668706579ac51-a5731ddd885072bf79c4d1612e84e31e:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-30</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌱 NDVI Change</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/034a40f97751c003b6bbe7ca4b49adb1-6cef657039408527616460054be376b5:getPixels" 
+                         alt="NDVI Change" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#d1ecf1; border:1px solid #bee5eb; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🌱 NDVI Change Analysis</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">Red areas = vegetation loss, Green areas = vegetation gain</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/034a40f97751c003b6bbe7ca4b49adb1-6cef657039408527616460054be376b5:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">Change Analysis</div>
+                </div>
+            </div>
+        </div>
+            
+        <div class="region-card">
+            <div class="region-title">Magelang Corridor</div>
+            <div class="region-stats">
+                <div class="stat-box">
+                    <div class="stat-number">15,350</div>
+                    <div class="stat-label">Changes</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">1489.6</div>
+                    <div class="stat-label">Hectares</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">Yogyakarta Region</div>
+                    <div class="stat-label">Type</div>
+                </div>
+            </div>
+            <div class="imagery-grid">
+                <div class="image-container">
+                    <div class="image-label">🌍 Before (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/35b9eef9bdbf95756b5f0dcb9b02aef5-bea2d3bf72edd33e6806dd51eb280a11:getPixels" 
+                         alt="Before - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/35b9eef9bdbf95756b5f0dcb9b02aef5-bea2d3bf72edd33e6806dd51eb280a11:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-23</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌍 After (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/8647d60dd9f93f3635f6f0e2b54f5ab0-5bf8e6b0e4802736f85e82f72f3910e1:getPixels" 
+                         alt="After - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/8647d60dd9f93f3635f6f0e2b54f5ab0-5bf8e6b0e4802736f85e82f72f3910e1:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-30</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌱 NDVI Change</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/2676c80ab7724ff8366463d9270257c3-59560e62626239dea77e5ce2a1ade802:getPixels" 
+                         alt="NDVI Change" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#d1ecf1; border:1px solid #bee5eb; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🌱 NDVI Change Analysis</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">Red areas = vegetation loss, Green areas = vegetation gain</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/2676c80ab7724ff8366463d9270257c3-59560e62626239dea77e5ce2a1ade802:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">Change Analysis</div>
+                </div>
+            </div>
+        </div>
+            
+        <div class="region-card">
+            <div class="region-title">Solo Expansion</div>
+            <div class="region-stats">
+                <div class="stat-box">
+                    <div class="stat-number">22,683</div>
+                    <div class="stat-label">Changes</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">2420.7</div>
+                    <div class="stat-label">Hectares</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">Yogyakarta Region</div>
+                    <div class="stat-label">Type</div>
+                </div>
+            </div>
+            <div class="imagery-grid">
+                <div class="image-container">
+                    <div class="image-label">🌍 Before (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/43f41f0ee60e9ca48b1c5475ee9e6354-a2892424e906465c8c8e7830cd25cf00:getPixels" 
+                         alt="Before - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/43f41f0ee60e9ca48b1c5475ee9e6354-a2892424e906465c8c8e7830cd25cf00:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-23</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌍 After (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/a2a8cdd2b13beb60bb557939321c9acc-d597549fd149ffd44acbc997e2e443d2:getPixels" 
+                         alt="After - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/a2a8cdd2b13beb60bb557939321c9acc-d597549fd149ffd44acbc997e2e443d2:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-30</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌱 NDVI Change</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/1e2eb41f74a998504e872ae5e0fcf408-abe20ef8631e2f0340b49fe0f2174c36:getPixels" 
+                         alt="NDVI Change" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#d1ecf1; border:1px solid #bee5eb; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🌱 NDVI Change Analysis</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">Red areas = vegetation loss, Green areas = vegetation gain</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/1e2eb41f74a998504e872ae5e0fcf408-abe20ef8631e2f0340b49fe0f2174c36:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">Change Analysis</div>
+                </div>
+            </div>
+        </div>
+            
+        <div class="region-card">
+            <div class="region-title">Semarang Industrial</div>
+            <div class="region-stats">
+                <div class="stat-box">
+                    <div class="stat-number">18,397</div>
+                    <div class="stat-label">Changes</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">2076.7</div>
+                    <div class="stat-label">Hectares</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">Yogyakarta Region</div>
+                    <div class="stat-label">Type</div>
+                </div>
+            </div>
+            <div class="imagery-grid">
+                <div class="image-container">
+                    <div class="image-label">🌍 Before (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/22596ab2656b8308508ec7d31418f0c9-30e718bf91431c8c0595856b0757b95a:getPixels" 
+                         alt="Before - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/22596ab2656b8308508ec7d31418f0c9-30e718bf91431c8c0595856b0757b95a:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-23</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌍 After (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/7add6508c4e69e0de44fdb96ca6763a8-23ae32b59393c0cbfed38ab24bb37977:getPixels" 
+                         alt="After - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/7add6508c4e69e0de44fdb96ca6763a8-23ae32b59393c0cbfed38ab24bb37977:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-30</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌱 NDVI Change</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/b8c31ca4bc7a0125a771c35d012ab4bb-1f8748e5ae416bca1f62c393fb4a03ae:getPixels" 
+                         alt="NDVI Change" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#d1ecf1; border:1px solid #bee5eb; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🌱 NDVI Change Analysis</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">Red areas = vegetation loss, Green areas = vegetation gain</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/b8c31ca4bc7a0125a771c35d012ab4bb-1f8748e5ae416bca1f62c393fb4a03ae:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">Change Analysis</div>
+                </div>
+            </div>
+        </div>
+            
+        <div class="region-card">
+            <div class="region-title">Surakarta Suburbs</div>
+            <div class="region-stats">
+                <div class="stat-box">
+                    <div class="stat-number">25,217</div>
+                    <div class="stat-label">Changes</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">2631.8</div>
+                    <div class="stat-label">Hectares</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">Yogyakarta Region</div>
+                    <div class="stat-label">Type</div>
+                </div>
+            </div>
+            <div class="imagery-grid">
+                <div class="image-container">
+                    <div class="image-label">🌍 Before (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/848009e1824ba8e3508b34108601a5ad-fac5c9c3ce1d73b10b834ab8b4a4c98b:getPixels" 
+                         alt="Before - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/848009e1824ba8e3508b34108601a5ad-fac5c9c3ce1d73b10b834ab8b4a4c98b:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-23</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌍 After (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/1a5c4e3cf2cb2b3d2931b63692fae37b-142ce64185504988ee94a15608b94cbc:getPixels" 
+                         alt="After - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/1a5c4e3cf2cb2b3d2931b63692fae37b-142ce64185504988ee94a15608b94cbc:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-30</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌱 NDVI Change</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/2e7e2c7d2a9ae446bac942ba77054b51-1974bfc30db4f2a15dacc19b89f9c08a:getPixels" 
+                         alt="NDVI Change" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#d1ecf1; border:1px solid #bee5eb; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🌱 NDVI Change Analysis</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">Red areas = vegetation loss, Green areas = vegetation gain</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/2e7e2c7d2a9ae446bac942ba77054b51-1974bfc30db4f2a15dacc19b89f9c08a:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">Change Analysis</div>
+                </div>
+            </div>
+        </div>
+            
+        <div class="region-card">
+            <div class="region-title">Lampung Logistics Triangle</div>
+            <div class="region-stats">
+                <div class="stat-box">
+                    <div class="stat-number">60,296</div>
+                    <div class="stat-label">Changes</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">7803.7</div>
+                    <div class="stat-label">Hectares</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">Strategic Corridor</div>
+                    <div class="stat-label">Type</div>
+                </div>
+            </div>
+            <div class="imagery-grid">
+                <div class="image-container">
+                    <div class="image-label">🌍 Before (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/468df8d21f54e85405f7253a1f7de9bb-7dc135eb856293c0d0a4ffc9e94dce1f:getPixels" 
+                         alt="Before - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/468df8d21f54e85405f7253a1f7de9bb-7dc135eb856293c0d0a4ffc9e94dce1f:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-23</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌍 After (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/5c61172a18502620ba395de72097fc29-00b7d0b2d9bc3937c451f00c90967481:getPixels" 
+                         alt="After - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/5c61172a18502620ba395de72097fc29-00b7d0b2d9bc3937c451f00c90967481:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-30</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌱 NDVI Change</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/687e45523564700d649e3d7df6550918-133669aa2e18162dacf4fc179754fdf6:getPixels" 
+                         alt="NDVI Change" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#d1ecf1; border:1px solid #bee5eb; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🌱 NDVI Change Analysis</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">Red areas = vegetation loss, Green areas = vegetation gain</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/687e45523564700d649e3d7df6550918-133669aa2e18162dacf4fc179754fdf6:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">Change Analysis</div>
+                </div>
+            </div>
+        </div>
+            
+        <div class="region-card">
+            <div class="region-title">Solo Expansion Zone</div>
+            <div class="region-stats">
+                <div class="stat-box">
+                    <div class="stat-number">22,683</div>
+                    <div class="stat-label">Changes</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">2420.7</div>
+                    <div class="stat-label">Hectares</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">Strategic Corridor</div>
+                    <div class="stat-label">Type</div>
+                </div>
+            </div>
+            <div class="imagery-grid">
+                <div class="image-container">
+                    <div class="image-label">🌍 Before (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/43f41f0ee60e9ca48b1c5475ee9e6354-917291d09e4ba493e28b0e90dd46115a:getPixels" 
+                         alt="Before - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/43f41f0ee60e9ca48b1c5475ee9e6354-917291d09e4ba493e28b0e90dd46115a:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-23</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌍 After (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/a2a8cdd2b13beb60bb557939321c9acc-c8bf31f18c4d73c6e1b316b437646afd:getPixels" 
+                         alt="After - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/a2a8cdd2b13beb60bb557939321c9acc-c8bf31f18c4d73c6e1b316b437646afd:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-30</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌱 NDVI Change</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/1e2eb41f74a998504e872ae5e0fcf408-6687045f6031fb949539c45dee670b78:getPixels" 
+                         alt="NDVI Change" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#d1ecf1; border:1px solid #bee5eb; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🌱 NDVI Change Analysis</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">Red areas = vegetation loss, Green areas = vegetation gain</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/1e2eb41f74a998504e872ae5e0fcf408-6687045f6031fb949539c45dee670b78:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">Change Analysis</div>
+                </div>
+            </div>
+        </div>
+            
+        <div class="region-card">
+            <div class="region-title">Kulon Progo Infrastructure Zone</div>
+            <div class="region-stats">
+                <div class="stat-box">
+                    <div class="stat-number">19,908</div>
+                    <div class="stat-label">Changes</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">5238.7</div>
+                    <div class="stat-label">Hectares</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">Strategic Corridor</div>
+                    <div class="stat-label">Type</div>
+                </div>
+            </div>
+            <div class="imagery-grid">
+                <div class="image-container">
+                    <div class="image-label">🌍 Before (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/93b6db0a8db58c47c27a44df2cd3490b-e2a74edff37ae70a838d25a02caabb37:getPixels" 
+                         alt="Before - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/93b6db0a8db58c47c27a44df2cd3490b-e2a74edff37ae70a838d25a02caabb37:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-23</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌍 After (True Color)</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/03b013723d2bcebe41e2feecca0c26e2-2793c34f32ba32a926c5781214456464:getPixels" 
+                         alt="After - True Color" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#fff3cd; border:1px solid #ffeaa7; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🔒 Authentication Required</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">This Google Earth Engine image requires authentication tokens.</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/03b013723d2bcebe41e2feecca0c26e2-2793c34f32ba32a926c5781214456464:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">2025-06-30</div>
+                </div>
+                <div class="image-container">
+                    <div class="image-label">🌱 NDVI Change</div>
+                    <img src="https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/193afea5666c63e7ca7bddad9f32861a-6ff5e421f17a92fc78a9ad5aabb8b2b0:getPixels" 
+                         alt="NDVI Change" 
+                         class="satellite-image"
+                         onclick="openModal(this.src)"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                         onload="if(this.naturalWidth === 0 || this.naturalHeight === 0) { this.style.display='none'; this.nextElementSibling.style.display='block'; }">
+                    <div style="display:none; padding:20px; background:#d1ecf1; border:1px solid #bee5eb; border-radius:8px; margin-top:10px;">
+                        <p style="margin:0 0 10px 0;"><strong>🌱 NDVI Change Analysis</strong></p>
+                        <p style="margin:0 0 10px 0; font-size:14px;">Red areas = vegetation loss, Green areas = vegetation gain</p>
+                        <button onclick="window.open('https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/193afea5666c63e7ca7bddad9f32861a-6ff5e421f17a92fc78a9ad5aabb8b2b0:getPixels', '_blank')" 
+                                style="padding:8px 16px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer;">
+                            🚀 Open in New Tab
+                        </button>
+                    </div>
+                    <div class="image-date">Change Analysis</div>
+                </div>
+            </div>
+        </div>
+            
+    </div>
+    
+    <div class="footer">
+        <p><strong>Legend:</strong></p>
+        <p>🌍 True Color: Natural appearance (Red, Green, Blue bands)</p>
+        <p>🌿 False Color: Vegetation analysis (NIR, Red, Green bands)</p>
+        <p>🌱 NDVI Change: Red = vegetation loss, Green = vegetation gain</p>
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+        <p>Generated by CloudClearing Automated Monitor | © 2025 CloudClearing Intelligence</p>
+    </div>
+    
+    <!-- Modal for enlarged images -->
+    <div id="imageModal" class="modal">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <img class="modal-content" id="modalImage">
+    </div>
+    
+    <script>
+        function openModal(imgSrc) {
+            document.getElementById('imageModal').style.display = 'block';
+            document.getElementById('modalImage').src = imgSrc;
+        }
+        
+        function closeModal() {
+            document.getElementById('imageModal').style.display = 'none';
+        }
+        
+        // Close modal when clicking outside the image
+        window.onclick = function(event) {
+            var modal = document.getElementById('imageModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+        
+        // Enhanced image loading detection
+        function checkImageLoad(img) {
+            return new Promise((resolve) => {
+                if (img.complete) {
+                    resolve(img.naturalWidth > 0 && img.naturalHeight > 0);
+                } else {
+                    img.onload = () => resolve(img.naturalWidth > 0 && img.naturalHeight > 0);
+                    img.onerror = () => resolve(false);
+                }
+            });
+        }
+        
+        // Check all images after page load
+        window.addEventListener('load', async function() {
+            const images = document.querySelectorAll('.satellite-image');
+            for (let img of images) {
+                const loaded = await checkImageLoad(img);
+                if (!loaded) {
+                    img.style.display = 'none';
+                    img.nextElementSibling.style.display = 'block';
+                }
+            }
+            
+            // Add loading indicators
+            const containers = document.querySelectorAll('.image-container');
+            containers.forEach(container => {
+                const img = container.querySelector('.satellite-image');
+                const fallback = container.querySelector('div[style*="display:none"]');
+                
+                if (img && img.style.display !== 'none') {
+                    img.style.background = 'linear-gradient(45deg, #f0f0f0 25%, transparent 25%, transparent 75%, #f0f0f0 75%, #f0f0f0), linear-gradient(45deg, #f0f0f0 25%, transparent 25%, transparent 75%, #f0f0f0 75%, #f0f0f0)';
+                    img.style.backgroundSize = '20px 20px';
+                    img.style.backgroundPosition = '0 0, 10px 10px';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

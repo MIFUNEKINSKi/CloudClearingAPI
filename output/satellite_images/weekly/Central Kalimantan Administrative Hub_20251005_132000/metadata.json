@@ -1,0 +1,27 @@
+{
+  "region_name": "Central Kalimantan Administrative Hub",
+  "week_a": "2025-09-21",
+  "week_b": "2025-09-28",
+  "saved_timestamp": "2025-10-05T13:20:04.957346",
+  "saved_images": {
+    "week_a_true_color": "output/satellite_images/weekly/Central Kalimantan Administrative Hub_20251005_132000/Central Kalimantan Administrative Hub_before_true_color_20250921.png",
+    "week_b_true_color": "output/satellite_images/weekly/Central Kalimantan Administrative Hub_20251005_132000/Central Kalimantan Administrative Hub_after_true_color_20250928.png",
+    "week_a_false_color": "output/satellite_images/weekly/Central Kalimantan Administrative Hub_20251005_132000/Central Kalimantan Administrative Hub_before_false_color_20250921.png",
+    "week_b_false_color": "output/satellite_images/weekly/Central Kalimantan Administrative Hub_20251005_132000/Central Kalimantan Administrative Hub_after_false_color_20250928.png",
+    "ndvi_change": "output/satellite_images/weekly/Central Kalimantan Administrative Hub_20251005_132000/Central Kalimantan Administrative Hub_ndvi_change_20250921_to_20250928.png"
+  },
+  "original_urls": {
+    "week_a_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/a30ee4829ff063b54d9aff6fee43343d-d363295ed6ab01832384cf6b584f5a45:getPixels",
+    "week_b_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/39dc40c87e541f5249a6e378b79dd2c4-034c93197ce6d0d2a64d7774b3ef135e:getPixels",
+    "week_a_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/3e4dcb452e8b6004f09829123080000c-ba63764a26d96f06a3da8966cfa83ab1:getPixels",
+    "week_b_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/e3247bf53dbe16be9db79ff187f61586-44676363bb4ebbf4bbea23a07e5cee95:getPixels",
+    "ndvi_change": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/7fe34440e1e8d6924fa6d5b66f4ff30a-6b4edd836949e523a294a9a20539f519:getPixels",
+    "week_a_date": "2025-09-21",
+    "week_b_date": "2025-09-28",
+    "description": {
+      "true_color": "Natural color satellite imagery (Red, Green, Blue bands)",
+      "false_color": "False color imagery highlighting vegetation (NIR, Red, Green)",
+      "ndvi_change": "NDVI change map: Red=vegetation loss, Green=vegetation gain"
+    }
+  }
+}

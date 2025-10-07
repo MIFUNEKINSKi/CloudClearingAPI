@@ -1,0 +1,60 @@
+# CloudClearingAPI Configuration File
+# Copy this file to config.yaml and customize for your deployment
+
+# Area of Interest (Yogyakarta region - adjust as needed)
+monitoring:
+  # Bounding box coordinates (decimal degrees)
+  bbox_west: 110.25
+  bbox_east: 110.55
+  bbox_south: -7.95
+  bbox_north: -7.65
+  
+  # Monitoring schedule
+  check_interval_hours: 168  # Weekly (24 * 7)
+  lookback_days: 7
+  
+  # Change detection thresholds
+  ndvi_loss_threshold: -0.20  # Vegetation loss threshold
+  ndbi_gain_threshold: 0.15   # Built-up area gain threshold
+  min_change_area_m2: 200.0   # Minimum area to flag (square meters)
+
+# Image processing settings
+processing:
+  max_cloud_cover: 20.0        # Maximum cloud cover percentage
+  composite_method: "median"    # median, mean, percentile
+  scale: 10                    # Meters per pixel (Sentinel-2)
+  max_pixels: 1000000000       # Maximum pixels for processing
+
+# Alert and notification settings
+alerts:
+  email_enabled: true
+  email_recipients:
+    - "your-email@example.com"
+    # - "admin@yourorg.com"
+  
+  # SMTP settings (Gmail example)
+  smtp_server: "smtp.gmail.com"
+  smtp_port: 587
+  smtp_username: ""  # Set via environment variable SMTP_USERNAME
+  smtp_password: ""  # Set via environment variable SMTP_PASSWORD
+  
+  # Optional webhook for Slack/Discord
+  webhook_url: ""     # Set via environment variable WEBHOOK_URL
+  slack_token: ""     # Set via environment variable SLACK_TOKEN
+
+# Database settings (optional - for production use)
+database:
+  enabled: false
+  url: "sqlite:///cloudclearing.db"  # Or PostgreSQL: postgresql://user:pass@host/db
+  pool_size: 5
+  max_overflow: 10
+
+# Application settings
+debug: false
+log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+data_dir: "./data"
+output_dir: "./output"
+
+# Google Earth Engine settings
+gee_project: ""           # Your GEE project ID (optional)
+gee_service_account: ""   # Path to service account JSON (optional)

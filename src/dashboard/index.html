@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudClearing - Change Detection Dashboard</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Leaflet Side-by-Side CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-side-by-side@2.1.0/Layout.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f6fa;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            margin-top: 0.5rem;
+        }
+        
+        .dashboard-container {
+            display: flex;
+            height: calc(100vh - 120px);
+        }
+        
+        .sidebar {
+            width: 350px;
+            background: white;
+            padding: 1.5rem;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            overflow-y: auto;
+        }
+        
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        
+        .control-section {
+            margin-bottom: 2rem;
+        }
+        
+        .control-section h3 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 0.5rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #219a52;
+        }
+        
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        
+        .status-connected {
+            background: #27ae60;
+        }
+        
+        .status-disconnected {
+            background: #e74c3c;
+        }
+        
+        .results-section {
+            background: #ecf0f1;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-top: 1rem;
+        }
+        
+        .change-summary {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+        
+        .change-stat {
+            text-align: center;
+        }
+        
+        .change-stat .number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .change-stat .label {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+        }
+        
+        .legend {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .legend h4 {
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            margin-right: 0.5rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #7f8c8d;
+        }
+        
+        .error {
+            background: #e74c3c;
+            color: white;
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+        }
+        
+        .swipe-control {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .preset-regions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        
+        .preset-btn {
+            padding: 0.5rem;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 3px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+        
+        .preset-btn:hover {
+            background: #e9ecef;
+            border-color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛰️ CloudClearing Dashboard</h1>
+        <p>Satellite imagery change detection for monitoring land development</p>
+    </div>
+
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <!-- System Status -->
+            <div class="control-section">
+                <h3>System Status</h3>
+                <div id="system-status">
+                    <div>
+                        <span class="status-indicator status-disconnected"></span>
+                        <span>Connecting...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analysis Controls -->
+            <div class="control-section">
+                <h3>Change Detection</h3>
+                
+                <div class="form-group">
+                    <label>Before Date (Week A)</label>
+                    <input type="date" id="week-a-date" value="2024-01-01">
+                </div>
+                
+                <div class="form-group">
+                    <label>After Date (Week B)</label>
+                    <input type="date" id="week-b-date" value="2024-01-08">
+                </div>
+                
+                <div class="form-group">
+                    <label>Analysis Region</label>
+                    <select id="region-select">
+                        <option value="custom">Custom Area</option>
+                        <option value="yogyakarta">Yogyakarta</option>
+                        <option value="jakarta">Jakarta</option>
+                        <option value="bali">Bali</option>
+                    </select>
+                </div>
+                
+                <button class="btn btn-primary" onclick="runAnalysis()">
+                    🔍 Run Analysis
+                </button>
+                
+                <div class="preset-regions">
+                    <div class="preset-btn" onclick="loadPresetRegion('yogya')">
+                        Yogyakarta
+                    </div>
+                    <div class="preset-btn" onclick="loadPresetRegion('jakarta')">
+                        Jakarta
+                    </div>
+                    <div class="preset-btn" onclick="loadPresetRegion('bali')">
+                        Bali
+                    </div>
+                    <div class="preset-btn" onclick="loadPresetRegion('surabaya')">
+                        Surabaya
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detection Settings -->
+            <div class="control-section">
+                <h3>Detection Settings</h3>
+                
+                <div class="form-group">
+                    <label>NDVI Loss Threshold</label>
+                    <input type="range" id="ndvi-threshold" min="-0.5" max="0" step="0.05" value="-0.20">
+                    <span id="ndvi-value">-0.20</span>
+                </div>
+                
+                <div class="form-group">
+                    <label>NDBI Gain Threshold</label>
+                    <input type="range" id="ndbi-threshold" min="0" max="0.5" step="0.05" value="0.15">
+                    <span id="ndbi-value">0.15</span>
+                </div>
+                
+                <div class="form-group">
+                    <label>Minimum Area (m²)</label>
+                    <input type="number" id="min-area" value="500" min="100" step="100">
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div class="control-section">
+                <h3>Analysis Results</h3>
+                <div id="results-container">
+                    <div class="loading">
+                        Run an analysis to see results
+                    </div>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="legend">
+                <h4>Map Legend</h4>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e74c3c;"></div>
+                    <span>Vegetation Loss</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f39c12;"></div>
+                    <span>Development</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #3498db;"></div>
+                    <span>Water Bodies</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #27ae60;"></div>
+                    <span>Vegetation Gain</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="map-container">
+            <div class="swipe-control">
+                <label>
+                    <input type="checkbox" id="swipe-toggle" onchange="toggleSwipeMode()">
+                    Before/After Swipe Mode
+                </label>
+            </div>
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript Libraries -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-side-by-side@2.1.0/leaflet-side-by-side.min.js"></script>
+    
+    <script>
+        // Global variables
+        let map;
+        let beforeLayer, afterLayer;
+        let swipeControl;
+        let changeLayer;
+        let currentBounds;
+        
+        // API base URL
+        const API_BASE = 'http://localhost:8000';
+        
+        // Initialize map
+        function initMap() {
+            map = L.map('map').setView([-7.797068, 110.370529], 10);
+            
+            // Base layers
+            const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            });
+            
+            const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Esri, DigitalGlobe, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community'
+            });
+            
+            // Add default layer
+            satelliteLayer.addTo(map);
+            
+            // Layer control
+            const baseLayers = {
+                "Satellite": satelliteLayer,
+                "OpenStreetMap": osmLayer
+            };
+            
+            L.control.layers(baseLayers).addTo(map);
+            
+            // Store current bounds
+            map.on('moveend', function() {
+                currentBounds = map.getBounds();
+            });
+            
+            currentBounds = map.getBounds();
+        }
+        
+        // Check system status
+        async function checkSystemStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const status = await response.json();
+                
+                const statusElement = document.getElementById('system-status');
+                const isHealthy = status.status === 'healthy';
+                const eeConnected = status.services.earth_engine === 'connected';
+                
+                statusElement.innerHTML = `
+                    <div>
+                        <span class="status-indicator ${isHealthy ? 'status-connected' : 'status-disconnected'}"></span>
+                        <span>API: ${isHealthy ? 'Connected' : 'Disconnected'}</span>
+                    </div>
+                    <div style="margin-top: 0.5rem;">
+                        <span class="status-indicator ${eeConnected ? 'status-connected' : 'status-disconnected'}"></span>
+                        <span>Earth Engine: ${eeConnected ? 'Connected' : 'Disconnected'}</span>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('system-status').innerHTML = `
+                    <div>
+                        <span class="status-indicator status-disconnected"></span>
+                        <span>Connection Failed</span>
+                    </div>
+                `;
+            }
+        }
+        
+        // Load preset regions
+        function loadPresetRegion(region) {
+            const presets = {
+                'yogya': {
+                    bounds: [[-7.95, 110.25], [-7.65, 110.55]],
+                    name: 'Yogyakarta'
+                },
+                'jakarta': {
+                    bounds: [[-6.35, 106.65], [-5.95, 107.05]],
+                    name: 'Jakarta'
+                },
+                'bali': {
+                    bounds: [[-8.8, 115.0], [-8.1, 115.7]],
+                    name: 'Bali'
+                },
+                'surabaya': {
+                    bounds: [[-7.4, 112.6], [-7.0, 113.0]],
+                    name: 'Surabaya'
+                }
+            };
+            
+            if (presets[region]) {
+                map.fitBounds(presets[region].bounds);
+                // Update region selector
+                document.getElementById('region-select').value = region;
+            }
+        }
+        
+        // Run change detection analysis
+        async function runAnalysis() {
+            const weekA = document.getElementById('week-a-date').value;
+            const weekB = document.getElementById('week-b-date').value;
+            const ndviThreshold = parseFloat(document.getElementById('ndvi-threshold').value);
+            const ndbiThreshold = parseFloat(document.getElementById('ndbi-threshold').value);
+            const minArea = parseInt(document.getElementById('min-area').value);
+            
+            // Get current map bounds
+            const bounds = map.getBounds();
+            
+            const analysisRequest = {
+                week_a_start: weekA,
+                week_b_start: weekB,
+                bbox_west: bounds.getWest(),
+                bbox_south: bounds.getSouth(),
+                bbox_east: bounds.getEast(),
+                bbox_north: bounds.getNorth(),
+                ndvi_threshold: ndviThreshold,
+                ndbi_threshold: ndbiThreshold,
+                min_area_m2: minArea
+            };
+            
+            // Show loading
+            document.getElementById('results-container').innerHTML = `
+                <div class="loading">
+                    🔄 Running analysis...<br>
+                    <small>This may take 1-2 minutes</small>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch(`${API_BASE}/analyze`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(analysisRequest)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Analysis failed: ${response.statusText}`);
+                }
+                
+                const results = await response.json();
+                displayResults(results);
+                
+                // Simulate adding change polygons to map
+                addChangePolygonsToMap(results);
+                
+            } catch (error) {
+                document.getElementById('results-container').innerHTML = `
+                    <div class="error">
+                        Analysis failed: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        // Display analysis results
+        function displayResults(results) {
+            const resultsHtml = `
+                <div class="results-section">
+                    <div class="change-summary">
+                        <div class="change-stat">
+                            <div class="number">${results.change_count}</div>
+                            <div class="label">Changes</div>
+                        </div>
+                        <div class="change-stat">
+                            <div class="number">${(results.total_area_m2 / 10000).toFixed(1)}</div>
+                            <div class="label">Hectares</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 1rem;">
+                        <strong>Analysis Period:</strong><br>
+                        ${results.week_a} → ${results.week_b}
+                    </div>
+                    
+                    <div style="margin-top: 1rem;">
+                        <strong>Change Types:</strong>
+                        <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+                            ${Object.entries(results.change_types).map(([type, count]) => 
+                                `<li>${type}: ${count}</li>`
+                            ).join('')}
+                        </ul>
+                    </div>
+                    
+                    <button class="btn btn-success" onclick="exportResults('${results.analysis_id}')" style="margin-top: 1rem;">
+                        📥 Export Results
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('results-container').innerHTML = resultsHtml;
+        }
+        
+        // Add change polygons to map (simulated)
+        function addChangePolygonsToMap(results) {
+            // Remove existing change layer
+            if (changeLayer) {
+                map.removeLayer(changeLayer);
+            }
+            
+            // Create sample change polygons (in real implementation, these would come from the API)
+            const sampleChanges = [
+                {
+                    type: "vegetation_loss",
+                    coordinates: [
+                        [currentBounds.getSouth() + 0.01, currentBounds.getWest() + 0.01],
+                        [currentBounds.getSouth() + 0.02, currentBounds.getWest() + 0.01],
+                        [currentBounds.getSouth() + 0.02, currentBounds.getWest() + 0.02],
+                        [currentBounds.getSouth() + 0.01, currentBounds.getWest() + 0.02]
+                    ]
+                },
+                {
+                    type: "development",
+                    coordinates: [
+                        [currentBounds.getSouth() + 0.03, currentBounds.getWest() + 0.03],
+                        [currentBounds.getSouth() + 0.04, currentBounds.getWest() + 0.03],
+                        [currentBounds.getSouth() + 0.04, currentBounds.getWest() + 0.04],
+                        [currentBounds.getSouth() + 0.03, currentBounds.getWest() + 0.04]
+                    ]
+                }
+            ];
+            
+            const changeColors = {
+                'vegetation_loss': '#e74c3c',
+                'development': '#f39c12',
+                'water_change': '#3498db',
+                'vegetation_gain': '#27ae60'
+            };
+            
+            changeLayer = L.layerGroup();
+            
+            sampleChanges.forEach(change => {
+                const polygon = L.polygon(change.coordinates, {
+                    color: changeColors[change.type] || '#7f8c8d',
+                    fillColor: changeColors[change.type] || '#7f8c8d',
+                    fillOpacity: 0.6,
+                    weight: 2
+                }).bindPopup(`Change Type: ${change.type}`);
+                
+                changeLayer.addLayer(polygon);
+            });
+            
+            changeLayer.addTo(map);
+        }
+        
+        // Toggle swipe mode
+        function toggleSwipeMode() {
+            const isEnabled = document.getElementById('swipe-toggle').checked;
+            
+            if (isEnabled) {
+                // Create before/after layers (simulated)
+                beforeLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Before (Satellite)'
+                });
+                
+                afterLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: 'After (OSM - simulated)'
+                });
+                
+                // Add layers to map
+                beforeLayer.addTo(map);
+                afterLayer.addTo(map);
+                
+                // Create swipe control
+                swipeControl = L.control.sideBySide(beforeLayer, afterLayer);
+                swipeControl.addTo(map);
+                
+            } else {
+                // Remove swipe control
+                if (swipeControl) {
+                    swipeControl.remove();
+                    swipeControl = null;
+                }
+                
+                // Remove layers
+                if (beforeLayer) {
+                    map.removeLayer(beforeLayer);
+                    beforeLayer = null;
+                }
+                if (afterLayer) {
+                    map.removeLayer(afterLayer);
+                    afterLayer = null;
+                }
+            }
+        }
+        
+        // Export results
+        function exportResults(analysisId) {
+            // In real implementation, this would download actual results
+            alert(`Exporting results for analysis ${analysisId}...`);
+        }
+        
+        // Update threshold displays
+        document.getElementById('ndvi-threshold').oninput = function() {
+            document.getElementById('ndvi-value').textContent = this.value;
+        };
+        
+        document.getElementById('ndbi-threshold').oninput = function() {
+            document.getElementById('ndbi-value').textContent = this.value;
+        };
+        
+        // Initialize everything when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            checkSystemStatus();
+            
+            // Check status every 30 seconds
+            setInterval(checkSystemStatus, 30000);
+        });
+    </script>
+</body>
+</html>

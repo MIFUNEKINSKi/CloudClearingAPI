@@ -1,0 +1,124 @@
+{
+  "analysis_date": "2025-10-05",
+  "market_status": "\ud83d\udd34 WEAK MARKET - Limited opportunities, monitor closely",
+  "system_integration_status": {
+    "satellite_analysis": "SIMULATED",
+    "infrastructure_intelligence": "ACTIVE",
+    "market_intelligence": "SIMULATED",
+    "strategic_corridors": "ACTIVE"
+  },
+  "key_metrics": {
+    "corridors_analyzed": 10,
+    "average_investment_score": 65.0,
+    "high_conviction_opportunities": 0,
+    "total_satellite_changes": 251,
+    "critical_alerts": 17
+  },
+  "top_opportunity": {
+    "corridor_info": {
+      "name": "Nusantara Capital Corridor",
+      "investment_tier": "tier1",
+      "island": "kalimantan",
+      "focus": "new_capital",
+      "bbox": [
+        116.8,
+        -1.5,
+        117.5,
+        -0.8
+      ],
+      "area_km2": 6028.388780224173,
+      "risk_level": "high-reward",
+      "infrastructure_catalysts": [
+        "IKN Phase 1 construction",
+        "Sepinggan Airport expansion",
+        "New road networks",
+        "Government relocation"
+      ]
+    },
+    "satellite_analysis": {
+      "analysis_success": false,
+      "data_source": "Simulated Data",
+      "analysis_period": "Simulated Weekly Period",
+      "total_changes_detected": 38,
+      "change_categories": {
+        "development": 22,
+        "infrastructure": 8,
+        "vegetation_loss": 8,
+        "urban_expansion": 5,
+        "other": 0
+      },
+      "development_activity_ratio": 0.7894736842105263,
+      "vegetation_loss_ratio": 0.21052631578947367,
+      "satellite_metrics": {
+        "ndvi_loss_area_ha": 85.20868555725598,
+        "ndbi_gain_area_ha": 11.138023515479162,
+        "total_change_area_ha": 98.10280308072265,
+        "change_density_per_km2": 0.006303508513693923
+      },
+      "quality_indicators": {
+        "cloud_coverage": "simulated",
+        "image_availability": "simulated",
+        "analysis_confidence": "simulated"
+      }
+    },
+    "infrastructure_analysis": {
+      "infrastructure_score": 50,
+      "major_features": [],
+      "construction_projects": [],
+      "planned_developments": [],
+      "accessibility_score": 50,
+      "logistics_score": 50,
+      "reasoning": [
+        "\ud83d\udccd Regional infrastructure data unavailable"
+      ],
+      "infrastructure_catalysts_active": 4,
+      "catalyst_details": [
+        "IKN Phase 1 construction",
+        "Sepinggan Airport expansion",
+        "New road networks",
+        "Government relocation"
+      ],
+      "analysis_success": true,
+      "data_source": "OpenStreetMap + Infrastructure Intelligence"
+    },
+    "market_analysis": {
+      "analysis_success": false,
+      "data_source": "Simulated Market Data",
+      "market_score": 47.5,
+      "price_growth_rate": 0.08633286264212056,
+      "market_activity_level": 0.8054605325940308,
+      "corridor_market_maturity": "emerging",
+      "expected_roi_timeline": [
+        5,
+        10
+      ],
+      "market_trends": {
+        "price_momentum": "positive",
+        "demand_pressure": "moderate",
+        "supply_constraints": "loose"
+      }
+    },
+    "investment_scoring": {
+      "component_scores": {
+        "satellite_analysis": 89.0,
+        "infrastructure_intelligence": 50,
+        "market_intelligence": 47.5,
+        "strategic_position": 100
+      },
+      "weighted_score": 71.75,
+      "risk_adjustment": 1.1,
+      "final_investment_score": 78.92500000000001,
+      "investment_recommendation": "BUY - Selective acquisition",
+      "confidence_level": "medium"
+    },
+    "integrated_score": 78.92500000000001
+  },
+  "priority_actions": [],
+  "integrated_insights": [
+    "\ud83d\udef0\ufe0f High satellite activity: 3 corridors show 30+ changes",
+    "\ud83c\udfd7\ufe0f Strong development signals: 9 corridors show >50% development activity",
+    "\ud83d\udcb0 Average investment score: 65.0/100",
+    "\ud83c\udfaf High-conviction opportunities: 0",
+    "\ud83d\udcc8 Investment-grade corridors: 4"
+  ]
+}

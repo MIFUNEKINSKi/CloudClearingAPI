@@ -1,0 +1,121 @@
+# CloudClearingAPI Production Configuration Template
+# Copy this file to config.yaml and customize for your deployment
+
+# Multi-region monitoring areas (add/remove as needed)
+monitoring_regions:
+  - name: "Yogyakarta Development Zone"
+    bbox_west: 110.25
+    bbox_east: 110.55
+    bbox_south: -7.95
+    bbox_north: -7.65
+    priority: 1
+    focus: "urban_expansion"
+    
+  - name: "Bali Tourism Development"
+    bbox_west: 115.0
+    bbox_east: 115.3
+    bbox_south: -8.8
+    bbox_north: -8.5
+    priority: 2
+    focus: "tourism_infrastructure"
+
+# Primary monitoring configuration
+monitoring:
+  # Global monitoring schedule
+  check_interval_hours: 168  # Weekly (24 * 7)
+  lookback_days: 7
+  
+  # Change detection thresholds (tuned for Indonesian conditions)
+  ndvi_loss_threshold: -0.25  # Stricter for tropical vegetation
+  ndbi_gain_threshold: 0.12   # More sensitive for development
+  min_change_area_m2: 1000.0  # Larger minimum to avoid noise
+  
+  # Advanced filtering
+  max_changes_per_alert: 15
+  change_confidence_threshold: 0.75
+  exclude_water_bodies: true
+  exclude_agricultural: true
+  exclude_seasonal_vegetation: true
+
+# Image processing (optimized for tropical conditions)
+processing:
+  max_cloud_cover: 15.0        # Stricter for better quality
+  composite_method: "median"    # Best for cloud removal
+  scale: 10                    # Sentinel-2 native resolution
+  max_pixels: 1000000000
+  
+  # Advanced cloud masking (critical for Indonesia)
+  use_s2cloudless: true
+  cloud_probability_threshold: 40  # More aggressive cloud removal
+  cloud_buffer_distance: 100   # Larger buffer for cloud shadows
+  use_qa60: true
+  use_cirrus_mask: true        # Remove high cirrus clouds
+
+# Google Earth Engine (REQUIRED)
+gee_project: "YOUR_GCP_PROJECT_ID"  # Replace with your project
+gee_service_account: null  # Optional: service account for production
+
+# Production alerts
+alerts:
+  # Email notifications
+  email_enabled: true
+  email_recipients:
+    - "alerts@yourdomain.com"
+    - "gis-team@yourdomain.com"
+  
+  # SMTP (use environment variables for credentials)
+  smtp_server: "smtp.gmail.com"
+  smtp_port: 587
+  smtp_username: ""  # Set via SMTP_USERNAME env var
+  smtp_password: ""  # Set via SMTP_PASSWORD env var
+  
+  # Webhook integrations
+  webhook_url: ""     # Set via WEBHOOK_URL env var
+  slack_token: ""     # Set via SLACK_TOKEN env var
+  
+  # Alert frequency controls
+  max_alerts_per_day: 5
+  alert_quiet_hours: [22, 6]  # No alerts between 10pm-6am
+  priority_override: true     # Priority 1 regions bypass quiet hours
+
+# Production database
+database:
+  enabled: true
+  url: "postgresql://user:pass@host:5432/cloudclearing"
+  pool_size: 10
+  max_overflow: 20
+  
+  # Data retention
+  keep_raw_images_days: 30
+  keep_change_records_days: 365
+  archive_old_data: true
+
+# Production application settings
+debug: false
+log_level: "INFO"
+data_dir: "/app/data"
+output_dir: "/app/output"
+
+# Structured logging for production
+logging:
+  structured: true
+  file_logging: true
+  log_rotation: "1 day"
+  max_log_size: "500 MB"
+  retention_days: 90
+  error_tracking: true        # Enable error tracking service
+  performance_monitoring: true
+
+# API rate limiting
+api:
+  rate_limit_requests: 100    # Requests per hour per IP
+  max_concurrent_analyses: 3  # Prevent resource exhaustion
+  timeout_seconds: 300        # 5 minute timeout for analyses
+  
+# Performance optimization
+performance:
+  cache_enabled: true
+  cache_ttl_hours: 24
+  parallel_processing: true
+  max_workers: 4
+  memory_limit_gb: 8

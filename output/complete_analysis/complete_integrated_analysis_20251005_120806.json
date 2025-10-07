@@ -1,0 +1,900 @@
+{
+  "analysis_metadata": {
+    "generation_date": "2025-10-05T12:08:06.224898",
+    "analysis_type": "complete_integrated_monitoring",
+    "components_active": {
+      "satellite_analysis": false,
+      "infrastructure_analysis": true,
+      "market_intelligence": false,
+      "strategic_corridors": true
+    },
+    "coverage_area": "Indonesia Strategic Corridors"
+  },
+  "executive_summary": {
+    "analysis_date": "2025-10-05",
+    "market_status": "\ud83d\udd34 WEAK MARKET - Limited opportunities, monitor closely",
+    "system_integration_status": {
+      "satellite_analysis": "SIMULATED",
+      "infrastructure_intelligence": "ACTIVE",
+      "market_intelligence": "SIMULATED",
+      "strategic_corridors": "ACTIVE"
+    },
+    "key_metrics": {
+      "corridors_analyzed": 10,
+      "average_investment_score": 65.0,
+      "high_conviction_opportunities": 0,
+      "total_satellite_changes": 251,
+      "critical_alerts": 17
+    },
+    "top_opportunity": {
+      "corridor_info": {
+        "name": "Nusantara Capital Corridor",
+        "investment_tier": "tier1",
+        "island": "kalimantan",
+        "focus": "new_capital",
+        "bbox": [
+          116.8,
+          -1.5,
+          117.5,
+          -0.8
+        ],
+        "area_km2": 6028.388780224173,
+        "risk_level": "high-reward",
+        "infrastructure_catalysts": [
+          "IKN Phase 1 construction",
+          "Sepinggan Airport expansion",
+          "New road networks",
+          "Government relocation"
+        ]
+      },
+      "satellite_analysis": {
+        "analysis_success": false,
+        "data_source": "Simulated Data",
+        "analysis_period": "Simulated Weekly Period",
+        "total_changes_detected": 38,
+        "change_categories": {
+          "development": 22,
+          "infrastructure": 8,
+          "vegetation_loss": 8,
+          "urban_expansion": 5,
+          "other": 0
+        },
+        "development_activity_ratio": 0.7894736842105263,
+        "vegetation_loss_ratio": 0.21052631578947367,
+        "satellite_metrics": {
+          "ndvi_loss_area_ha": 85.20868555725598,
+          "ndbi_gain_area_ha": 11.138023515479162,
+          "total_change_area_ha": 98.10280308072265,
+          "change_density_per_km2": 0.006303508513693923
+        },
+        "quality_indicators": {
+          "cloud_coverage": "simulated",
+          "image_availability": "simulated",
+          "analysis_confidence": "simulated"
+        }
+      },
+      "infrastructure_analysis": {
+        "infrastructure_score": 50,
+        "major_features": [],
+        "construction_projects": [],
+        "planned_developments": [],
+        "accessibility_score": 50,
+        "logistics_score": 50,
+        "reasoning": [
+          "\ud83d\udccd Regional infrastructure data unavailable"
+        ],
+        "infrastructure_catalysts_active": 4,
+        "catalyst_details": [
+          "IKN Phase 1 construction",
+          "Sepinggan Airport expansion",
+          "New road networks",
+          "Government relocation"
+        ],
+        "analysis_success": true,
+        "data_source": "OpenStreetMap + Infrastructure Intelligence"
+      },
+      "market_analysis": {
+        "analysis_success": false,
+        "data_source": "Simulated Market Data",
+        "market_score": 47.5,
+        "price_growth_rate": 0.08633286264212056,
+        "market_activity_level": 0.8054605325940308,
+        "corridor_market_maturity": "emerging",
+        "expected_roi_timeline": [
+          5,
+          10
+        ],
+        "market_trends": {
+          "price_momentum": "positive",
+          "demand_pressure": "moderate",
+          "supply_constraints": "loose"
+        }
+      },
+      "investment_scoring": {
+        "component_scores": {
+          "satellite_analysis": 89.0,
+          "infrastructure_intelligence": 50,
+          "market_intelligence": 47.5,
+          "strategic_position": 100
+        },
+        "weighted_score": 71.75,
+        "risk_adjustment": 1.1,
+        "final_investment_score": 78.92500000000001,
+        "investment_recommendation": "BUY - Selective acquisition",
+        "confidence_level": "medium"
+      },
+      "integrated_score": 78.92500000000001
+    },
+    "priority_actions": [],
+    "integrated_insights": [
+      "\ud83d\udef0\ufe0f High satellite activity: 3 corridors show 30+ changes",
+      "\ud83c\udfd7\ufe0f Strong development signals: 9 corridors show >50% development activity",
+      "\ud83d\udcb0 Average investment score: 65.0/100",
+      "\ud83c\udfaf High-conviction opportunities: 0",
+      "\ud83d\udcc8 Investment-grade corridors: 4"
+    ]
+  },
+  "satellite_analysis": {
+    "total_corridors_analyzed": 10,
+    "successful_satellite_analyses": 0,
+    "total_changes_detected": 251,
+    "average_development_ratio": 0.6150148909678288,
+    "data_quality": "medium",
+    "most_active_corridor": "Nusantara Capital Corridor",
+    "satellite_insights": [
+      "\ud83d\udef0\ufe0f High satellite activity: 3 corridors show 30+ changes",
+      "\ud83c\udfd7\ufe0f Strong development signals: 9 corridors show >50% development activity"
+    ]
+  },
+  "infrastructure_intelligence": {
+    "average_infrastructure_score": 50.0,
+    "total_infrastructure_catalysts": 34,
+    "infrastructure_insights": [
+      "\ud83c\udfd7\ufe0f Average infrastructure score: 50.0/100",
+      "\ud83c\udfaf Total active catalysts: 34 across all corridors"
+    ]
+  },
+  "market_intelligence": {
+    "average_market_score": 67.05,
+    "market_insights": [
+      "\ud83d\udcca Average market score: 67.0/100"
+    ]
+  },
+  "strategic_investment_analysis": {
+    "average_investment_score": 64.9635,
+    "investment_categories": {
+      "strong_buy": 0,
+      "buy": 4,
+      "accumulate": 3,
+      "watch": 3
+    },
+    "top_opportunities": [
+      {
+        "corridor_info": {
+          "name": "Nusantara Capital Corridor",
+          "investment_tier": "tier1",
+          "island": "kalimantan",
+          "focus": "new_capital",
+          "bbox": [
+            116.8,
+            -1.5,
+            117.5,
+            -0.8
+          ],
+          "area_km2": 6028.388780224173,
+          "risk_level": "high-reward",
+          "infrastructure_catalysts": [
+            "IKN Phase 1 construction",
+            "Sepinggan Airport expansion",
+            "New road networks",
+            "Government relocation"
+          ]
+        },
+        "satellite_analysis": {
+          "analysis_success": false,
+          "data_source": "Simulated Data",
+          "analysis_period": "Simulated Weekly Period",
+          "total_changes_detected": 38,
+          "change_categories": {
+            "development": 22,
+            "infrastructure": 8,
+            "vegetation_loss": 8,
+            "urban_expansion": 5,
+            "other": 0
+          },
+          "development_activity_ratio": 0.7894736842105263,
+          "vegetation_loss_ratio": 0.21052631578947367,
+          "satellite_metrics": {
+            "ndvi_loss_area_ha": 85.20868555725598,
+            "ndbi_gain_area_ha": 11.138023515479162,
+            "total_change_area_ha": 98.10280308072265,
+            "change_density_per_km2": 0.006303508513693923
+          },
+          "quality_indicators": {
+            "cloud_coverage": "simulated",
+            "image_availability": "simulated",
+            "analysis_confidence": "simulated"
+          }
+        },
+        "infrastructure_analysis": {
+          "infrastructure_score": 50,
+          "major_features": [],
+          "construction_projects": [],
+          "planned_developments": [],
+          "accessibility_score": 50,
+          "logistics_score": 50,
+          "reasoning": [
+            "\ud83d\udccd Regional infrastructure data unavailable"
+          ],
+          "infrastructure_catalysts_active": 4,
+          "catalyst_details": [
+            "IKN Phase 1 construction",
+            "Sepinggan Airport expansion",
+            "New road networks",
+            "Government relocation"
+          ],
+          "analysis_success": true,
+          "data_source": "OpenStreetMap + Infrastructure Intelligence"
+        },
+        "market_analysis": {
+          "analysis_success": false,
+          "data_source": "Simulated Market Data",
+          "market_score": 47.5,
+          "price_growth_rate": 0.08633286264212056,
+          "market_activity_level": 0.8054605325940308,
+          "corridor_market_maturity": "emerging",
+          "expected_roi_timeline": [
+            5,
+            10
+          ],
+          "market_trends": {
+            "price_momentum": "positive",
+            "demand_pressure": "moderate",
+            "supply_constraints": "loose"
+          }
+        },
+        "investment_scoring": {
+          "component_scores": {
+            "satellite_analysis": 89.0,
+            "infrastructure_intelligence": 50,
+            "market_intelligence": 47.5,
+            "strategic_position": 100
+          },
+          "weighted_score": 71.75,
+          "risk_adjustment": 1.1,
+          "final_investment_score": 78.92500000000001,
+          "investment_recommendation": "BUY - Selective acquisition",
+          "confidence_level": "medium"
+        },
+        "integrated_score": 78.92500000000001
+      },
+      {
+        "corridor_info": {
+          "name": "Kulon Progo Infrastructure Zone",
+          "investment_tier": "tier1",
+          "island": "java",
+          "focus": "infrastructure",
+          "bbox": [
+            110.05,
+            -7.99,
+            110.25,
+            -7.78
+          ],
+          "area_km2": 511.9367878641979,
+          "risk_level": "low",
+          "infrastructure_catalysts": [
+            "YIA International Airport",
+            "Airport city development",
+            "Toll road connections",
+            "New town projects"
+          ]
+        },
+        "satellite_analysis": {
+          "analysis_success": false,
+          "data_source": "Simulated Data",
+          "analysis_period": "Simulated Weekly Period",
+          "total_changes_detected": 38,
+          "change_categories": {
+            "development": 19,
+            "infrastructure": 9,
+            "vegetation_loss": 11,
+            "urban_expansion": 7,
+            "other": 0
+          },
+          "development_activity_ratio": 0.7368421052631579,
+          "vegetation_loss_ratio": 0.2894736842105263,
+          "satellite_metrics": {
+            "ndvi_loss_area_ha": 82.9056351966343,
+            "ndbi_gain_area_ha": 35.85434191914655,
+            "total_change_area_ha": 118.65098917049137,
+            "change_density_per_km2": 0.07422791426757223
+          },
+          "quality_indicators": {
+            "cloud_coverage": "simulated",
+            "image_availability": "simulated",
+            "analysis_confidence": "simulated"
+          }
+        },
+        "infrastructure_analysis": {
+          "infrastructure_score": 50,
+          "major_features": [],
+          "construction_projects": [],
+          "planned_developments": [],
+          "accessibility_score": 50,
+          "logistics_score": 50,
+          "reasoning": [
+            "\ud83d\udccd Regional infrastructure data unavailable"
+          ],
+          "infrastructure_catalysts_active": 4,
+          "catalyst_details": [
+            "YIA International Airport",
+            "Airport city development",
+            "Toll road connections",
+            "New town projects"
+          ],
+          "analysis_success": true,
+          "data_source": "OpenStreetMap + Infrastructure Intelligence"
+        },
+        "market_analysis": {
+          "analysis_success": false,
+          "data_source": "Simulated Market Data",
+          "market_score": 84.5,
+          "price_growth_rate": 0.1036949289289974,
+          "market_activity_level": 0.6206405947944842,
+          "corridor_market_maturity": "developing",
+          "expected_roi_timeline": [
+            2,
+            5
+          ],
+          "market_trends": {
+            "price_momentum": "accelerating",
+            "demand_pressure": "moderate",
+            "supply_constraints": "loose"
+          }
+        },
+        "investment_scoring": {
+          "component_scores": {
+            "satellite_analysis": 89.0,
+            "infrastructure_intelligence": 50,
+            "market_intelligence": 84.5,
+            "strategic_position": 74.0
+          },
+          "weighted_score": 72.65,
+          "risk_adjustment": 1.0,
+          "final_investment_score": 72.65,
+          "investment_recommendation": "BUY - Selective acquisition",
+          "confidence_level": "medium"
+        },
+        "integrated_score": 72.65
+      },
+      {
+        "corridor_info": {
+          "name": "West Java Industrial Triangle",
+          "investment_tier": "tier1",
+          "island": "java",
+          "focus": "port_industrial",
+          "bbox": [
+            107.5,
+            -6.6,
+            108.2,
+            -6.0
+          ],
+          "area_km2": 5137.020196502415,
+          "risk_level": "low",
+          "infrastructure_catalysts": [
+            "Patimban Port operational",
+            "Jakarta-Bandung HSR",
+            "Jakarta-Cikampek toll expansion",
+            "Industrial estate development"
+          ]
+        },
+        "satellite_analysis": {
+          "analysis_success": false,
+          "data_source": "Simulated Data",
+          "analysis_period": "Simulated Weekly Period",
+          "total_changes_detected": 23,
+          "change_categories": {
+            "development": 9,
+            "infrastructure": 3,
+            "vegetation_loss": 5,
+            "urban_expansion": 4,
+            "other": 2
+          },
+          "development_activity_ratio": 0.5217391304347826,
+          "vegetation_loss_ratio": 0.21739130434782608,
+          "satellite_metrics": {
+            "ndvi_loss_area_ha": 53.31302467602663,
+            "ndbi_gain_area_ha": 11.825963184295993,
+            "total_change_area_ha": 22.206282831433604,
+            "change_density_per_km2": 0.0044773037909525346
+          },
+          "quality_indicators": {
+            "cloud_coverage": "simulated",
+            "image_availability": "simulated",
+            "analysis_confidence": "simulated"
+          }
+        },
+        "infrastructure_analysis": {
+          "infrastructure_score": 50,
+          "major_features": [],
+          "construction_projects": [],
+          "planned_developments": [],
+          "accessibility_score": 50,
+          "logistics_score": 50,
+          "reasoning": [
+            "\ud83d\udccd Regional infrastructure data unavailable"
+          ],
+          "infrastructure_catalysts_active": 4,
+          "catalyst_details": [
+            "Patimban Port operational",
+            "Jakarta-Bandung HSR",
+            "Jakarta-Cikampek toll expansion",
+            "Industrial estate development"
+          ],
+          "analysis_success": true,
+          "data_source": "OpenStreetMap + Infrastructure Intelligence"
+        },
+        "market_analysis": {
+          "analysis_success": false,
+          "data_source": "Simulated Market Data",
+          "market_score": 70.0,
+          "price_growth_rate": 0.22102757168629178,
+          "market_activity_level": 0.895582776698124,
+          "corridor_market_maturity": "developing",
+          "expected_roi_timeline": [
+            2,
+            4
+          ],
+          "market_trends": {
+            "price_momentum": "stable",
+            "demand_pressure": "moderate",
+            "supply_constraints": "tight"
+          }
+        },
+        "investment_scoring": {
+          "component_scores": {
+            "satellite_analysis": 81.5,
+            "infrastructure_intelligence": 50,
+            "market_intelligence": 70.0,
+            "strategic_position": 89.0
+          },
+          "weighted_score": 71.625,
+          "risk_adjustment": 1.0,
+          "final_investment_score": 71.625,
+          "investment_recommendation": "BUY - Selective acquisition",
+          "confidence_level": "medium"
+        },
+        "integrated_score": 71.625
+      },
+      {
+        "corridor_info": {
+          "name": "Medan Metro Expansion",
+          "investment_tier": "tier1",
+          "island": "sumatra",
+          "focus": "industrial_port",
+          "bbox": [
+            98.45,
+            3.3,
+            98.95,
+            3.8
+          ],
+          "area_km2": 3070.4251675332353,
+          "risk_level": "medium",
+          "infrastructure_catalysts": [
+            "Kualanamu Airport expansion",
+            "Belawan Port upgrades",
+            "Trans-Sumatra toll road",
+            "Palm oil processing facilities"
+          ]
+        },
+        "satellite_analysis": {
+          "analysis_success": false,
+          "data_source": "Simulated Data",
+          "analysis_period": "Simulated Weekly Period",
+          "total_changes_detected": 32,
+          "change_categories": {
+            "development": 10,
+            "infrastructure": 7,
+            "vegetation_loss": 8,
+            "urban_expansion": 3,
+            "other": 4
+          },
+          "development_activity_ratio": 0.53125,
+          "vegetation_loss_ratio": 0.25,
+          "satellite_metrics": {
+            "ndvi_loss_area_ha": 51.05463151837171,
+            "ndbi_gain_area_ha": 35.65999803756266,
+            "total_change_area_ha": 25.111636456794827,
+            "change_density_per_km2": 0.010422009413669784
+          },
+          "quality_indicators": {
+            "cloud_coverage": "simulated",
+            "image_availability": "simulated",
+            "analysis_confidence": "simulated"
+          }
+        },
+        "infrastructure_analysis": {
+          "infrastructure_score": 50,
+          "major_features": [],
+          "construction_projects": [],
+          "planned_developments": [],
+          "accessibility_score": 50,
+          "logistics_score": 50,
+          "reasoning": [
+            "\ud83d\udccd Regional infrastructure data unavailable"
+          ],
+          "infrastructure_catalysts_active": 4,
+          "catalyst_details": [
+            "Kualanamu Airport expansion",
+            "Belawan Port upgrades",
+            "Trans-Sumatra toll road",
+            "Palm oil processing facilities"
+          ],
+          "analysis_success": true,
+          "data_source": "OpenStreetMap + Infrastructure Intelligence"
+        },
+        "market_analysis": {
+          "analysis_success": false,
+          "data_source": "Simulated Market Data",
+          "market_score": 69.0,
+          "price_growth_rate": 0.12730061801086456,
+          "market_activity_level": 0.5049363015268316,
+          "corridor_market_maturity": "developing",
+          "expected_roi_timeline": [
+            3,
+            5
+          ],
+          "market_trends": {
+            "price_momentum": "accelerating",
+            "demand_pressure": "high",
+            "supply_constraints": "balanced"
+          }
+        },
+        "investment_scoring": {
+          "component_scores": {
+            "satellite_analysis": 86.0,
+            "infrastructure_intelligence": 50,
+            "market_intelligence": 69.0,
+            "strategic_position": 95.0
+          },
+          "weighted_score": 74.05,
+          "risk_adjustment": 0.95,
+          "final_investment_score": 70.3475,
+          "investment_recommendation": "BUY - Selective acquisition",
+          "confidence_level": "medium"
+        },
+        "integrated_score": 70.3475
+      },
+      {
+        "corridor_info": {
+          "name": "Solo Expansion Zone",
+          "investment_tier": "tier1",
+          "island": "java",
+          "focus": "urban_expansion",
+          "bbox": [
+            110.75,
+            -7.65,
+            110.95,
+            -7.45
+          ],
+          "area_km2": 487.9453141592706,
+          "risk_level": "low",
+          "infrastructure_catalysts": [
+            "Adi Somarmo Airport",
+            "Solo-Yogya toll road",
+            "Industrial development",
+            "Urban sprawl patterns"
+          ]
+        },
+        "satellite_analysis": {
+          "analysis_success": false,
+          "data_source": "Simulated Data",
+          "analysis_period": "Simulated Weekly Period",
+          "total_changes_detected": 23,
+          "change_categories": {
+            "development": 11,
+            "infrastructure": 3,
+            "vegetation_loss": 7,
+            "urban_expansion": 2,
+            "other": 0
+          },
+          "development_activity_ratio": 0.6086956521739131,
+          "vegetation_loss_ratio": 0.30434782608695654,
+          "satellite_metrics": {
+            "ndvi_loss_area_ha": 76.54022053218777,
+            "ndbi_gain_area_ha": 30.726622145891625,
+            "total_change_area_ha": 56.12998775476873,
+            "change_density_per_km2": 0.04713642970345761
+          },
+          "quality_indicators": {
+            "cloud_coverage": "simulated",
+            "image_availability": "simulated",
+            "analysis_confidence": "simulated"
+          }
+        },
+        "infrastructure_analysis": {
+          "infrastructure_score": 50,
+          "major_features": [],
+          "construction_projects": [],
+          "planned_developments": [],
+          "accessibility_score": 50,
+          "logistics_score": 50,
+          "reasoning": [
+            "\ud83d\udccd Regional infrastructure data unavailable"
+          ],
+          "infrastructure_catalysts_active": 4,
+          "catalyst_details": [
+            "Adi Somarmo Airport",
+            "Solo-Yogya toll road",
+            "Industrial development",
+            "Urban sprawl patterns"
+          ],
+          "analysis_success": true,
+          "data_source": "OpenStreetMap + Infrastructure Intelligence"
+        },
+        "market_analysis": {
+          "analysis_success": false,
+          "data_source": "Simulated Market Data",
+          "market_score": 65.0,
+          "price_growth_rate": 0.21025655514924008,
+          "market_activity_level": 0.6300022077673273,
+          "corridor_market_maturity": "mature",
+          "expected_roi_timeline": [
+            2,
+            4
+          ],
+          "market_trends": {
+            "price_momentum": "stable",
+            "demand_pressure": "high",
+            "supply_constraints": "tight"
+          }
+        },
+        "investment_scoring": {
+          "component_scores": {
+            "satellite_analysis": 81.5,
+            "infrastructure_intelligence": 50,
+            "market_intelligence": 65.0,
+            "strategic_position": 74.0
+          },
+          "weighted_score": 66.875,
+          "risk_adjustment": 1.0,
+          "final_investment_score": 66.875,
+          "investment_recommendation": "ACCUMULATE - Gradual position building",
+          "confidence_level": "medium"
+        },
+        "integrated_score": 66.875
+      }
+    ],
+    "strategic_insights": [
+      "\ud83d\udcb0 Average investment score: 65.0/100",
+      "\ud83c\udfaf High-conviction opportunities: 0",
+      "\ud83d\udcc8 Investment-grade corridors: 4"
+    ]
+  },
+  "integrated_alerts": [
+    {
+      "level": "SATELLITE_ACTIVITY",
+      "corridor": "Nusantara Capital Corridor",
+      "message": "\ud83d\udef0\ufe0f High satellite activity: 38 changes detected in Nusantara Capital Corridor",
+      "components": {
+        "total_changes": 38,
+        "development_changes": 22,
+        "infrastructure_changes": 8
+      }
+    },
+    {
+      "level": "DEVELOPMENT_HOTSPOT",
+      "corridor": "Nusantara Capital Corridor",
+      "message": "\ud83c\udfd7\ufe0f Development hotspot: 78.9% development activity in Nusantara Capital Corridor",
+      "components": {
+        "development_ratio": 0.7894736842105263,
+        "total_changes": 38,
+        "investment_score": 78.92500000000001
+      }
+    },
+    {
+      "level": "SATELLITE_ACTIVITY",
+      "corridor": "Medan Metro Expansion",
+      "message": "\ud83d\udef0\ufe0f High satellite activity: 32 changes detected in Medan Metro Expansion",
+      "components": {
+        "total_changes": 32,
+        "development_changes": 10,
+        "infrastructure_changes": 7
+      }
+    },
+    {
+      "level": "DEVELOPMENT_HOTSPOT",
+      "corridor": "Medan Metro Expansion",
+      "message": "\ud83c\udfd7\ufe0f Development hotspot: 53.1% development activity in Medan Metro Expansion",
+      "components": {
+        "development_ratio": 0.53125,
+        "total_changes": 32,
+        "investment_score": 70.3475
+      }
+    },
+    {
+      "level": "SATELLITE_ACTIVITY",
+      "corridor": "West Java Industrial Triangle",
+      "message": "\ud83d\udef0\ufe0f High satellite activity: 23 changes detected in West Java Industrial Triangle",
+      "components": {
+        "total_changes": 23,
+        "development_changes": 9,
+        "infrastructure_changes": 3
+      }
+    },
+    {
+      "level": "DEVELOPMENT_HOTSPOT",
+      "corridor": "West Java Industrial Triangle",
+      "message": "\ud83c\udfd7\ufe0f Development hotspot: 52.2% development activity in West Java Industrial Triangle",
+      "components": {
+        "development_ratio": 0.5217391304347826,
+        "total_changes": 23,
+        "investment_score": 71.625
+      }
+    },
+    {
+      "level": "DEVELOPMENT_HOTSPOT",
+      "corridor": "Makassar Gateway Expansion",
+      "message": "\ud83c\udfd7\ufe0f Development hotspot: 58.8% development activity in Makassar Gateway Expansion",
+      "components": {
+        "development_ratio": 0.5882352941176471,
+        "total_changes": 17,
+        "investment_score": 65.95375
+      }
+    },
+    {
+      "level": "SATELLITE_ACTIVITY",
+      "corridor": "Lampung Logistics Triangle",
+      "message": "\ud83d\udef0\ufe0f High satellite activity: 23 changes detected in Lampung Logistics Triangle",
+      "components": {
+        "total_changes": 23,
+        "development_changes": 9,
+        "infrastructure_changes": 5
+      }
+    },
+    {
+      "level": "DEVELOPMENT_HOTSPOT",
+      "corridor": "Lampung Logistics Triangle",
+      "message": "\ud83c\udfd7\ufe0f Development hotspot: 60.9% development activity in Lampung Logistics Triangle",
+      "components": {
+        "development_ratio": 0.6086956521739131,
+        "total_changes": 23,
+        "investment_score": 58.3875
+      }
+    },
+    {
+      "level": "SATELLITE_ACTIVITY",
+      "corridor": "Solo Expansion Zone",
+      "message": "\ud83d\udef0\ufe0f High satellite activity: 23 changes detected in Solo Expansion Zone",
+      "components": {
+        "total_changes": 23,
+        "development_changes": 11,
+        "infrastructure_changes": 3
+      }
+    },
+    {
+      "level": "DEVELOPMENT_HOTSPOT",
+      "corridor": "Solo Expansion Zone",
+      "message": "\ud83c\udfd7\ufe0f Development hotspot: 60.9% development activity in Solo Expansion Zone",
+      "components": {
+        "development_ratio": 0.6086956521739131,
+        "total_changes": 23,
+        "investment_score": 66.875
+      }
+    },
+    {
+      "level": "SATELLITE_ACTIVITY",
+      "corridor": "Kulon Progo Infrastructure Zone",
+      "message": "\ud83d\udef0\ufe0f High satellite activity: 38 changes detected in Kulon Progo Infrastructure Zone",
+      "components": {
+        "total_changes": 38,
+        "development_changes": 19,
+        "infrastructure_changes": 9
+      }
+    },
+    {
+      "level": "DEVELOPMENT_HOTSPOT",
+      "corridor": "Kulon Progo Infrastructure Zone",
+      "message": "\ud83c\udfd7\ufe0f Development hotspot: 73.7% development activity in Kulon Progo Infrastructure Zone",
+      "components": {
+        "development_ratio": 0.7368421052631579,
+        "total_changes": 38,
+        "investment_score": 72.65
+      }
+    },
+    {
+      "level": "DEVELOPMENT_HOTSPOT",
+      "corridor": "Central Kalimantan Administrative Hub",
+      "message": "\ud83c\udfd7\ufe0f Development hotspot: 50.0% development activity in Central Kalimantan Administrative Hub",
+      "components": {
+        "development_ratio": 0.5,
+        "total_changes": 14,
+        "investment_score": 55.24249999999999
+      }
+    },
+    {
+      "level": "DEVELOPMENT_HOTSPOT",
+      "corridor": "South Sumatra Energy Corridor",
+      "message": "\ud83c\udfd7\ufe0f Development hotspot: 70.0% development activity in South Sumatra Energy Corridor",
+      "components": {
+        "development_ratio": 0.7,
+        "total_changes": 20,
+        "investment_score": 61.36999999999999
+      }
+    },
+    {
+      "level": "SATELLITE_ACTIVITY",
+      "corridor": "North Kalimantan Border Zone",
+      "message": "\ud83d\udef0\ufe0f High satellite activity: 23 changes detected in North Kalimantan Border Zone",
+      "components": {
+        "total_changes": 23,
+        "development_changes": 10,
+        "infrastructure_changes": 3
+      }
+    },
+    {
+      "level": "DEVELOPMENT_HOTSPOT",
+      "corridor": "North Kalimantan Border Zone",
+      "message": "\ud83c\udfd7\ufe0f Development hotspot: 56.5% development activity in North Kalimantan Border Zone",
+      "components": {
+        "development_ratio": 0.5652173913043478,
+        "total_changes": 23,
+        "investment_score": 48.258750000000006
+      }
+    }
+  ],
+  "investment_recommendations": {
+    "immediate_action_required": [],
+    "selective_acquisition": [
+      {
+        "corridor": "Nusantara Capital Corridor",
+        "score": 78.92500000000001,
+        "action": "Acquire prime parcels selectively",
+        "reasoning": "Good score (78.9/100) with selective opportunities"
+      },
+      {
+        "corridor": "Kulon Progo Infrastructure Zone",
+        "score": 72.65,
+        "action": "Acquire prime parcels selectively",
+        "reasoning": "Good score (72.7/100) with selective opportunities"
+      },
+      {
+        "corridor": "West Java Industrial Triangle",
+        "score": 71.625,
+        "action": "Acquire prime parcels selectively",
+        "reasoning": "Good score (71.6/100) with selective opportunities"
+      },
+      {
+        "corridor": "Medan Metro Expansion",
+        "score": 70.3475,
+        "action": "Acquire prime parcels selectively",
+        "reasoning": "Good score (70.3/100) with selective opportunities"
+      }
+    ],
+    "gradual_accumulation": [
+      {
+        "corridor": "Solo Expansion Zone",
+        "score": 66.875,
+        "action": "Monitor and accumulate on weakness",
+        "reasoning": "Moderate score (66.9/100) with future potential"
+      },
+      {
+        "corridor": "Makassar Gateway Expansion",
+        "score": 65.95375,
+        "action": "Monitor and accumulate on weakness",
+        "reasoning": "Moderate score (66.0/100) with future potential"
+      },
+      {
+        "corridor": "South Sumatra Energy Corridor",
+        "score": 61.36999999999999,
+        "action": "Monitor and accumulate on weakness",
+        "reasoning": "Moderate score (61.4/100) with future potential"
+      }
+    ],
+    "portfolio_allocation_guidance": {
+      "high_conviction_allocation": "0%",
+      "diversification_targets": 4,
+      "risk_management": "Limit single corridor exposure to 25% of portfolio"
+    }
+  }
+}

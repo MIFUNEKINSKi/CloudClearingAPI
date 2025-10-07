@@ -1,0 +1,22 @@
+{
+  "region_name": "test_region",
+  "week_a": "2025-09-21",
+  "week_b": "2025-09-28",
+  "saved_timestamp": "2025-09-28T20:34:14.466618",
+  "saved_images": {
+    "week_a_true_color": "output/satellite_images/weekly/test_region_20250928_203414/test_region_before_true_color_20250921.png",
+    "week_b_true_color": "output/satellite_images/weekly/test_region_20250928_203414/test_region_after_true_color_20250928.png",
+    "ndvi_change": "output/satellite_images/weekly/test_region_20250928_203414/test_region_ndvi_change_20250921_to_20250928.png"
+  },
+  "original_urls": {
+    "week_a_true_color": "https://httpbin.org/image/png",
+    "week_b_true_color": "https://httpbin.org/image/png",
+    "ndvi_change": "https://httpbin.org/image/png",
+    "week_a_date": "2025-09-21",
+    "week_b_date": "2025-09-28",
+    "description": {
+      "true_color": "Natural color satellite imagery (Red, Green, Blue bands)",
+      "ndvi_change": "NDVI change map: Red=vegetation loss, Green=vegetation gain"
+    }
+  }
+}
