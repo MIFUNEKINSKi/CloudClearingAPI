@@ -1,0 +1,389 @@
+"""
+Land Price Scraper Orchestrator
+CloudClearingAPI - October 19, 2025
+
+Coordinates multiple scrapers with priority logic:
+1. Live scraping (Lamudi, Rumah.com)
+2. Cached results (if < 24-48h old)
+3. Fallback to static regional benchmarks
+"""
+
+import logging
+from typing import Dict, Any, Optional, List
+from pathlib import Path
+
+from .base_scraper import ScrapeResult
+from .lamudi_scraper import LamudiScraper
+from .rumah_scraper import RumahComScraper
+
+logger = logging.getLogger(__name__)
+
+
+class LandPriceOrchestrator:
+    """
+    Orchestrates land price data collection from multiple sources with fallback logic
+    
+    Priority:
+    1. Live scraping (try Lamudi first, then Rumah.com)
+    2. Cached results (if valid and not expired)
+    3. Static regional benchmarks (last resort)
+    """
+    
+    def __init__(self, 
+                 cache_dir: Optional[Path] = None,
+                 cache_expiry_hours: int = 24,
+                 enable_live_scraping: bool = True):
+        """
+        Initialize orchestrator with scrapers
+        
+        Args:
+            cache_dir: Directory for caching scraped data
+            cache_expiry_hours: Hours before cache expires
+            enable_live_scraping: If False, skip live scraping and use cache/fallback only
+        """
+        self.enable_live_scraping = enable_live_scraping
+        
+        # Initialize scrapers
+        self.lamudi = LamudiScraper(
+            cache_dir=cache_dir,
+            cache_expiry_hours=cache_expiry_hours
+        )
+        self.rumah_com = RumahComScraper(
+            cache_dir=cache_dir,
+            cache_expiry_hours=cache_expiry_hours
+        )
+        
+        # Static regional benchmarks (fallback)
+        self.regional_benchmarks = {
+            'jakarta': {
+                'current_avg': 8_500_000,
+                'historical_appreciation': 0.15,
+                'market_liquidity': 'high',
+                'data_source': 'static_benchmark'
+            },
+            'bali': {
+                'current_avg': 12_000_000,
+                'historical_appreciation': 0.20,
+                'market_liquidity': 'high',
+                'data_source': 'static_benchmark'
+            },
+            'yogyakarta': {
+                'current_avg': 4_500_000,
+                'historical_appreciation': 0.12,
+                'market_liquidity': 'moderate',
+                'data_source': 'static_benchmark'
+            },
+            'surabaya': {
+                'current_avg': 6_500_000,
+                'historical_appreciation': 0.14,
+                'market_liquidity': 'high',
+                'data_source': 'static_benchmark'
+            },
+            'bandung': {
+                'current_avg': 5_000_000,
+                'historical_appreciation': 0.13,
+                'market_liquidity': 'moderate',
+                'data_source': 'static_benchmark'
+            },
+            'semarang': {
+                'current_avg': 3_500_000,
+                'historical_appreciation': 0.11,
+                'market_liquidity': 'moderate',
+                'data_source': 'static_benchmark'
+            }
+        }
+        
+        logger.info(f"Initialized LandPriceOrchestrator (live_scraping={'enabled' if enable_live_scraping else 'disabled'})")
+    
+    def get_land_price(self, region_name: str, max_listings: int = 20) -> Dict[str, Any]:
+        """
+        Get land price data with cascading fallback logic
+        
+        Priority:
+        1. Try live scraping from Lamudi
+        2. If Lamudi fails, try Rumah.com
+        3. If both fail, check cache from either source
+        4. If cache empty/expired, use static benchmark
+        
+        Args:
+            region_name: Region to get prices for (e.g., "Sleman Yogyakarta")
+            max_listings: Maximum listings to scrape
+            
+        Returns:
+            Dict with price data and metadata
+        """
+        logger.info(f"Orchestrating land price data for: {region_name}")
+        
+        # Phase 1: Live Scraping (if enabled)
+        if self.enable_live_scraping:
+            # Try Lamudi first
+            logger.info("Phase 1: Attempting live scraping...")
+            lamudi_result = self._try_live_scrape(self.lamudi, region_name, max_listings)
+            
+            if lamudi_result['success']:
+                logger.info(f"✓ Live scraping successful (Lamudi): {lamudi_result['listing_count']} listings")
+                return lamudi_result
+            
+            logger.warning(f"✗ Lamudi scraping failed: {lamudi_result.get('error')}")
+            
+            # Try Rumah.com as backup
+            rumah_result = self._try_live_scrape(self.rumah_com, region_name, max_listings)
+            
+            if rumah_result['success']:
+                logger.info(f"✓ Live scraping successful (Rumah.com): {rumah_result['listing_count']} listings")
+                return rumah_result
+            
+            logger.warning(f"✗ Rumah.com scraping failed: {rumah_result.get('error')}")
+        else:
+            logger.info("Live scraping disabled, skipping Phase 1")
+        
+        # Phase 2: Check Cache (even if expired, it's better than nothing)
+        logger.info("Phase 2: Checking cache...")
+        cache_result = self._check_cache(region_name)
+        
+        if cache_result:
+            logger.info(f"✓ Using cached data (source: {cache_result['data_source']}, age: {cache_result.get('cache_age_hours', 0):.1f}h)")
+            return cache_result
+        
+        logger.warning("✗ No valid cache found")
+        
+        # Phase 3: Fallback to Static Benchmark
+        logger.info("Phase 3: Using static regional benchmark (last resort)")
+        benchmark_result = self._get_benchmark_fallback(region_name)
+        
+        logger.info(f"✓ Using static benchmark: {benchmark_result['average_price_per_m2']:,.0f} IDR/m²")
+        
+        return benchmark_result
+    
+    def _try_live_scrape(self, scraper, region_name: str, max_listings: int) -> Dict[str, Any]:
+        """
+        Attempt live scraping with a scraper
+        
+        Args:
+            scraper: Scraper instance (LamudiScraper or RumahComScraper)
+            region_name: Region to scrape
+            max_listings: Max listings
+            
+        Returns:
+            Dict with results or error
+        """
+        try:
+            result = scraper.get_price_data(region_name, max_listings)
+            
+            if result.success and result.listing_count > 0:
+                return self._convert_scrape_result_to_dict(result)
+            else:
+                return {
+                    'success': False,
+                    'error': result.error_message or 'No listings found',
+                    'data_source': scraper.get_source_name()
+                }
+        
+        except Exception as e:
+            logger.error(f"Exception during {scraper.get_source_name()} scraping: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e),
+                'data_source': scraper.get_source_name()
+            }
+    
+    def _check_cache(self, region_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Check cache from all scrapers (even if expired)
+        
+        Args:
+            region_name: Region to check
+            
+        Returns:
+            Dict with cached data or None
+        """
+        # Try Lamudi cache first
+        lamudi_cache = self.lamudi._load_from_cache(region_name)
+        if lamudi_cache and lamudi_cache.success:
+            result = self._convert_scrape_result_to_dict(lamudi_cache)
+            result['cache_age_hours'] = self.lamudi._get_cache_age(lamudi_cache)
+            result['data_source'] = 'lamudi_cached'
+            return result
+        
+        # Try Rumah.com cache
+        rumah_cache = self.rumah_com._load_from_cache(region_name)
+        if rumah_cache and rumah_cache.success:
+            result = self._convert_scrape_result_to_dict(rumah_cache)
+            result['cache_age_hours'] = self.rumah_com._get_cache_age(rumah_cache)
+            result['data_source'] = 'rumah_com_cached'
+            return result
+        
+        return None
+    
+    def _get_benchmark_fallback(self, region_name: str) -> Dict[str, Any]:
+        """
+        Get static regional benchmark as last resort fallback
+        
+        Args:
+            region_name: Region name
+            
+        Returns:
+            Dict with benchmark data
+        """
+        benchmark = self._find_nearest_benchmark(region_name)
+        
+        return {
+            'success': True,
+            'average_price_per_m2': benchmark['current_avg'],
+            'median_price_per_m2': benchmark['current_avg'],
+            'listing_count': 0,
+            'data_source': 'static_benchmark',
+            'benchmark_region': self._get_benchmark_region_name(region_name),
+            'data_confidence': 0.5,  # Lower confidence for static data
+            'historical_appreciation': benchmark['historical_appreciation'],
+            'market_liquidity': benchmark['market_liquidity']
+        }
+    
+    def _find_nearest_benchmark(self, region_name: str) -> Dict[str, Any]:
+        """Find nearest regional benchmark for a region"""
+        region_lower = region_name.lower()
+        
+        # Direct matches
+        for benchmark_name, data in self.regional_benchmarks.items():
+            if benchmark_name in region_lower:
+                return data
+        
+        # Province-level matches
+        if 'jakarta' in region_lower or 'tangerang' in region_lower or 'bekasi' in region_lower:
+            return self.regional_benchmarks['jakarta']
+        elif 'yogya' in region_lower or 'sleman' in region_lower or 'bantul' in region_lower:
+            return self.regional_benchmarks['yogyakarta']
+        elif 'surabaya' in region_lower or 'sidoarjo' in region_lower:
+            return self.regional_benchmarks['surabaya']
+        elif 'bandung' in region_lower:
+            return self.regional_benchmarks['bandung']
+        elif 'semarang' in region_lower or 'solo' in region_lower:
+            return self.regional_benchmarks['semarang']
+        
+        # Default to Yogyakarta (mid-tier market)
+        return self.regional_benchmarks['yogyakarta']
+    
+    def _get_benchmark_region_name(self, region_name: str) -> str:
+        """Get the name of the benchmark region used"""
+        region_lower = region_name.lower()
+        
+        for benchmark_name in self.regional_benchmarks.keys():
+            if benchmark_name in region_lower:
+                return benchmark_name.capitalize()
+        
+        # Province-level
+        if 'jakarta' in region_lower or 'tangerang' in region_lower or 'bekasi' in region_lower:
+            return 'Jakarta'
+        elif 'yogya' in region_lower or 'sleman' in region_lower or 'bantul' in region_lower:
+            return 'Yogyakarta'
+        elif 'surabaya' in region_lower or 'sidoarjo' in region_lower:
+            return 'Surabaya'
+        elif 'bandung' in region_lower:
+            return 'Bandung'
+        elif 'semarang' in region_lower or 'solo' in region_lower:
+            return 'Semarang'
+        
+        return 'Yogyakarta'  # Default
+    
+    def _convert_scrape_result_to_dict(self, result: ScrapeResult) -> Dict[str, Any]:
+        """Convert ScrapeResult to dict for consistency"""
+        return {
+            'success': result.success,
+            'average_price_per_m2': result.average_price_per_m2,
+            'median_price_per_m2': result.median_price_per_m2,
+            'listing_count': result.listing_count,
+            'data_source': result.source,
+            'scraped_at': result.scraped_at.isoformat(),
+            'data_confidence': 0.85,  # High confidence for live data
+            'listings': [
+                {
+                    'price_per_m2': listing.price_per_m2,
+                    'total_price': listing.total_price,
+                    'size_m2': listing.size_m2,
+                    'location': listing.location,
+                    'url': listing.source_url
+                }
+                for listing in result.listings
+            ]
+        }
+    
+    def get_orchestrator_status(self) -> Dict[str, Any]:
+        """
+        Get status of orchestrator and its components
+        
+        Returns:
+            Dict with status information
+        """
+        return {
+            'live_scraping_enabled': self.enable_live_scraping,
+            'scrapers': [
+                {
+                    'name': 'Lamudi',
+                    'source_id': self.lamudi.get_source_name(),
+                    'cache_dir': str(self.lamudi.cache_dir),
+                    'cache_expiry_hours': self.lamudi.cache_expiry_hours
+                },
+                {
+                    'name': 'Rumah.com',
+                    'source_id': self.rumah_com.get_source_name(),
+                    'cache_dir': str(self.rumah_com.cache_dir),
+                    'cache_expiry_hours': self.rumah_com.cache_expiry_hours
+                }
+            ],
+            'benchmark_regions': list(self.regional_benchmarks.keys())
+        }
+
+
+# Standalone test
+if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    orchestrator = LandPriceOrchestrator(
+        cache_expiry_hours=24,
+        enable_live_scraping=True
+    )
+    
+    # Test region
+    test_region = "Sleman Yogyakarta"
+    
+    print(f"\n{'='*70}")
+    print(f"TESTING LAND PRICE ORCHESTRATOR")
+    print(f"{'='*70}")
+    print(f"Region: {test_region}\n")
+    
+    # Get status
+    status = orchestrator.get_orchestrator_status()
+    print(f"Orchestrator Status:")
+    print(f"  Live Scraping: {'Enabled' if status['live_scraping_enabled'] else 'Disabled'}")
+    print(f"  Scrapers: {', '.join([s['name'] for s in status['scrapers']])}")
+    print(f"  Benchmark Regions: {', '.join(status['benchmark_regions'])}\n")
+    
+    # Get price data
+    print(f"Fetching land price data...\n")
+    result = orchestrator.get_land_price(test_region, max_listings=10)
+    
+    print(f"\n{'='*70}")
+    print(f"RESULT")
+    print(f"{'='*70}")
+    print(f"Success: {result['success']}")
+    print(f"Data Source: {result['data_source']}")
+    print(f"Average Price: Rp {result['average_price_per_m2']:,.0f}/m²")
+    print(f"Median Price: Rp {result['median_price_per_m2']:,.0f}/m²")
+    print(f"Listing Count: {result['listing_count']}")
+    print(f"Data Confidence: {result.get('data_confidence', 0):.0%}")
+    
+    if 'cache_age_hours' in result:
+        print(f"Cache Age: {result['cache_age_hours']:.1f} hours")
+    
+    if 'benchmark_region' in result:
+        print(f"Benchmark Region: {result['benchmark_region']}")
+    
+    if result.get('listings'):
+        print(f"\nSample Listings (top 3):")
+        for i, listing in enumerate(result['listings'][:3], 1):
+            print(f"\n  {i}. {listing['location']}")
+            print(f"     Price: Rp {listing['price_per_m2']:,.0f}/m²")
+            print(f"     Size: {listing['size_m2']:,.0f} m²")

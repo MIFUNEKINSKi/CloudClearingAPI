@@ -1,250 +1,395 @@
-# CloudClearingAPI 🛰️💰
+# CloudClearingAPI: Land Development Investment Intelligence
 
-**Real Estate Investment Intelligence via Satellite Analysis**
+### What is CloudClearingAPI?
 
-An advanced Python-based system that transforms satellite imagery into investment opportunities by analyzing land development changes across Indonesia using Sentinel-2 data, real infrastructure intelligence, and market analysis.
+Investing in land development is challenging. Information is scattered, opportunities are hard to spot, and it's difficult to know if development activity translates into a profitable venture.
 
-## 🎯 System Capabilities
+CloudClearingAPI solves this by acting as an **automated investment analyst**. It scans regions across Indonesia, transforming satellite imagery and market data into clear, actionable investment intelligence.
 
-**Investment Intelligence Platform:**
-- 🏗️ **Infrastructure Analysis**: Real OpenStreetMap highway/airport/railway proximity
-- 💰 **Market Intelligence**: Indonesian property growth forecasting (20%+ markets)
-- 🧠 **AI Scoring**: Multi-factor investment recommendations (0-100 scale)
-- 📈 **Opportunity Ranking**: BUY/WATCH/INVESTIGATE signals with confidence levels
-- 🎯 **Strategic Focus**: 10 Indonesian growth corridors under continuous monitoring
+**This system empowers you to:**
+* **📍 Pinpoint Development Hotspots:** Automatically detect where land is being cleared and construction is happening *right now*.
+* **💰 Evaluate Financial Viability:** Go beyond just activity to see **projected ROI**, **estimated land values**, and **development costs** based on live market data.
+* **🏗️ Assess Real-World Viability:** Understand if a region has the roads, ports, and other critical infrastructure needed to support growth.
+* **📊 Make Data-Driven Decisions:** Receive a single, comprehensive investment score (0-100) and a detailed PDF report that summarizes everything you need to know.
 
-**Change Detection Core:**
-- New roads and infrastructure development
-- Building construction and land clearing
-- Industrial expansion and planned subdivisions
-- Smart date finding for continuous monitoring
+---
 
-## 🏗️ Enhanced Architecture
+## ✨ The Scoring Philosophy: From Activity to Opportunity
 
-### Intelligence Pipeline
-1. **Satellite Analysis**: Sentinel-2 via Google Earth Engine with smart date finding
-2. **Infrastructure Intelligence**: Real-time OpenStreetMap highway/airport/railway analysis
-3. **Market Intelligence**: Indonesian property market growth analysis & forecasting
-4. **Change Detection**: NDVI/NDBI/BSI spectral analysis with pattern recognition
-5. **Investment Scoring**: Multi-factor algorithms (infrastructure + pattern + strategic + market)
-6. **Executive Reporting**: Investment-grade recommendations with confidence levels
+Our scoring system is designed to answer two fundamental questions every investor asks:
 
-### Production Enhancements
-- **Smart Date Finding**: Automatic imagery optimization (eliminates data gaps)
-- **Multi-Region Processing**: 10 Indonesian strategic regions simultaneously  
-- **Real Infrastructure Data**: OpenStreetMap integration with distance weighting
-- **Investment Focus**: Transform academic monitoring → real estate alpha generation
+1.  **Where is the activity?** (The Activity Score)
+2.  **Is this activity a profitable opportunity?** (The Financial & Contextual Multipliers)
 
-### Enhanced Tech Stack
-- **Intelligence**: Multi-source analysis (Sentinel-2 + OpenStreetMap + Market Data)
-- **Backend**: Python, Flask/FastAPI, Google Earth Engine
-- **Data Processing**: rasterio, numpy, scikit-image, geopandas
-- **Infrastructure**: OpenStreetMap Overpass API, spatial analysis
-- **Market Intel**: Indonesian property data, growth forecasting
-- **Frontend**: Interactive Leaflet dashboard, before/after visualization
-- **Deployment**: Production-ready with smart date finding
+The final score is a blend of these elements, ensuring that we recommend not just *busy* areas, but *valuable* ones.
 
-## 🎊 **Current Results**
+**Final Score** = (Activity Score) × (Infrastructure Multiplier) × (Market Multiplier) × (Confidence Score)
 
-**Latest Monitoring Run (Sept 2025):**
-- 📊 **Total Analysis**: 289,318 changes across 32,880 hectares
-- 🏆 **Top Opportunity**: Solo Expansion (85.9/100 score)
-- 🎯 **Investment Signals**: 1 BUY, 4 WATCH, 5 INVESTIGATE
-- 🏗️ **Infrastructure Intelligence**: Highway/airport proximity analysis
-- 💰 **Market Intelligence**: 20%+ growth markets identified
+---
 
-**Strategic Regions Monitored:**
-1. Solo Expansion (Airport corridor) - 85.9/100
-2. Surakarta Suburbs - 84.8/100  
-3. Yogyakarta Periurban - 82.4/100
-4. Kulon Progo West (Airport development) - 72.5/100
-5. Gunungkidul East (Coastal highway) - 77.0/100
-6. Plus 5 additional strategic regions
+## ⚙️ How the Scoring Works
 
-## 📁 Enhanced Project Structure
+### Part 1: The Activity Score (0-40 Points) - *Finding the Action*
+
+This is the foundation of our analysis and is derived **entirely from satellite imagery**. It's our 'eye in the sky' that tells us where physical change is happening on the ground. We compare images from the last 7 days to the previous 7 days to find new development.
+
+* **What We Look For:**
+    * **Vegetation Loss (High Weight):** Forests or fields being cleared, a strong signal of future construction.
+    * **New Construction (Highest Weight):** New buildings and urban areas appearing.
+    * **Land Preparation (Medium Weight):** Bare earth being exposed for site preparation.
+
+A region with significant, recent construction activity will receive the highest base scores.
+
+### Part 2: Financial & Contextual Multipliers - *Is It a Good Deal?*
+
+High activity is meaningless if the investment doesn't make financial sense. These multipliers adjust the Activity Score based on real-world financial and logistical factors.
+
+#### 🏗️ **The Infrastructure Multiplier (0.8x - 1.3x)**
+This multiplier answers: "Can this area support new development?" It assesses the quality of surrounding infrastructure from OpenStreetMap.
+
+* **Note on Accuracy:** This component was recently overhauled to provide a more realistic analysis. It now correctly models the concept of **diminishing returns**—the first highway provides immense value, while the tenth adds much less.
+
+| Infrastructure Score | Tier | Multiplier | Interpretation |
+| :--- | :--- | :--- | :--- |
+| **90-100** | Excellent | **1.30x** | World-class infrastructure, major hub. |
+| **75-89** | Very Good | **1.15x** | Strong logistical and transport links. |
+| **60-74** | Good | **1.00x** | Adequate for standard development. |
+| **40-59** | Fair | **0.90x** | Basic infrastructure, potential limitations. |
+| **< 40** | Poor | **0.80x** | Weak or missing infrastructure. |
+
+#### 💰 **The Market Multiplier (0.85x - 1.40x)**
+This is our most powerful feature. To determine the market context, we use a **cascading data system**:
+1.  **Live Web Scraping:** First, we attempt to scrape live land prices from top Indonesian real estate portals like `Lamudi.co.id` and `Rumah.com`.
+2.  **Cached Data:** If a live scrape isn't possible, we use data cached within the last 24-48 hours.
+3.  **Regional Benchmarks:** As a final fallback, we use our internal database of historical price trends.
+
+This live data feeds our **Market Multiplier**, which rewards regions with strong economic fundamentals.
+
+| Annual Price Trend | Tier | Multiplier | Interpretation |
+| :--- | :--- | :--- | :--- |
+| **> 15%** | Booming | **1.40x** | Exceptional, high-growth market. |
+| **8-15%** | Strong | **1.20x** | Very healthy market with strong demand. |
+| **2-8%** | Stable | **1.00x** | Steady, sustainable growth. |
+| **0-2%** | Stagnant | **0.95x** | Slow growth, limited momentum. |
+| **< 0%** | Declining | **0.85x** | Market is contracting. |
+
+### Part 3: The Reality Check (Confidence Score)
+
+This score ensures our system is honest about the quality of its own data. A low confidence score will reduce the final investment score, preventing us from making a strong recommendation based on incomplete information.
+
+* **How it's calculated:** It's a weighted average of our confidence in each data source:
+    * **Satellite Data (50% weight):** Higher confidence with recent, cloud-free images.
+    * **Infrastructure Data (30% weight):** Highest with live OSM data, lower with regional fallbacks.
+    * **Market Data (20% weight):** Highest with live-scraped prices, lowest with static benchmarks.
+
+For a complete breakdown of the formulas and data sources, see our full [Technical Scoring Documentation](TECHNICAL_SCORING_DOCUMENTATION.md).
+
+---
+
+## 📊 System Output: The Investment Report
+
+The primary output is a multi-page PDF report that provides a comprehensive overview of each region.
+
+* **Page 1: Executive Summary:** Highlights the top investment opportunities and summary statistics.
+* **Region Detail Pages:** Each region gets its own detailed analysis, including:
+    1.  **Final Recommendation:** A clear **✅ BUY**, **⚠️ WATCH**, or **🔴 PASS** rating.
+    2.  **Score & Confidence:** The final score and the data confidence percentage.
+    3.  **Financial Projection Summary:** The most valuable section, detailing **ROI projections**, **land value estimates**, total investment costs, and key risks.
+    4.  **Satellite Imagery:** A grid of 5 images showing before/after, vegetation loss, and new construction hotspots.
+    5.  **Infrastructure Details:** A list of nearby highways, ports, and airports.
+    6.  **Development Activity Analysis:** A breakdown of detected activity (e.g., 60% Land Clearing, 40% Active Construction).
+
+---
+
+## 🏗️ System Architecture Overview
+
+The system works as a data processing pipeline, taking raw data sources and refining them into a final, actionable report.
+
+```
+Data Inputs
+├── Sentinel-2 Satellite Imagery (Google Earth Engine)
+├── OpenStreetMap Infrastructure Data
+└── Indonesian Real Estate Websites (Lamudi, Rumah.com)
+     ↓
+Core Analysis Engines
+├── Activity Scoring Engine (corrected_scoring.py)
+│   └── Converts satellite changes → Base Score (0-40)
+└── Financial Projection Engine (financial_metrics.py)
+    └── Estimates ROI, land values, development costs
+     ↓
+Aggregated Intelligence
+├── Final Investment Score (0-100)
+├── Financial Projections (ROI, land values)
+├── Confidence Rating (40-95%)
+└── BUY/WATCH/PASS Recommendation
+     ↓
+Final Output
+└── Automated PDF Report (Executive Summary + Region Details)
+```
+
+---
+
+## 🚀 Quick Start
+
+**See [QUICKSTART.md](QUICKSTART.md) for detailed setup instructions.**
+
+### Prerequisites
+
+1. **Python 3.8+** - [Download here](https://www.python.org/downloads/)
+2. **Google Earth Engine Account** - [Sign up here](https://earthengine.google.com/signup/)
+3. **Google Cloud Project** with Earth Engine API enabled
+
+### Installation
+
+```bash
+# 1. Clone and setup
+git clone https://github.com/MIFUNEKINSKi/CloudClearingAPI.git
+cd CloudClearingAPI
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Configure Google Earth Engine (one-time)
+earthengine authenticate
+
+# 4. Configure settings
+cp config/config.example.yaml config/config.yaml
+# Edit config.yaml with your GCP project ID
+
+# 5. Run investment analysis
+python run_weekly_java_monitor.py
+```
+
+### Expected Outputs
+
+After running the analysis, you'll find:
+
+- **PDF Report:** `output/reports/executive_summary_[timestamp].pdf`
+- **JSON Data:** `output/monitoring/weekly_monitoring_[timestamp].json`
+- **Satellite Images:** `output/satellite_images/weekly/[region]/`
+
+---
+
+## 📁 Project Structure
 
 ```
 CloudClearingAPI/
 ├── src/
-│   ├── core/                    # Enhanced Intelligence Modules
-│   │   ├── change_detector.py   # Smart date finding + change detection
-│   │   ├── speculative_scorer.py # Investment scoring algorithms  
-│   │   ├── infrastructure_analyzer.py # Real OSM infrastructure analysis
-│   │   ├── price_intelligence.py # Indonesian market intelligence
-│   │   └── automated_monitor.py # Production monitoring system
-│   ├── api/            # Investment API endpoints
-│   ├── dashboard/      # Interactive investment dashboard
-│   └── regions.py      # 10 Indonesian strategic regions
-├── output/monitoring/  # Investment analysis results
-├── notebooks/          # Analysis & prototyping
-├── tests/              # Production-ready testing
-├── config/             # Multi-environment configuration
-└── docs/               # Enhanced documentation
+│   ├── core/
+│   │   ├── corrected_scoring.py       # Investment scoring engine
+│   │   ├── financial_metrics.py       # ROI & land value projections
+│   │   ├── change_detector.py         # Satellite change detection
+│   │   ├── infrastructure_analyzer.py # Infrastructure analysis
+│   │   └── pdf_report_generator.py    # Report generation
+│   ├── scrapers/
+│   │   ├── lamudi_scraper.py          # Lamudi.co.id scraper
+│   │   ├── rumah_scraper.py           # Rumah.com scraper
+│   │   └── scraper_orchestrator.py    # Scraping coordination
+│   └── indonesia_expansion_regions.py # 29 monitored regions
+│
+├── config/
+│   └── config.yaml                    # System configuration
+│
+├── output/
+│   ├── reports/                       # Generated PDF reports
+│   ├── monitoring/                    # JSON analysis data
+│   └── scraper_cache/                 # Cached price data
+│
+├── run_weekly_java_monitor.py         # Main execution script
+├── QUICKSTART.md                      # Detailed setup guide
+└── TECHNICAL_SCORING_DOCUMENTATION.md # In-depth technical docs
 ```
 
-## 🚀 Quick Start
+---
 
-**See [QUICKSTART.md](QUICKSTART.md) for detailed setup**
+## 📚 Documentation
 
-```bash
-# 1. Clone and setup
-git clone [repository]
-cd CloudClearingAPI
-pip install -r requirements.txt
+This repository includes three comprehensive documents:
 
-# 2. Configure Google Earth Engine
-ee authenticate
-cp config/config.example.yaml config/config.yaml
+1. **README.md** (this file) - System overview and value proposition
+2. **[QUICKSTART.md](QUICKSTART.md)** - Step-by-step setup and usage guide
+3. **[TECHNICAL_SCORING_DOCUMENTATION.md](TECHNICAL_SCORING_DOCUMENTATION.md)** - Complete technical reference
 
-# 3. Run investment analysis
-python run_weekly_monitor.py
+For setup instructions, see **[QUICKSTART.md](QUICKSTART.md)**.  
+For algorithm details and API specs, see **[TECHNICAL_SCORING_DOCUMENTATION.md](TECHNICAL_SCORING_DOCUMENTATION.md)**.
 
-# 4. View results
-# output/monitoring/weekly_monitoring_[timestamp].json
+---
+
+## 🌍 Current Coverage
+
+**29 Regions Across Java Island:**
+
+| Region | Priority | Focus |
+|--------|----------|-------|
+| Jakarta Metro (4 regions) | High | Urban expansion |
+| Bandung Metro (2 regions) | High | Transportation hubs |
+| Semarang-Yogyakarta-Solo (6 regions) | High | Infrastructure corridors |
+| Surabaya Metro (4 regions) | High | Industrial development |
+| Banten Industrial Corridor (3 regions) | Medium | Port-adjacent zones |
+| Regional Hubs (10 regions) | Medium | Emerging markets |
+
+**Total Monitored Area:** ~8,500 km²  
+**Analysis Frequency:** Weekly  
+**Average Processing Time:** 3 minutes per region
+
+---
+
+## 🔍 Example Output
+
+**Sample Investment Recommendation:**
+
+```
+Region: Solo Airport Corridor
+Score: 78.5/100 (85% confidence)
+Recommendation: ✅ BUY
+
+Financial Projection:
+├─ Current Land Value: Rp 5,692,500/m²
+├─ 3-Year Projection: Rp 8,257,381/m²
+├─ Projected ROI: 34.4% (3-year)
+├─ Recommended Plot: 2,000 m²
+├─ Total Investment: Rp 11,385,000,000
+└─ Data Sources: Lamudi (live), OSM, Sentinel-2
+
+Activity Detected:
+├─ Land Clearing: 1,234 changes (12.4 hectares)
+├─ Active Construction: 18% of area
+└─ Development Type: Infrastructure-led urban expansion
+
+Infrastructure:
+├─ Major Highway: 2.3 km away
+├─ Nearest Airport: 8.5 km (Solo International)
+└─ Railway Access: Yes (3 stations within 15 km)
+
+Rationale: Strong development activity near new airport with excellent
+infrastructure access. Market showing 12% annual appreciation.
 ```
 
-### Prerequisites
-1. **Google Earth Engine Account**: Sign up at [earthengine.google.com](https://earthengine.google.com)
-2. **Python 3.8+**: Install from [python.org](https://python.org)
+---
 
-### Installation
-```bash
-# Clone and setup
-git clone <your-repo>
-cd CloudClearingAPI
+## ⚙️ Configuration
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+Key settings in `config/config.yaml`:
 
-# Install dependencies
-pip install -r requirements.txt
+```yaml
+# Satellite Analysis
+satellite:
+  max_cloud_coverage: 20        # Maximum acceptable cloud cover (%)
+  image_scale: 10               # Resolution in meters (Sentinel-2)
 
-# Authenticate Google Earth Engine (one-time setup)
-earthengine authenticate
+# Web Scraping (Financial Data)
+web_scraping:
+  enabled: true                 # Enable live price scraping
+  cache_expiry_hours: 24        # Cache validity period
+  sites:
+    lamudi: enabled
+    rumah_com: enabled
+
+# Infrastructure Analysis
+infrastructure:
+  api_timeout: 30               # OpenStreetMap API timeout (seconds)
+  search_radii:
+    highways_km: 25
+    airports_km: 100
+    railways_km: 25
+
+# Google Earth Engine
+gee_project: "your-project-id"  # REQUIRED: Your GCP project ID
 ```
 
-### Configuration
-```bash
-# Copy example config
-cp config/config.example.yaml config/config.yaml
-
-# Edit config with your settings:
-# - Area of interest coordinates
-# - Alert thresholds
-# - Notification settings
-```
-
-### Run MVP Demo
-```bash
-# Run the basic change detection
-python src/core/change_detector.py
-
-# Start the web API
-python src/api/main.py
-
-# View dashboard at http://localhost:5000
-```
+---
 
 ## 🔧 Development
 
 ### Running Tests
+
 ```bash
-pytest tests/
+pytest tests/ -v
+pytest --cov=src tests/  # With coverage
 ```
 
-### Code Formatting
+### Code Quality
+
 ```bash
-black src/
-isort src/
+black src/      # Format code
+pylint src/     # Lint
+mypy src/       # Type checking
 ```
 
-### Environment Variables
-Create a `.env` file:
+### Adding New Regions
+
+Edit `src/indonesia_expansion_regions.py`:
+
+```python
+from src.indonesia_expansion_regions import ExpansionRegion
+
+ExpansionRegion(
+    name="New Region Name",
+    slug="new_region_slug",
+    bbox=(west, south, east, north),  # Decimal degrees
+    priority=1,  # 1=high, 2=medium, 3=emerging
+    island="java",
+    focus="infrastructure"  # infrastructure/industrial/urban/tourism
+)
 ```
-GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account.json
-DATABASE_URL=postgresql://user:pass@localhost/cloudclearing
-SMTP_SERVER=smtp.gmail.com
-SMTP_USER=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-```
-
-## 📊 MVP Features
-
-### Change Detection Algorithms
-- **NDVI Analysis**: Vegetation loss detection
-- **NDBI Analysis**: Built-up area detection
-- **Spectral Differencing**: Multi-band change analysis
-- **Morphological Filtering**: Noise reduction
-
-### Output Products
-- **Change Polygons**: GeoJSON/Shapefile export
-- **Confidence Scores**: Algorithm reliability metrics
-- **Before/After Images**: Visual comparison tiles
-- **Summary Reports**: Area calculations and statistics
-
-### Alerting System
-- **Email Notifications**: Automated alerts for significant changes
-- **Webhook Integration**: Slack/Discord notifications
-- **Threshold Configuration**: Customizable sensitivity settings
-- **Dashboard Alerts**: Real-time web interface updates
-
-## 🌍 Area of Interest
-
-Default configuration monitors the Yogyakarta region:
-- **Bounding Box**: 110.25°E to 110.55°E, 7.65°S to 7.95°S
-- **Resolution**: 10m (Sentinel-2)
-- **Update Frequency**: Weekly composites
-- **Coverage**: ~900 km² monitoring area
-
-## 🔮 Upgrade Path
-
-### Enhanced Data Sources
-- **Planet Labs**: Daily 3m imagery (paid)
-- **Maxar**: Sub-meter resolution (paid)
-- **Landsat**: Historical analysis (free)
-
-### Advanced Algorithms
-- **Machine Learning**: UNet segmentation models
-- **Time Series Analysis**: Seasonal pattern recognition
-- **Multi-sensor Fusion**: Radar + optical data
-
-### Scaling Features
-- **Multi-region Support**: Monitor multiple areas
-- **API Rate Limiting**: Commercial usage controls
-- **Batch Processing**: Historical change analysis
-- **Cloud Deployment**: Production infrastructure
-
-## 📈 Performance Metrics
-
-### Accuracy Targets
-- **Precision**: >80% for development detection
-- **Recall**: >70% for significant changes (>200m²)
-- **Processing Time**: <5 minutes per weekly composite
-
-### Cost Estimates
-- **Sentinel-2**: Free (Google Earth Engine limits apply)
-- **Planet**: ~$2-5 per km² per month
-- **Compute**: ~$10-50/month for weekly processing
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-- **Issues**: GitHub Issues for bug reports
-- **Discussions**: GitHub Discussions for questions
-- **Documentation**: Check the `docs/` folder for detailed guides
 
 ---
 
-**Note**: This is an MVP implementation designed for rapid prototyping. For production deployment, consider additional security, scalability, and monitoring requirements.
+## 🐛 Troubleshooting
+
+**Earth Engine Authentication Failed:**
+```bash
+earthengine authenticate
+python -c "import ee; ee.Initialize(); print('✅ Success')"
+```
+
+**OSM API Timeouts:**  
+Increase timeout in `config.yaml`: `infrastructure.api_timeout: 60`
+
+**Memory Errors:**  
+Reduce resolution: `satellite.image_scale: 30` (from 10)
+
+**No Satellite Images Found:**
+- Increase `max_cloud_coverage` threshold
+- Check region coordinates are within Sentinel-2 coverage
+
+For detailed troubleshooting, see **[TECHNICAL_SCORING_DOCUMENTATION.md](TECHNICAL_SCORING_DOCUMENTATION.md)**.
+
+---
+
+## 📦 Dependencies
+
+**Core:**
+- `earthengine-api` - Satellite imagery
+- `requests` - HTTP requests
+- `beautifulsoup4` - Web scraping
+- `reportlab` - PDF generation
+- `pyyaml` - Configuration
+
+**Analysis:**
+- `numpy`, `pandas` - Data processing
+- `geopandas`, `shapely` - Geospatial
+
+Full list: [requirements.txt](requirements.txt)
+
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file
+
+---
+
+## 👤 Author
+
+**Chris Moore**  
+GitHub: [@MIFUNEKINSKi](https://github.com/MIFUNEKINSKi)  
+Project: [CloudClearingAPI](https://github.com/MIFUNEKINSKi/CloudClearingAPI)
+
+---
+
+## 🙏 Acknowledgments
+
+- **Google Earth Engine** - Satellite imagery platform
+- **OpenStreetMap** - Infrastructure data contributors
+- **Sentinel-2 (ESA/Copernicus)** - Free satellite imagery program

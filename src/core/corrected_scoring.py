@@ -139,6 +139,13 @@ class CorrectedInvestmentScorer:
             'market': market_data.get('data_source', 'unavailable')
         }
         
+        # Handle major_features which are dicts with 'type' and 'name' keys
+        major_features = infrastructure_data.get('major_features', [])
+        
+        # Count features by type (features are dicts with 'type' key)
+        airports_count = len([f for f in major_features if isinstance(f, dict) and 'airport' in f.get('type', '').lower()])
+        railway_access = any(isinstance(f, dict) and 'railway' in f.get('type', '').lower() for f in major_features)
+        
         return CorrectedScoringResult(
             region_name=region_name,
             satellite_changes=satellite_changes,
@@ -146,9 +153,9 @@ class CorrectedInvestmentScorer:
             development_score=development_score,
             infrastructure_score=infrastructure_data['infrastructure_score'],
             infrastructure_multiplier=infra_multiplier,
-            roads_count=len(infrastructure_data.get('major_features', [])),
-            airports_nearby=len([f for f in infrastructure_data.get('major_features', []) if 'airport' in f.lower()]),
-            railway_access=any('railway' in f.lower() for f in infrastructure_data.get('major_features', [])),
+            roads_count=len(major_features),
+            airports_nearby=airports_count,
+            railway_access=railway_access,
             price_trend_30d=market_data['price_trend_30d'],
             market_heat=market_data['market_heat'],
             market_score=self._calculate_market_score(market_data),
@@ -198,22 +205,46 @@ class CorrectedInvestmentScorer:
                                       bbox: Dict[str, float],
                                       data_availability: Dict[str, bool]) -> tuple:
         """
-        Get infrastructure data and convert to multiplier (0.8-1.2x).
+        🆕 IMPROVED: Get infrastructure data and convert to TIERED multiplier (0.8-1.3x).
+        
+        Tiered system creates better separation between good and excellent infrastructure:
+        - Excellent (90-100): 1.3x  - World-class infrastructure
+        - Very Good (75-89): 1.15x  - Strong infrastructure
+        - Good (60-74): 1.0x        - Adequate infrastructure  
+        - Fair (40-59): 0.9x        - Basic infrastructure
+        - Poor (<40): 0.8x          - Weak infrastructure
         
         Returns:
             (infrastructure_data dict, multiplier float)
         """
         try:
-            infrastructure_data = self.infrastructure_engine.analyze_live_infrastructure(
-                region_name, bbox
+            # Call the actual method that exists: analyze_infrastructure_context()
+            infrastructure_data = self.infrastructure_engine.analyze_infrastructure_context(
+                bbox=bbox,
+                region_name=region_name
             )
             data_availability['infrastructure_data'] = True
             
-            # Convert infrastructure score (0-100) to multiplier (0.8-1.2)
+            # 🆕 TIERED: Convert infrastructure score (0-100) to tiered multiplier (0.8-1.3)
             infra_score = infrastructure_data['infrastructure_score']
-            multiplier = 0.8 + (infra_score / 100) * 0.4
             
-            logger.debug(f"   Infrastructure: {infra_score:.1f}/100 → {multiplier:.2f}x multiplier")
+            if infra_score >= 90:
+                multiplier = 1.30  # Excellent - world-class infrastructure
+                tier = "Excellent"
+            elif infra_score >= 75:
+                multiplier = 1.15  # Very Good - strong infrastructure
+                tier = "Very Good"
+            elif infra_score >= 60:
+                multiplier = 1.00  # Good - adequate infrastructure
+                tier = "Good"
+            elif infra_score >= 40:
+                multiplier = 0.90  # Fair - basic infrastructure
+                tier = "Fair"
+            else:
+                multiplier = 0.80  # Poor - weak infrastructure
+                tier = "Poor"
+            
+            logger.debug(f"   Infrastructure: {infra_score:.1f}/100 ({tier}) → {multiplier:.2f}x multiplier")
             
         except Exception as e:
             logger.warning(f"⚠️ Infrastructure data unavailable for {region_name}: {e}")
@@ -223,7 +254,7 @@ class CorrectedInvestmentScorer:
                 'data_source': 'unavailable',
                 'data_confidence': 0.0
             }
-            multiplier = 1.0  # Neutral multiplier when data unavailable
+            multiplier = 0.90  # Slightly below neutral when data unavailable
         
         return infrastructure_data, multiplier
     
@@ -232,32 +263,53 @@ class CorrectedInvestmentScorer:
                                coordinates: Dict[str, float],
                                data_availability: Dict[str, bool]) -> tuple:
         """
-        Get market data and convert to multiplier (0.9-1.1x).
+        🆕 IMPROVED: Get market data and convert to TIERED multiplier (0.85-1.4x).
+        
+        Tiered system rewards exceptional markets and penalizes stagnant ones:
+        - Booming (>15%/yr): 1.40x   - Exceptional growth
+        - Strong (8-15%/yr): 1.20x   - Very strong market
+        - Stable (2-8%/yr): 1.00x    - Healthy growth
+        - Stagnant (0-2%/yr): 0.95x  - Slow growth
+        - Declining (<0%/yr): 0.85x  - Market decline
         
         Returns:
             (market_data dict, multiplier float)
         """
         try:
-            market_data = self.price_engine.get_live_market_data(region_name, coordinates)
+            # Call the actual method: _get_pricing_data() returns PropertyPricing dataclass
+            pricing_data = self.price_engine._get_pricing_data(region_name)
             data_availability['market_data'] = True
             
-            # Convert market trend to multiplier
-            price_trend = market_data['price_trend_30d']
+            # Convert PropertyPricing to dict format and use price_trend_3m as percentage
+            # price_trend_3m is already a decimal (0.05 = 5%), convert to percentage
+            price_trend_pct = pricing_data.price_trend_3m * 100  # Convert to percentage
             
-            if price_trend >= 15:
-                multiplier = 1.10  # Very hot market (+10%)
-            elif price_trend >= 10:
-                multiplier = 1.08  # Hot market (+8%)
-            elif price_trend >= 5:
-                multiplier = 1.05  # Warm market (+5%)
-            elif price_trend >= 0:
-                multiplier = 1.00  # Neutral
-            elif price_trend >= -5:
-                multiplier = 0.95  # Cooling (-5%)
+            market_data = {
+                'price_trend_30d': price_trend_pct,
+                'market_heat': pricing_data.market_heat,
+                'current_price_per_m2': pricing_data.avg_price_per_m2,
+                'data_source': 'live',
+                'data_confidence': pricing_data.data_confidence
+            }
+            
+            # 🆕 TIERED: Convert market trend to tiered multiplier
+            if price_trend_pct >= 15:
+                multiplier = 1.40  # Booming - exceptional growth
+                tier = "Booming"
+            elif price_trend_pct >= 8:
+                multiplier = 1.20  # Strong - very strong market
+                tier = "Strong"
+            elif price_trend_pct >= 2:
+                multiplier = 1.00  # Stable - healthy growth
+                tier = "Stable"
+            elif price_trend_pct >= 0:
+                multiplier = 0.95  # Stagnant - slow growth
+                tier = "Stagnant"
             else:
-                multiplier = 0.90  # Cold market (-10%)
+                multiplier = 0.85  # Declining - market decline
+                tier = "Declining"
             
-            logger.debug(f"   Market: {price_trend:.1f}% trend → {multiplier:.2f}x multiplier")
+            logger.debug(f"   Market: {price_trend_pct:.1f}% trend ({tier}) → {multiplier:.2f}x multiplier")
             
         except Exception as e:
             logger.warning(f"⚠️ Market data unavailable for {region_name}: {e}")
@@ -268,7 +320,7 @@ class CorrectedInvestmentScorer:
                 'data_source': 'unavailable',
                 'data_confidence': 0.0
             }
-            multiplier = 1.0  # Neutral multiplier when data unavailable
+            multiplier = 0.95  # Slightly below neutral when data unavailable
         
         return market_data, multiplier
     
@@ -294,9 +346,9 @@ class CorrectedInvestmentScorer:
                              market_data: Dict,
                              infrastructure_data: Dict) -> float:
         """
-        Calculate confidence level (0.2-0.9) based on data availability.
+        Calculate confidence level (0.2-0.95) based on data availability and quality.
         
-        Missing data sources reduce confidence, not the score itself.
+        High-quality data sources increase confidence, low-quality reduces it.
         """
         available_sources = sum(data_availability.values())
         
@@ -308,18 +360,25 @@ class CorrectedInvestmentScorer:
         else:
             base_confidence = 0.40  # Satellite only
         
-        # Adjust for data quality
+        # Get data quality metrics
         market_confidence = market_data.get('data_confidence', 0.0)
         infra_confidence = infrastructure_data.get('data_confidence', 0.0)
         
-        if data_availability['market_data'] and market_confidence < 0.7:
-            base_confidence *= 0.95
+        # ✅ FIX: Reward high-quality data with bonuses
+        if data_availability['market_data']:
+            if market_confidence >= 0.8:
+                base_confidence *= 1.05  # 5% bonus for excellent market data
+            elif market_confidence < 0.7:
+                base_confidence *= 0.95  # 5% penalty for low-quality data
         
-        if data_availability['infrastructure_data'] and infra_confidence < 0.7:
-            base_confidence *= 0.95
+        if data_availability['infrastructure_data']:
+            if infra_confidence >= 0.8:
+                base_confidence *= 1.05  # 5% bonus for excellent infrastructure data
+            elif infra_confidence < 0.7:
+                base_confidence *= 0.95  # 5% penalty for low-quality data
         
-        # Ensure within bounds
-        return max(0.20, min(0.90, base_confidence))
+        # Ensure within bounds (0.20 to 0.95)
+        return max(0.20, min(0.95, base_confidence))
     
     def _generate_recommendation(self,
                                 final_score: float,

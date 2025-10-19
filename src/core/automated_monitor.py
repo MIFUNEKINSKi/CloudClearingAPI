@@ -21,6 +21,13 @@ from .satellite_image_saver import SatelliteImageSaver
 from .speculative_scorer import SpeculativeScorer
 from .corrected_scoring import CorrectedInvestmentScorer  # ✅ NEW: Proper satellite-centric scoring
 
+# Import financial metrics engine
+try:
+    from .financial_metrics import FinancialMetricsEngine
+    FINANCIAL_ENGINE_AVAILABLE = True
+except ImportError:
+    FINANCIAL_ENGINE_AVAILABLE = False
+
 # Try to import RegionManager with fallback
 try:
     from ..regions import RegionManager
@@ -68,6 +75,21 @@ class AutomatedMonitor:
             InfrastructureAnalyzer()
         )
         self.image_saver = SatelliteImageSaver()  # 📸 Image saving for PDF integration
+        
+        # Initialize financial metrics engine
+        self.financial_engine = None
+        if FINANCIAL_ENGINE_AVAILABLE:
+            try:
+                self.financial_engine = FinancialMetricsEngine(
+                    enable_web_scraping=True,
+                    cache_expiry_hours=24
+                )
+                logger.info("✅ Financial Metrics Engine initialized with web scraping enabled")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to initialize Financial Metrics Engine: {e}")
+        else:
+            logger.warning("⚠️ Financial Metrics Engine not available - install dependencies: pip install beautifulsoup4 lxml")
+        
         self.db_manager = None
         
         # Initialize strategic corridors if available
@@ -975,6 +997,47 @@ class AutomatedMonitor:
                             signal.alarm(0)  # Cancel the alarm
                             raise Exception(f"Corrected scoring timeout: {te}")
                         
+                        # --- NEW: Calculate Financial Projection ---
+                        financial_projection = None
+                        if self.financial_engine:
+                            try:
+                                # Prepare data for financial engine
+                                satellite_data = {
+                                    'vegetation_loss_pixels': region_data.get('change_count', 0) // 2,  # Estimate
+                                    'total_pixels': 10000,  # Estimate
+                                    'construction_activity_pct': corrected_result.development_score * 0.2  # Estimate
+                                }
+                                
+                                infrastructure_data = {
+                                    'infrastructure_score': corrected_result.infrastructure_score,
+                                    'major_features': corrected_result.data_sources.get('infrastructure', []),
+                                    'data_confidence': corrected_result.confidence_level,
+                                    'data_source': 'osm_live' if corrected_result.data_availability.get('infrastructure', False) else 'fallback'
+                                }
+                                
+                                market_data = {
+                                    'price_trend_30d': corrected_result.price_trend_30d,
+                                    'market_heat': corrected_result.market_heat,
+                                    'data_confidence': corrected_result.confidence_level
+                                }
+                                
+                                financial_projection = self.financial_engine.calculate_financial_projection(
+                                    region_name=region_name,
+                                    satellite_data=satellite_data,
+                                    infrastructure_data=infrastructure_data,
+                                    market_data=market_data,
+                                    scoring_result=corrected_result
+                                )
+                                
+                                logger.info(f"   💰 Financial: Rp {financial_projection.current_land_value_per_m2:,.0f}/m² "
+                                          f"→ Rp {financial_projection.estimated_future_value_per_m2:,.0f}/m² "
+                                          f"(ROI: {financial_projection.projected_roi_3yr:.1%})")
+                                
+                            except Exception as e:
+                                logger.warning(f"   ⚠️ Financial projection failed for {region_name}: {e}")
+                                financial_projection = None
+                        # -------------------------------------------
+                        
                         # Convert to format compatible with reporting system
                         dynamic_score = {
                             'region_name': region_name,
@@ -993,7 +1056,8 @@ class AutomatedMonitor:
                             'recommendation': corrected_result.recommendation,  # NEW
                             'rationale': corrected_result.rationale,  # NEW
                             'data_sources': corrected_result.data_sources,
-                            'analysis_type': 'corrected_satellite_centric'  # Mark as corrected!
+                            'analysis_type': 'corrected_satellite_centric',  # Mark as corrected!
+                            'financial_projection': financial_projection  # NEW: Financial metrics
                         }
                         
                         dynamic_scored_regions.append(dynamic_score)
@@ -1297,6 +1361,7 @@ class AutomatedMonitor:
         """
         buy_recommendations = []
         watch_list = []
+        pass_list = []  # ✅ NEW: Track PASS regions (<25) so ALL scores appear in PDF
         market_insights = []
         
         # Sort regions by investment score (highest first)
@@ -1364,6 +1429,18 @@ class AutomatedMonitor:
                 
                 watch_list.append(recommendation)
             
+            else:
+                # ✅ NEW: Capture PASS regions (<25) so ALL scores appear in PDF
+                recommendation['recommendation'] = 'PASS'
+                recommendation['rationale'] = f"Below investment threshold ({investment_score:.1f}/100). "
+                
+                if region_score.get('satellite_changes', 0) == 0:
+                    recommendation['rationale'] += "No significant development detected. "
+                else:
+                    recommendation['rationale'] += f"Limited activity: {region_score.get('satellite_changes', 0):,} changes. "
+                
+                pass_list.append(recommendation)
+            
             # Add market insights
             if price_trend != 0:
                 insight = {
@@ -1378,19 +1455,22 @@ class AutomatedMonitor:
         dynamic_regions = [r for r in sorted_regions if r.get('analysis_type') == 'dynamic_real_time']
         avg_confidence = sum(r.get('overall_confidence', 0) for r in sorted_regions) / len(sorted_regions) if sorted_regions else 0
         
-        # Sort buy_recommendations and watch_list by score (highest first)
+        # Sort all recommendation lists by score (highest first)
         buy_recommendations.sort(key=lambda x: x.get('investment_score', 0), reverse=True)
         watch_list.sort(key=lambda x: x.get('investment_score', 0), reverse=True)
+        pass_list.sort(key=lambda x: x.get('investment_score', 0), reverse=True)
         
         return {
             'buy_recommendations': buy_recommendations,
             'watch_list': watch_list,
+            'pass_list': pass_list,  # ✅ NEW: Include PASS regions so PDF shows all scores
             'market_insights': market_insights,
             'summary': {
                 'total_regions_analyzed': len(dynamic_scored_regions),
                 'dynamic_analysis_count': len(dynamic_regions),
                 'buy_recommendations_count': len(buy_recommendations),
                 'watch_list_count': len(watch_list),
+                'pass_list_count': len(pass_list),  # ✅ NEW: Track PASS count
                 'average_confidence': avg_confidence,
                 'analysis_methodology': 'dynamic_real_time_intelligence'
             }
