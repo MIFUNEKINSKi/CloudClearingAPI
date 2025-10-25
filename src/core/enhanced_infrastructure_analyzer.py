@@ -434,12 +434,26 @@ class EnhancedInfrastructureAnalyzer:
                                       planned_projects: List[Dict],
                                       accessibility_data: Dict) -> Dict[str, Any]:
         """
-        Calculate comprehensive infrastructure score from all data sources
+        Calculate comprehensive infrastructure score using unified total caps approach.
+        
+        Version 2.5: Standardized scoring aligned with standard analyzer
+        - Roads: max 35 points
+        - Railways: max 20 points
+        - Aviation: max 20 points
+        - Ports: max 15 points (enhanced analyzer only - has port data)
+        - Construction: max 10 points
+        - Planning: max 5 points (enhanced analyzer only - has gov data)
         """
         processed = current_infrastructure.get('processed', {})
         
-        # Base infrastructure score from existing infrastructure
-        # 🔧 FIX: Properly normalize scoring to prevent all regions hitting 100/100
+        # Component point allocations (aligned with standard analyzer)
+        MAX_ROAD_POINTS = 35
+        MAX_RAILWAY_POINTS = 20
+        MAX_AVIATION_POINTS = 20
+        MAX_PORT_POINTS = 15  # Enhanced only
+        MAX_CONSTRUCTION_POINTS = 10
+        MAX_PLANNING_POINTS = 5  # Enhanced only
+        
         infrastructure_details = {}
         
         # Score existing roads (max 35 points total, not per type)
@@ -450,7 +464,7 @@ class EnhancedInfrastructureAnalyzer:
             contribution = count * (weight / 10)
             road_score += contribution
             infrastructure_details[f'{road_type}_roads'] = count
-        road_score = min(35, road_score)  # Cap total road contribution
+        road_score = min(MAX_ROAD_POINTS, road_score)  # Cap total road contribution
         
         # Score railways (max 20 points total)
         railway_score = 0
@@ -460,26 +474,28 @@ class EnhancedInfrastructureAnalyzer:
             contribution = count * (weight / 10)
             railway_score += contribution
             infrastructure_details[f'{rail_type}_lines'] = count
-        railway_score = min(20, railway_score)  # Cap total railway contribution
+        railway_score = min(MAX_RAILWAY_POINTS, railway_score)  # Cap total railway contribution
         
         # Score aviation infrastructure (max 20 points)
         airports = len(processed['aviation']['airport'])
         runways = len(processed['aviation']['runway'])
-        aviation_score = min(20, (airports * 15) + (runways * 3))
+        aviation_score = min(MAX_AVIATION_POINTS, (airports * 15) + (runways * 3))
         infrastructure_details['airports'] = airports
         
         # Score ports and logistics (max 15 points)
         ports = len(processed['ports']['port']) + len(processed['ports']['harbour'])
-        port_score = min(15, ports * 10)
+        port_score = min(MAX_PORT_POINTS, ports * 10)
         infrastructure_details['ports'] = ports
         
         # Bonus for construction projects (max 10 points - future infrastructure)
-        construction_bonus = min(10, len(construction_projects) * 3)
+        construction_bonus = min(MAX_CONSTRUCTION_POINTS, len(construction_projects) * 2)
         
         # Bonus for planned projects (max 5 points - government commitment)
-        planning_bonus = min(5, len(planned_projects) * 2)
+        planning_bonus = min(MAX_PLANNING_POINTS, len(planned_projects) * 1)
         
-        # Calculate base score (max 105 points before accessibility)
+        # Calculate base score
+        # Enhanced max: 35 + 20 + 20 + 15 + 10 + 5 = 105 points (before accessibility)
+        # Standard max: 35 + 20 + 20 + 10 = 85 points (no ports/planning data)
         base_score = road_score + railway_score + aviation_score + port_score + construction_bonus + planning_bonus
         
         # Accessibility adjustment (±10 points based on overall accessibility)
@@ -499,13 +515,21 @@ class EnhancedInfrastructureAnalyzer:
             'active_construction_projects': len(construction_projects),
             'planned_projects': len(planned_projects),
             'accessibility_data': accessibility_data,
-            'component_scores': {  # NEW: Breakdown of score components
+            'component_scores': {  # Component breakdown for transparency
                 'roads': road_score,
                 'railways': railway_score,
                 'aviation': aviation_score,
                 'ports': port_score,
                 'construction': construction_bonus,
                 'planning': planning_bonus
+            },
+            'component_max': {  # Maximum allocations
+                'roads': MAX_ROAD_POINTS,
+                'railways': MAX_RAILWAY_POINTS,
+                'aviation': MAX_AVIATION_POINTS,
+                'ports': MAX_PORT_POINTS,
+                'construction': MAX_CONSTRUCTION_POINTS,
+                'planning': MAX_PLANNING_POINTS
             },
             'data_sources': {
                 'osm_elements': current_infrastructure.get('processed', {}).get('total_elements', 0),

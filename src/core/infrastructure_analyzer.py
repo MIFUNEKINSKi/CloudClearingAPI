@@ -515,63 +515,68 @@ class InfrastructureAnalyzer:
                                        airport_analysis: Dict,
                                        railway_analysis: Dict,
                                        region_name: str) -> Dict[str, Any]:
-        """Combine all infrastructure analyses into final score"""
+        """
+        Combine all infrastructure analyses into final score using unified total caps approach.
         
-        # 🔧 FIX: Normalize component scores with proper scaling to prevent score inflation
-        # Use square root scaling to compress high values while preserving differences
-        import math
+        Version 2.5: Standardized scoring with total caps + distance weighting
+        - Roads: max 35 points
+        - Aviation: max 20 points
+        - Railways: max 20 points
+        - Construction: max 10 points
+        """
         
-        # Normalize raw scores to 0-100 scale with compression for high values
+        # Component point allocations (total across all features)
+        MAX_ROAD_POINTS = 35
+        MAX_RAILWAY_POINTS = 20
+        MAX_AVIATION_POINTS = 20
+        MAX_CONSTRUCTION_POINTS = 10
+        
+        # Get raw scores from component analyses
         road_score_raw = road_analysis['score']
         airport_score_raw = airport_analysis['score']
         railway_score_raw = railway_analysis['score']
         
-        # Apply square root compression to reduce inflation from many features
-        # This makes 400 → 100, 100 → 50, 25 → 25 (linear below 25)
-        def compress_score(raw_score, scale=200):
-            if raw_score < 25:
-                return raw_score
-            return 25 + math.sqrt((raw_score - 25) * scale) if raw_score > 25 else raw_score
+        # Apply total caps to raw scores
+        # Raw scores already include distance weighting from component analyzers
+        # Now we just need to cap them to prevent accumulation
         
-        road_score = compress_score(road_score_raw, 180)  # More important, less compression
-        airport_score = compress_score(airport_score_raw, 120)
-        railway_score = compress_score(railway_score_raw, 100)
+        # Roads: Cap at 35 points (typically ~20 major roads = full allocation)
+        road_score = min(MAX_ROAD_POINTS, road_score_raw * 0.35)  # Scale down from raw accumulation
         
-        # Weighted combination with proper normalization
-        base_score = (
-            min(50, road_score) * 0.5 +      # Roads: 0-25 points
-            min(45, airport_score) * 0.45 +   # Airports: 0-20 points  
-            min(40, railway_score) * 0.4      # Railways: 0-16 points
-        )  # Max base: ~61 points
+        # Aviation: Cap at 20 points (1-2 airports = full allocation)
+        aviation_score = min(MAX_AVIATION_POINTS, airport_score_raw * 0.20)  # Scale down
         
-        # 🔧 FIX: More selective bonuses - only reward exceptional infrastructure
-        accessibility_bonus = 0.0
-        if road_analysis['score'] > 300:  # Exceptional road network
-            accessibility_bonus = 12
-        elif road_analysis['score'] > 200:  # Excellent
-            accessibility_bonus = 7
-        elif road_analysis['score'] > 100:  # Good
-            accessibility_bonus = 3
+        # Railways: Cap at 20 points (typically ~10 rail lines = full allocation)
+        railway_score = min(MAX_RAILWAY_POINTS, railway_score_raw * 0.20)  # Scale down
         
-        aviation_bonus = 0.0
-        if airport_analysis['score'] > 100:  # Major international airport nearby
-            aviation_bonus = 10
-        elif airport_analysis['score'] > 60:  # Regional airport
-            aviation_bonus = 5
-        elif airport_analysis['score'] > 30:  # Moderate access
-            aviation_bonus = 2
+        # Construction bonus: Cap at 10 points based on construction activity
+        construction_roads = road_analysis.get('construction_roads', [])
+        construction_score = min(MAX_CONSTRUCTION_POINTS, len(construction_roads) * 2)
         
-        railway_bonus = 0.0
-        if railway_analysis['score'] > 150:  # Major rail hub
-            railway_bonus = 8
-        elif railway_analysis['score'] > 80:  # Good rail connectivity
-            railway_bonus = 4
-        elif railway_analysis['score'] > 40:  # Basic rail access
-            railway_bonus = 2
+        # Calculate base score
+        base_score = road_score + aviation_score + railway_score + construction_score
+        # Maximum possible: 35 + 20 + 20 + 10 = 85 points
         
-        # Final score: base + bonuses (capped at 100)
-        # Typical range: 30-85, exceptional cases: 85-100
-        final_score = min(100, base_score + accessibility_bonus + aviation_bonus + railway_bonus)
+        # Accessibility adjustment based on overall connectivity (±10 points)
+        # High road network density increases accessibility
+        accessibility_adjustment = 0.0
+        if road_score_raw > 300:  # Exceptional connectivity
+            accessibility_adjustment = 10
+        elif road_score_raw > 200:  # Excellent connectivity
+            accessibility_adjustment = 7
+        elif road_score_raw > 100:  # Good connectivity
+            accessibility_adjustment = 4
+        elif road_score_raw > 50:  # Basic connectivity
+            accessibility_adjustment = 2
+        # Below 50: no adjustment (neutral)
+        
+        # Final score: base + accessibility adjustment (capped at 100)
+        # Typical range: 30-70, exceptional: 70-90, world-class: 90-100
+        final_score = min(100, base_score + accessibility_adjustment)
+        
+        # Final score: base + accessibility adjustment (capped at 100)
+        # Typical range: 30-70, exceptional: 70-90, world-class: 90-100
+        final_score = min(100, base_score + accessibility_adjustment)
         
         # Generate reasoning
         reasoning = []
@@ -581,30 +586,32 @@ class InfrastructureAnalyzer:
         construction_roads = road_analysis['construction_roads']
         
         if major_roads:
-            reasoning.append(f"🛣️ {len(major_roads)} major roads within range")
+            reasoning.append(f"🛣️ {len(major_roads)} major roads within range ({road_score:.0f}/{MAX_ROAD_POINTS} pts)")
         if construction_roads:
-            reasoning.append(f"🚧 {len(construction_roads)} roads under construction - major development signal")
+            reasoning.append(f"🚧 {len(construction_roads)} roads under construction ({construction_score:.0f}/{MAX_CONSTRUCTION_POINTS} pts)")
         
         # Airport infrastructure  
         airports = airport_analysis['airports']
         if airports:
             closest_airport = min(airports, key=lambda x: x['distance_km'])
-            reasoning.append(f"✈️ Airport access: {closest_airport['name']} ({closest_airport['distance_km']}km)")
+            reasoning.append(f"✈️ Airport: {closest_airport['name']} ({closest_airport['distance_km']:.0f}km, {aviation_score:.0f}/{MAX_AVIATION_POINTS} pts)")
         
         # Railway infrastructure
         railways = railway_analysis['railways']
         if railways:
-            reasoning.append(f"🚄 Railway connectivity: {len(railways)} lines")
+            reasoning.append(f"🚄 {len(railways)} railway lines ({railway_score:.0f}/{MAX_RAILWAY_POINTS} pts)")
         
         # Overall assessment
-        if final_score > 80:
+        if final_score >= 80:
             reasoning.append("🌟 EXCELLENT infrastructure connectivity")
-        elif final_score > 60:
+        elif final_score >= 60:
             reasoning.append("✅ Good infrastructure access")
-        elif final_score > 40:
+        elif final_score >= 40:
+            reasoning.append("⚠️ Basic infrastructure present")
+        else:
             reasoning.append("⚠️ Limited infrastructure - higher risk")
         
-        # ✅ FIX: Determine data source and confidence based on what data we got
+        # Determine data source and confidence
         has_osm_data = bool(major_roads or airports or railways or construction_roads)
         data_source = 'osm_live' if has_osm_data else 'regional_fallback'
         data_confidence = 0.85 if has_osm_data else 0.50
@@ -613,11 +620,25 @@ class InfrastructureAnalyzer:
             'infrastructure_score': round(final_score, 1),
             'major_features': major_roads + airports + railways,
             'construction_projects': construction_roads,
-            'accessibility_score': round(road_analysis['score'], 1),
-            'logistics_score': round((road_analysis['score'] + railway_analysis['score']) / 2, 1),
+            'accessibility_score': round(road_score_raw, 1),
+            'logistics_score': round((road_score_raw + railway_score_raw) / 2, 1),
             'reasoning': reasoning,
-            'data_source': data_source,  # ✅ ADDED: Track data source
-            'data_confidence': data_confidence  # ✅ ADDED: Track data quality
+            'data_source': data_source,
+            'data_confidence': data_confidence,
+            # Component breakdown for transparency
+            'component_breakdown': {
+                'roads': round(road_score, 1),
+                'railways': round(railway_score, 1),
+                'aviation': round(aviation_score, 1),
+                'construction': round(construction_score, 1),
+                'accessibility_adj': round(accessibility_adjustment, 1)
+            },
+            'component_max': {
+                'roads': MAX_ROAD_POINTS,
+                'railways': MAX_RAILWAY_POINTS,
+                'aviation': MAX_AVIATION_POINTS,
+                'construction': MAX_CONSTRUCTION_POINTS
+            }
         }
 
     def _get_regional_infrastructure_fallback(self, region_name: str) -> Dict[str, Any]:

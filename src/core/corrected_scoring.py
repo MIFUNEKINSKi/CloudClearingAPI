@@ -33,6 +33,7 @@ class CorrectedScoringResult:
     roads_count: int
     airports_nearby: int
     railway_access: bool
+    infrastructure_details: Dict[str, Any]  # ✅ FIX: Store detailed infrastructure breakdown
     
     # Part 3: Market (multiplier)
     price_trend_30d: float
@@ -119,13 +120,30 @@ class CorrectedInvestmentScorer:
         
         # Confidence weighting (reduces score when data is missing)
         confidence = self._calculate_confidence(data_availability, market_data, infrastructure_data)
-        confidence_adjustment = 0.7 + (confidence * 0.3)  # Range: 0.7-1.0
         
-        final_score = after_market * confidence_adjustment
+        # Non-linear confidence multiplier (v2.4.1 refinement)
+        # Quadratic scaling below 85% for steeper penalties, linear above for diminishing returns
+        if confidence >= 0.85:
+            # Linear scaling above 85%: 0.97 to 1.00
+            confidence_multiplier = 0.97 + (confidence - 0.85) * 0.30  # 0.85→0.97, 0.95→1.00
+        elif confidence >= 0.50:
+            # Quadratic scaling between 50% and 85%: 0.70 to 0.97
+            # Normalize to [0, 1] range where 0.50→0, 0.85→1
+            normalized_conf = (confidence - 0.50) / 0.35
+            # Apply power function: stronger penalties at low confidence
+            confidence_multiplier = 0.70 + 0.27 * (normalized_conf ** 1.2)
+        else:
+            # Below 50% confidence: apply floor of 0.70
+            confidence_multiplier = 0.70
+        
+        # Clamp to ensure bounds (0.70 to 1.00)
+        confidence_multiplier = max(0.70, min(1.00, confidence_multiplier))
+        
+        final_score = after_market * confidence_multiplier
         final_score = max(0, min(100, final_score))  # Clamp to 0-100
         
         logger.info(f"   ✨ Final Score: {final_score:.1f}/100 (confidence: {confidence:.0%})")
-        logger.info(f"      Calculation: {base_score:.1f} × {infra_multiplier:.2f} × {market_multiplier:.2f} × {confidence_adjustment:.2f} = {final_score:.1f}")
+        logger.info(f"      Calculation: {base_score:.1f} × {infra_multiplier:.2f} × {market_multiplier:.2f} × {confidence_multiplier:.2f} = {final_score:.1f}")
         
         # Generate recommendation
         recommendation, rationale = self._generate_recommendation(
@@ -146,6 +164,20 @@ class CorrectedInvestmentScorer:
         airports_count = len([f for f in major_features if isinstance(f, dict) and 'airport' in f.get('type', '').lower()])
         railway_access = any(isinstance(f, dict) and 'railway' in f.get('type', '').lower() for f in major_features)
         
+        # ✅ FIX: Build detailed infrastructure breakdown for PDF display
+        infrastructure_details = {
+            'score': infrastructure_data.get('infrastructure_score', 0),
+            'reasoning': infrastructure_data.get('reasoning', []),
+            'major_features': major_features,
+            'roads': len([f for f in major_features if isinstance(f, dict) and 'road' in f.get('type', '').lower()]),
+            'airports': airports_count,
+            'railways': 1 if railway_access else 0,
+            'ports': len([f for f in major_features if isinstance(f, dict) and 'port' in f.get('type', '').lower()]),
+            'construction_projects': len(infrastructure_data.get('construction_projects', [])),
+            'data_source': infrastructure_data.get('data_source', 'unknown'),
+            'data_confidence': infrastructure_data.get('data_confidence', 0.5)
+        }
+        
         return CorrectedScoringResult(
             region_name=region_name,
             satellite_changes=satellite_changes,
@@ -156,6 +188,7 @@ class CorrectedInvestmentScorer:
             roads_count=len(major_features),
             airports_nearby=airports_count,
             railway_access=railway_access,
+            infrastructure_details=infrastructure_details,  # ✅ FIX: Include detailed breakdown
             price_trend_30d=market_data['price_trend_30d'],
             market_heat=market_data['market_heat'],
             market_score=self._calculate_market_score(market_data),
@@ -348,37 +381,50 @@ class CorrectedInvestmentScorer:
         """
         Calculate confidence level (0.2-0.95) based on data availability and quality.
         
+        Uses component-level quality bonuses to prevent post-aggregation inflation.
         High-quality data sources increase confidence, low-quality reduces it.
+        
+        Version 2.4.1 Refinement: Component-level bonuses applied before weighted average.
         """
-        available_sources = sum(data_availability.values())
-        
-        # Base confidence by source count
-        if available_sources == 3:
-            base_confidence = 0.75  # All data available
-        elif available_sources == 2:
-            base_confidence = 0.60  # 2/3 sources
-        else:
-            base_confidence = 0.40  # Satellite only
-        
         # Get data quality metrics
         market_confidence = market_data.get('data_confidence', 0.0)
         infra_confidence = infrastructure_data.get('data_confidence', 0.0)
+        satellite_confidence = 1.0  # Satellite data always available and reliable
         
-        # ✅ FIX: Reward high-quality data with bonuses
-        if data_availability['market_data']:
-            if market_confidence >= 0.8:
-                base_confidence *= 1.05  # 5% bonus for excellent market data
-            elif market_confidence < 0.7:
-                base_confidence *= 0.95  # 5% penalty for low-quality data
+        # Component-level quality bonuses (applied BEFORE aggregation to prevent inflation)
+        if data_availability['market_data'] and market_confidence >= 0.85:
+            market_confidence = min(0.95, market_confidence + 0.05)  # +5% for excellent data
         
-        if data_availability['infrastructure_data']:
-            if infra_confidence >= 0.8:
-                base_confidence *= 1.05  # 5% bonus for excellent infrastructure data
-            elif infra_confidence < 0.7:
-                base_confidence *= 0.95  # 5% penalty for low-quality data
+        if data_availability['infrastructure_data'] and infra_confidence >= 0.85:
+            infra_confidence = min(0.95, infra_confidence + 0.05)  # +5% for excellent data
+        
+        # Weighted average by availability (satellite always counts)
+        available_sources = sum(data_availability.values())
+        
+        if available_sources == 3:
+            # All data available: weighted average (satellite:40%, infra:30%, market:30%)
+            overall_confidence = (
+                0.40 * satellite_confidence +
+                0.30 * infra_confidence +
+                0.30 * market_confidence
+            )
+        elif available_sources == 2:
+            if data_availability['infrastructure_data']:
+                # Satellite + Infrastructure
+                overall_confidence = 0.60 * satellite_confidence + 0.40 * infra_confidence
+            else:
+                # Satellite + Market
+                overall_confidence = 0.60 * satellite_confidence + 0.40 * market_confidence
+        else:
+            # Satellite only
+            overall_confidence = satellite_confidence * 0.50  # 50% penalty for single source
+        
+        # Apply strengthened penalties for very poor data quality
+        if overall_confidence < 0.60:
+            overall_confidence *= 0.90  # -10% penalty for <60% confidence
         
         # Ensure within bounds (0.20 to 0.95)
-        return max(0.20, min(0.95, base_confidence))
+        return max(0.20, min(0.95, overall_confidence))
     
     def _generate_recommendation(self,
                                 final_score: float,
