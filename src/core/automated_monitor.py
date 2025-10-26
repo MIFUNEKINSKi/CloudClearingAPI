@@ -11,8 +11,9 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 import json
 from pathlib import Path
+from dataclasses import asdict, is_dataclass
 
-import ee
+import ee  # type: ignore[import]
 
 from .change_detector import ChangeDetector
 from .config import get_config
@@ -70,21 +71,29 @@ class AutomatedMonitor:
         # ✅ CORRECTED SCORER: Satellite-centric with infrastructure/market multipliers
         from .price_intelligence import PriceIntelligenceEngine
         from .infrastructure_analyzer import InfrastructureAnalyzer
+        
+        # v2.6-beta: Pass financial_engine for RVI-aware market multiplier
         self.corrected_scorer = CorrectedInvestmentScorer(
             PriceIntelligenceEngine(),
-            InfrastructureAnalyzer()
+            InfrastructureAnalyzer(),
+            financial_engine=None  # Will be set below if available
         )
         self.image_saver = SatelliteImageSaver()  # 📸 Image saving for PDF integration
         
-        # Initialize financial metrics engine
+        # Initialize financial metrics engine (v2.7 CCAPI-27.0: with budget config)
         self.financial_engine = None
         if FINANCIAL_ENGINE_AVAILABLE:
             try:
                 self.financial_engine = FinancialMetricsEngine(
                     enable_web_scraping=True,
-                    cache_expiry_hours=24
+                    cache_expiry_hours=24,
+                    config=self.config  # ✅ v2.7 CCAPI-27.0: Pass config for budget-driven sizing
                 )
+                # v2.6-beta: Pass financial engine to scorer for RVI-aware multiplier
+                self.corrected_scorer.financial_engine = self.financial_engine
                 logger.info("✅ Financial Metrics Engine initialized with web scraping enabled")
+                logger.info("✅ RVI-aware market multiplier enabled in corrected scorer")
+                logger.info(f"✅ Budget-driven sizing: Target ~${self.financial_engine.target_budget_idr/15000:,.0f} USD")
             except Exception as e:
                 logger.warning(f"⚠️ Failed to initialize Financial Metrics Engine: {e}")
         else:
@@ -1038,26 +1047,60 @@ class AutomatedMonitor:
                                 financial_projection = None
                         # -------------------------------------------
                         
+                        # NEW (v2.6-alpha): Calculate RVI if financial projection available
+                        rvi_data = None
+                        if financial_projection and self.financial_engine:
+                            try:
+                                satellite_data_for_rvi = {
+                                    'vegetation_loss_pixels': corrected_result.satellite_changes // 2,
+                                    'construction_activity_pct': corrected_result.development_score / 200.0
+                                }
+                                
+                                rvi_result = self.financial_engine.calculate_relative_value_index(
+                                    region_name=region_name,
+                                    actual_price_m2=financial_projection.current_land_value_per_m2,
+                                    infrastructure_score=corrected_result.infrastructure_score,
+                                    satellite_data=satellite_data_for_rvi
+                                )
+                                
+                                if rvi_result.get('rvi') is not None:
+                                    rvi_data = {
+                                        'rvi': rvi_result['rvi'],
+                                        'expected_price_m2': rvi_result['expected_price_m2'],
+                                        'interpretation': rvi_result['interpretation'],
+                                        'breakdown': rvi_result['breakdown']
+                                    }
+                                    logger.info(f"   📊 RVI: {rvi_data['rvi']:.3f} ({rvi_data['interpretation']})")
+                                    
+                            except Exception as e:
+                                logger.warning(f"   ⚠️ RVI calculation failed for {region_name}: {e}")
+                        # -------------------------------------------
+                        
                         # Convert to format compatible with reporting system
                         dynamic_score = {
                             'region_name': region_name,
                             'satellite_changes': corrected_result.satellite_changes,
                             'change_percentage': region_data.get('change_percentage', 0),
                             'development_score': corrected_result.development_score,  # NEW: Base score from satellite
-                            'current_price_per_m2': 0,  # Not directly available in corrected result
+                            'current_price_per_m2': financial_projection.current_land_value_per_m2 if financial_projection else 0,
                             'price_trend_30d': corrected_result.price_trend_30d,
                             'market_heat': corrected_result.market_heat,
                             'infrastructure_score': corrected_result.infrastructure_score,
                             'infrastructure_multiplier': corrected_result.infrastructure_multiplier,  # NEW
+                            'infrastructure_details': corrected_result.infrastructure_details,  # ✅ FIX: Include detailed breakdown
                             'market_multiplier': corrected_result.market_multiplier,  # NEW
                             'speculative_score': corrected_result.development_score,  # Map to development score
                             'final_investment_score': corrected_result.final_investment_score,
                             'overall_confidence': corrected_result.confidence_level,
                             'recommendation': corrected_result.recommendation,  # NEW
                             'rationale': corrected_result.rationale,  # NEW
-                            'data_sources': corrected_result.data_sources,
+                            'data_sources': {
+                                **corrected_result.data_sources,  # Original string values (e.g., 'osm_live', 'live')
+                                'availability': corrected_result.data_availability  # Add boolean availability for PDF generator
+                            },
                             'analysis_type': 'corrected_satellite_centric',  # Mark as corrected!
-                            'financial_projection': financial_projection  # NEW: Financial metrics
+                            'financial_projection': financial_projection,  # NEW: Financial metrics
+                            'rvi_data': rvi_data  # NEW (v2.6-alpha): Relative Value Index
                         }
                         
                         dynamic_scored_regions.append(dynamic_score)
@@ -1266,8 +1309,15 @@ class AutomatedMonitor:
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = output_dir / f"weekly_monitoring_{timestamp}.json"
         
+        # Custom JSON serializer for dataclasses
+        def dataclass_serializer(obj):
+            """Convert dataclasses to dicts for JSON serialization"""
+            if is_dataclass(obj) and not isinstance(obj, type):
+                return asdict(obj)
+            return str(obj)
+        
         with open(filename, 'w') as f:
-            json.dump(results, f, indent=2, default=str)
+            json.dump(results, f, indent=2, default=dataclass_serializer)
         
         logger.info(f"📁 Monitoring results saved to: {filename}")
         
@@ -1389,7 +1439,8 @@ class AutomatedMonitor:
                 'infrastructure_details': region_score.get('infrastructure_details', {}),  # NEW: Detailed breakdown
                 'satellite_changes': region_score.get('satellite_changes', 0),
                 'data_sources': region_score.get('data_sources', {}),
-                'analysis_type': region_score.get('analysis_type', 'dynamic')
+                'analysis_type': region_score.get('analysis_type', 'dynamic'),
+                'financial_projection': region_score.get('financial_projection')  # ✅ FIX: Include financial projection
             }
             
             # ✅ CORRECTED THRESHOLDS (based on proper 0-60 score range)

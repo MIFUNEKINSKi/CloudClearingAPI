@@ -50,6 +50,12 @@ class CorrectedScoringResult:
     # Data tracking
     data_sources: Dict[str, str]
     data_availability: Dict[str, bool]
+    
+    # Part 4: Relative Value Index (v2.6-alpha) - Non-invasive data gathering
+    rvi: Optional[float] = None  # Relative value index (actual/expected price)
+    expected_price_m2: Optional[float] = None  # Expected price based on fundamentals (IDR)
+    rvi_interpretation: Optional[str] = None  # RVI interpretation string
+    rvi_breakdown: Optional[Dict[str, Any]] = None  # Detailed RVI calculation breakdown
 
 
 class CorrectedInvestmentScorer:
@@ -59,12 +65,27 @@ class CorrectedInvestmentScorer:
     This corrects the fundamental flaw where satellite data was ignored.
     Now satellite change detection is the PRIMARY base score (0-40 points),
     with infrastructure and market as multipliers.
+    
+    Version 2.6-beta adds RVI-aware market multiplier for valuation-based scoring.
     """
     
-    def __init__(self, price_engine, infrastructure_engine):
+    def __init__(self, price_engine, infrastructure_engine, financial_engine=None):
+        """
+        Initialize corrected scorer with optional financial engine.
+        
+        Args:
+            price_engine: Price intelligence engine for market data
+            infrastructure_engine: Infrastructure analyzer for OSM data
+            financial_engine: Optional financial metrics engine for RVI calculations (v2.6-beta)
+        """
         self.price_engine = price_engine
         self.infrastructure_engine = infrastructure_engine
-        logger.info("✅ Initialized CORRECTED scoring system (satellite-centric)")
+        self.financial_engine = financial_engine  # v2.6-beta: RVI support
+        
+        if self.financial_engine:
+            logger.info("✅ Initialized CORRECTED scoring system (satellite-centric) with RVI support")
+        else:
+            logger.info("✅ Initialized CORRECTED scoring system (satellite-centric) - trend-based multiplier")
     
     def calculate_investment_score(self, 
                                    region_name: str,
@@ -72,7 +93,8 @@ class CorrectedInvestmentScorer:
                                    area_affected_m2: float,
                                    region_config: Dict[str, Any],
                                    coordinates: Dict[str, float],
-                                   bbox: Dict[str, float]) -> CorrectedScoringResult:
+                                   bbox: Dict[str, float],
+                                   actual_price_m2: Optional[float] = None) -> CorrectedScoringResult:
         """
         Calculate investment score using the CORRECT three-part system.
         
@@ -83,6 +105,7 @@ class CorrectedInvestmentScorer:
             region_config: Region configuration
             coordinates: Center coordinates
             bbox: Bounding box
+            actual_price_m2: Optional actual land price for RVI calculation (v2.6-alpha)
             
         Returns:
             Complete scoring result with proper satellite integration
@@ -107,9 +130,20 @@ class CorrectedInvestmentScorer:
         )
         logger.info(f"   🏗️ Infrastructure Multiplier: {infra_multiplier:.2f}x (score: {infrastructure_data['infrastructure_score']}/100)")
         
-        # PART 3: MARKET ANALYSIS & MULTIPLIER
+        # Prepare satellite data dict for RVI calculation
+        satellite_data_dict = {
+            'vegetation_loss_pixels': satellite_changes,
+            'area_affected_m2': area_affected_m2,
+            'development_score': development_score
+        }
+        
+        # PART 3: MARKET ANALYSIS & MULTIPLIER (v2.6-beta: RVI-aware)
         market_data, market_multiplier = self._get_market_multiplier(
-            region_name, coordinates, data_availability
+            region_name, 
+            coordinates, 
+            data_availability,
+            satellite_data=satellite_data_dict,
+            infrastructure_data=infrastructure_data
         )
         logger.info(f"   💰 Market Multiplier: {market_multiplier:.2f}x (trend: {market_data['price_trend_30d']:.1f}%)")
         
@@ -178,6 +212,40 @@ class CorrectedInvestmentScorer:
             'data_confidence': infrastructure_data.get('data_confidence', 0.5)
         }
         
+        # NEW (v2.6-alpha): Calculate RVI if actual price is available
+        rvi = None
+        expected_price_m2 = None
+        rvi_interpretation = None
+        rvi_breakdown = None
+        
+        if actual_price_m2 is not None and self.price_engine:
+            try:
+                # Prepare satellite data for RVI calculation
+                satellite_data_for_rvi = {
+                    'vegetation_loss_pixels': satellite_changes // 2,  # Estimate
+                    'construction_activity_pct': development_score / 200.0  # Normalize to 0-0.20 range
+                }
+                
+                # Calculate RVI using financial metrics engine
+                rvi_result = self.price_engine.calculate_relative_value_index(
+                    region_name=region_name,
+                    actual_price_m2=actual_price_m2,
+                    infrastructure_score=infrastructure_data['infrastructure_score'],
+                    satellite_data=satellite_data_for_rvi
+                )
+                
+                rvi = rvi_result.get('rvi')
+                expected_price_m2 = rvi_result.get('expected_price_m2')
+                rvi_interpretation = rvi_result.get('interpretation')
+                rvi_breakdown = rvi_result.get('breakdown')
+                
+                if rvi is not None:
+                    logger.info(f"   📊 RVI: {rvi:.3f} ({rvi_interpretation})")
+                    logger.info(f"      Expected: Rp {expected_price_m2:,.0f}/m² vs Actual: Rp {actual_price_m2:,.0f}/m²")
+                
+            except Exception as e:
+                logger.warning(f"   ⚠️ RVI calculation failed: {e}")
+        
         return CorrectedScoringResult(
             region_name=region_name,
             satellite_changes=satellite_changes,
@@ -198,7 +266,11 @@ class CorrectedInvestmentScorer:
             recommendation=recommendation,
             rationale=rationale,
             data_sources=data_sources,
-            data_availability=data_availability
+            data_availability=data_availability,
+            rvi=rvi,  # NEW (v2.6-alpha)
+            expected_price_m2=expected_price_m2,  # NEW (v2.6-alpha)
+            rvi_interpretation=rvi_interpretation,  # NEW (v2.6-alpha)
+            rvi_breakdown=rvi_breakdown  # NEW (v2.6-alpha)
         )
     
     def _calculate_development_score(self, satellite_changes: int) -> float:
@@ -294,38 +366,114 @@ class CorrectedInvestmentScorer:
     def _get_market_multiplier(self,
                                region_name: str,
                                coordinates: Dict[str, float],
-                               data_availability: Dict[str, bool]) -> tuple:
+                               data_availability: Dict[str, bool],
+                               satellite_data: Optional[Dict[str, Any]] = None,
+                               infrastructure_data: Optional[Dict[str, Any]] = None) -> tuple:
         """
-        🆕 IMPROVED: Get market data and convert to TIERED multiplier (0.85-1.4x).
+        🆕 v2.6-beta: Get market data and convert to RVI-AWARE multiplier (0.85-1.4x).
         
-        Tiered system rewards exceptional markets and penalizes stagnant ones:
+        RVI-Based System (when financial_engine available):
+        - RVI < 0.7: 1.40x (significantly undervalued - strong buy)
+        - RVI 0.7-0.9: 1.25x (undervalued - buy opportunity)
+        - RVI 0.9-1.1: 1.0x (fair value - neutral)
+        - RVI 1.1-1.3: 0.90x (overvalued - caution)
+        - RVI >= 1.3: 0.85x (significantly overvalued - speculation risk)
+        
+        With momentum adjustment: final = base * (1 + trend * 0.1)
+        
+        Fallback to Trend-Based System (when RVI unavailable):
         - Booming (>15%/yr): 1.40x   - Exceptional growth
         - Strong (8-15%/yr): 1.20x   - Very strong market
         - Stable (2-8%/yr): 1.00x    - Healthy growth
         - Stagnant (0-2%/yr): 0.95x  - Slow growth
         - Declining (<0%/yr): 0.85x  - Market decline
         
+        Args:
+            region_name: Region name
+            coordinates: Center coordinates
+            data_availability: Data tracking dict
+            satellite_data: Optional satellite data for RVI calculation
+            infrastructure_data: Optional infrastructure data for RVI calculation
+        
         Returns:
             (market_data dict, multiplier float)
         """
         try:
-            # Call the actual method: _get_pricing_data() returns PropertyPricing dataclass
-            pricing_data = self.price_engine._get_pricing_data(region_name)
+            # Call the orchestrator's public method: get_land_price() returns dict with price data
+            pricing_response = self.price_engine.get_land_price(region_name)
             data_availability['market_data'] = True
             
-            # Convert PropertyPricing to dict format and use price_trend_3m as percentage
-            # price_trend_3m is already a decimal (0.05 = 5%), convert to percentage
-            price_trend_pct = pricing_data.price_trend_3m * 100  # Convert to percentage
+            # Extract price data from orchestrator response
+            # Orchestrator returns dict with 'average_price_per_m2', 'data_source', etc.
+            avg_price = pricing_response.get('average_price_per_m2', pricing_response.get('current_avg', 0))
+            price_trend_pct = pricing_response.get('price_trend_30d', 0.0)  # Already in percentage
             
             market_data = {
                 'price_trend_30d': price_trend_pct,
-                'market_heat': pricing_data.market_heat,
-                'current_price_per_m2': pricing_data.avg_price_per_m2,
-                'data_source': 'live',
-                'data_confidence': pricing_data.data_confidence
+                'market_heat': pricing_response.get('market_heat', 'neutral'),
+                'current_price_per_m2': avg_price,
+                'data_source': pricing_response.get('data_source', 'unknown'),
+                'data_confidence': pricing_response.get('data_confidence', 0.5)
             }
             
-            # 🆕 TIERED: Convert market trend to tiered multiplier
+            # v2.6-beta: Try RVI-aware multiplier if financial engine available
+            if self.financial_engine and satellite_data and infrastructure_data:
+                try:
+                    rvi_data = self.financial_engine.calculate_relative_value_index(
+                        region_name=region_name,
+                        actual_price_m2=avg_price,
+                        infrastructure_score=infrastructure_data.get('infrastructure_score', 50),
+                        satellite_data=satellite_data  # Required parameter for momentum calculation
+                    )
+                    
+                    rvi = rvi_data.get('rvi')
+                    rvi_interpretation = rvi_data.get('interpretation', 'unknown')
+                    
+                    if rvi is not None and rvi > 0:
+                        # RVI-based multiplier thresholds
+                        if rvi < 0.7:
+                            base_multiplier = 1.40  # Significantly undervalued
+                            tier = "Significantly Undervalued"
+                        elif rvi < 0.9:
+                            base_multiplier = 1.25  # Undervalued
+                            tier = "Undervalued"
+                        elif rvi < 1.1:
+                            base_multiplier = 1.0   # Fair value
+                            tier = "Fair Value"
+                        elif rvi < 1.3:
+                            base_multiplier = 0.90  # Overvalued
+                            tier = "Overvalued"
+                        else:
+                            base_multiplier = 0.85  # Significantly overvalued
+                            tier = "Significantly Overvalued"
+                        
+                        # Apply momentum adjustment (±10% based on market trend)
+                        momentum_factor = 1.0 + (price_trend_pct / 100.0) * 0.1
+                        multiplier = base_multiplier * momentum_factor
+                        
+                        # Clamp to preserve bounds
+                        multiplier = max(0.85, min(1.40, multiplier))
+                        
+                        logger.info(f"   💰 RVI-Aware Market Multiplier:")
+                        logger.info(f"      RVI: {rvi:.3f} ({tier})")
+                        logger.info(f"      Base multiplier: {base_multiplier:.2f}x")
+                        logger.info(f"      Price trend: {price_trend_pct:.1f}%")
+                        logger.info(f"      Momentum factor: {momentum_factor:.3f}x")
+                        logger.info(f"      Final multiplier: {multiplier:.2f}x")
+                        
+                        # Add RVI data to market_data dict for logging
+                        market_data['rvi'] = rvi
+                        market_data['rvi_interpretation'] = rvi_interpretation
+                        market_data['multiplier_basis'] = 'rvi_aware'
+                        
+                        return market_data, multiplier
+                    else:
+                        logger.debug(f"   RVI calculation returned invalid value ({rvi}), using trend fallback")
+                        
+                except Exception as e:
+                    logger.warning(f"   ⚠️ RVI calculation failed: {e}, using trend-based fallback")
+            
+            # Fallback: Trend-based multiplier (v2.6-alpha and earlier)
             if price_trend_pct >= 15:
                 multiplier = 1.40  # Booming - exceptional growth
                 tier = "Booming"
@@ -343,6 +491,7 @@ class CorrectedInvestmentScorer:
                 tier = "Declining"
             
             logger.debug(f"   Market: {price_trend_pct:.1f}% trend ({tier}) → {multiplier:.2f}x multiplier")
+            market_data['multiplier_basis'] = 'trend_based'
             
         except Exception as e:
             logger.warning(f"⚠️ Market data unavailable for {region_name}: {e}")

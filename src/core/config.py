@@ -75,6 +75,22 @@ class MonitoringConfig:
     exclude_seasonal_vegetation: bool = False
 
 @dataclass
+class FinancialProjectionConfig:
+    """Financial projection configuration (v2.7 CCAPI-27.0: Budget-Driven Investment Sizing)"""
+    # Investment budget constraints (Indonesian Rupiah)
+    target_investment_budget_idr: float = 1500000000  # ~$100K USD
+    max_investment_budget_idr: float = 2250000000     # ~$150K USD
+    min_investment_budget_idr: float = 750000000      # ~$50K USD
+    
+    # Plot size constraints (override budget if plot too small/large)
+    min_plot_size_m2: float = 500        # Minimum viable plot (500 m²)
+    max_plot_size_m2: float = 50000      # Maximum plot (5 hectares)
+    
+    # Investment horizon
+    default_horizon_years: int = 3       # Default projection period
+    max_horizon_years: int = 5           # Maximum projection period
+
+@dataclass
 class AppConfig:
     """Main application configuration"""
     # Sub-configurations
@@ -82,6 +98,7 @@ class AppConfig:
     processing: ProcessingConfig = field(default_factory=ProcessingConfig)
     alerts: AlertConfig = field(default_factory=AlertConfig)
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
+    financial_projections: FinancialProjectionConfig = field(default_factory=FinancialProjectionConfig)
     
     # Application settings
     debug: bool = False
@@ -92,6 +109,12 @@ class AppConfig:
     # Google Earth Engine
     gee_project: Optional[str] = None
     gee_service_account: Optional[str] = None
+    
+    # Web scraping settings (stored as raw dict)
+    web_scraping: Optional[Dict[str, Any]] = None
+    
+    # Logging settings (stored as raw dict)
+    logging: Optional[Dict[str, Any]] = None
 
 class ConfigManager:
     """Manages application configuration loading and validation"""
@@ -186,15 +209,17 @@ class ConfigManager:
         processing_dict = config_dict.get('processing', {})
         alerts_dict = config_dict.get('alerts', {})
         database_dict = config_dict.get('database', {})
+        financial_dict = config_dict.get('financial_projections', {})
         
         # Create configuration objects
         monitoring = MonitoringConfig(**monitoring_dict)
         processing = ProcessingConfig(**processing_dict)
         alerts = AlertConfig(**alerts_dict)
         database = DatabaseConfig(**database_dict)
+        financial_projections = FinancialProjectionConfig(**financial_dict)
         
         # Main configuration (filter out sections handled separately)
-        excluded_sections = ['monitoring', 'processing', 'alerts', 'database', 'logging', 'monitoring_regions']
+        excluded_sections = ['monitoring', 'processing', 'alerts', 'database', 'financial_projections', 'monitoring_regions']
         main_dict = {k: v for k, v in config_dict.items() 
                     if k not in excluded_sections}
         
@@ -203,6 +228,7 @@ class ConfigManager:
             processing=processing,
             alerts=alerts,
             database=database,
+            financial_projections=financial_projections,
             **main_dict
         )
     

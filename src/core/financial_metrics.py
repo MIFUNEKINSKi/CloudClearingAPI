@@ -57,24 +57,62 @@ class FinancialProjection:
     speculation_risk: str  # Low/Medium/High
     infrastructure_risk: str  # Low/Medium/High
     
+    # Regional Context (NEW - v2.6-alpha)
+    regional_tier: Optional[str] = None  # tier_1_metros, tier_2_secondary, tier_3_emerging, tier_4_frontier
+    tier_benchmark_price: Optional[float] = None  # Expected price for tier
+    peer_regions: Optional[List[str]] = None  # Other regions in same tier
+    
     # Confidence
-    projection_confidence: float  # 0-1
-    data_sources: List[str]
+    projection_confidence: float = 0.0  # 0-1
+    data_sources: Optional[List[str]] = None
+    
+    def __post_init__(self):
+        """Ensure data_sources is initialized"""
+        if self.data_sources is None:
+            self.data_sources = []
 
 
 class FinancialMetricsEngine:
     """
     Calculates financial projections and ROI estimates for land investment opportunities
+    
+    v2.7 CCAPI-27.0: Budget-Driven Investment Sizing
+    - Calculates plot size from target budget (not tier-based hard-coded sizes)
+    - Ensures investment recommendations align with small investor budgets ($50K-$150K USD)
     """
     
-    def __init__(self, enable_web_scraping: bool = True, cache_expiry_hours: int = 24):
+    def __init__(self, 
+                 enable_web_scraping: bool = True, 
+                 cache_expiry_hours: int = 24,
+                 config: Optional[Any] = None):
         """
         Initialize with regional benchmarks and cost factors
         
         Args:
             enable_web_scraping: If True, attempt live scraping of land prices
             cache_expiry_hours: Hours before cached scrape data expires
+            config: Optional AppConfig instance for budget-driven sizing (v2.7)
         """
+        # Store config for budget-driven sizing (v2.7 CCAPI-27.0)
+        self.config = config
+        
+        # Budget constraints (v2.7 CCAPI-27.0)
+        if config and hasattr(config, 'financial_projections'):
+            self.target_budget_idr = config.financial_projections.target_investment_budget_idr
+            self.min_budget_idr = config.financial_projections.min_investment_budget_idr
+            self.max_budget_idr = config.financial_projections.max_investment_budget_idr
+            self.min_plot_size_m2 = config.financial_projections.min_plot_size_m2
+            self.max_plot_size_m2 = config.financial_projections.max_plot_size_m2
+            logger.info(f"✅ Budget-driven sizing enabled: Target Rp {self.target_budget_idr:,.0f} ({self.target_budget_idr/15000000:.0f}K USD)")
+        else:
+            # Fallback to defaults if config not provided
+            self.target_budget_idr = 1500000000  # Rp 1.5B (~$100K USD)
+            self.min_budget_idr = 750000000      # Rp 750M (~$50K USD)
+            self.max_budget_idr = 2250000000     # Rp 2.25B (~$150K USD)
+            self.min_plot_size_m2 = 500          # 500 m²
+            self.max_plot_size_m2 = 50000        # 5 hectares
+            logger.warning("⚠️ Config not provided, using default budget constraints")
+        
         # Initialize scraper orchestrator if available
         self.price_orchestrator = None
         if SCRAPERS_AVAILABLE and enable_web_scraping:
@@ -134,12 +172,9 @@ class FinancialMetricsEngine:
             'permits': 100_000  # Licensing and permits
         }
         
-        # Recommended investment sizes by development stage
-        self.recommended_plot_sizes = {
-            'early_stage': 5000,  # m² - land acquisition play
-            'mid_stage': 2000,  # m² - development ready
-            'late_stage': 1000  # m² - immediate development
-        }
+        # v2.7 CCAPI-27.0: Removed hard-coded recommended_plot_sizes
+        # Plot sizes now calculated dynamically from budget constraints
+        # See _recommend_plot_size() method for budget-driven logic
     
     def calculate_financial_projection(self,
                                       region_name: str,
@@ -161,6 +196,9 @@ class FinancialMetricsEngine:
             FinancialProjection with ROI estimates and costs
         """
         logger.info(f"Calculating financial projection for {region_name}")
+        
+        # Step 0: Get tier information (v2.6-alpha)
+        tier_info = self._get_tier_info(region_name)
         
         # Step 1: Estimate current land value
         current_value = self._estimate_current_land_value(
@@ -193,8 +231,13 @@ class FinancialMetricsEngine:
             current_value, dev_costs['total_per_m2'], future_value_5yr
         )
         
-        # Step 6: Determine recommended investment size
-        plot_size = self._recommend_plot_size(satellite_data, scoring_result)
+        # Step 6: Determine recommended investment size (v2.7 CCAPI-27.0: Budget-Driven)
+        plot_size = self._recommend_plot_size(
+            current_land_value_per_m2=current_value,
+            dev_costs_per_m2=dev_costs['total_per_m2'],
+            satellite_data=satellite_data,
+            scoring_result=scoring_result
+        )
         
         # Step 7: Calculate total costs and returns
         total_acquisition = current_value * plot_size
@@ -234,6 +277,9 @@ class FinancialMetricsEngine:
             liquidity_risk=liquidity_risk,
             speculation_risk=speculation_risk,
             infrastructure_risk=infrastructure_risk,
+            regional_tier=tier_info['tier'],
+            tier_benchmark_price=tier_info['tier_benchmark_price'],
+            peer_regions=tier_info['peer_regions'],
             projection_confidence=confidence,
             data_sources=self._get_data_sources(market_data, infrastructure_data)
         )
@@ -474,23 +520,61 @@ class FinancialMetricsEngine:
         return max(0, years)
     
     def _recommend_plot_size(self,
+                            current_land_value_per_m2: float,
+                            dev_costs_per_m2: float,
                             satellite_data: Dict[str, Any],
                             scoring_result: Any) -> float:
         """
-        Recommend investment plot size based on development stage
-        """
-        # Determine development stage from satellite activity
-        construction_pct = satellite_data.get('construction_activity_pct', 0)
+        Recommend investment plot size based on TARGET BUDGET (v2.7 CCAPI-27.0)
         
-        if construction_pct > 30:
-            # Late stage - smaller plots for immediate development
-            return self.recommended_plot_sizes['late_stage']
-        elif construction_pct > 10:
-            # Mid stage - medium plots
-            return self.recommended_plot_sizes['mid_stage']
+        OLD BEHAVIOR (v2.6): Hard-coded tier-based sizes (5000/2000/1000 m²)
+        NEW BEHAVIOR (v2.7): Calculate from budget = total_cost_per_m2 × plot_size
+        
+        Formula:
+            total_cost_per_m2 = land_value_per_m2 + dev_costs_per_m2
+            recommended_plot_size_m2 = TARGET_BUDGET_IDR / total_cost_per_m2
+        
+        Args:
+            current_land_value_per_m2: Current land price per m²
+            dev_costs_per_m2: Estimated development cost per m²
+            satellite_data: Satellite data (for logging/context)
+            scoring_result: Scoring result (for logging/context)
+            
+        Returns:
+            Recommended plot size in m² that fits within target budget
+        """
+        # Calculate total cost per m² (land + development)
+        total_cost_per_m2 = current_land_value_per_m2 + dev_costs_per_m2
+        
+        # Safety check: prevent division by zero
+        if total_cost_per_m2 <= 0:
+            logger.warning(f"⚠️ Invalid total cost per m² ({total_cost_per_m2:,.0f}), using minimum plot size")
+            return self.min_plot_size_m2
+        
+        # Calculate plot size from budget
+        budget_driven_plot_size = self.target_budget_idr / total_cost_per_m2
+        
+        # Apply min/max constraints
+        constrained_plot_size = max(
+            self.min_plot_size_m2,
+            min(budget_driven_plot_size, self.max_plot_size_m2)
+        )
+        
+        # Log the calculation for transparency
+        logger.info(f"   💰 Budget-Driven Plot Sizing:")
+        logger.info(f"      Target Budget: Rp {self.target_budget_idr:,.0f} (~${self.target_budget_idr/15000000:,.0f}K USD)")
+        logger.info(f"      Land Price: Rp {current_land_value_per_m2:,.0f}/m²")
+        logger.info(f"      Dev Costs: Rp {dev_costs_per_m2:,.0f}/m²")
+        logger.info(f"      Total Cost: Rp {total_cost_per_m2:,.0f}/m²")
+        logger.info(f"      Calculated Plot Size: {budget_driven_plot_size:,.0f} m²")
+        
+        if constrained_plot_size != budget_driven_plot_size:
+            constraint = "minimum" if constrained_plot_size == self.min_plot_size_m2 else "maximum"
+            logger.info(f"      ⚠️ Applied {constraint} constraint: {constrained_plot_size:,.0f} m²")
         else:
-            # Early stage - larger land acquisition play
-            return self.recommended_plot_sizes['early_stage']
+            logger.info(f"      ✅ Recommended Plot Size: {constrained_plot_size:,.0f} m² (within constraints)")
+        
+        return constrained_plot_size
     
     def _assess_liquidity_risk(self,
                                region_name: str,
@@ -548,28 +632,256 @@ class FinancialMetricsEngine:
         return overall
     
     def _find_nearest_benchmark(self, region_name: str) -> Dict[str, Any]:
-        """Find nearest regional benchmark for a region"""
-        region_lower = region_name.lower()
+        """
+        Find benchmark data for a region using tier-based classification
         
-        # Direct matches
-        for benchmark_name, data in self.regional_benchmarks.items():
-            if benchmark_name in region_lower:
-                return data
-        
-        # Province-level matches
-        if 'jakarta' in region_lower or 'tangerang' in region_lower or 'bekasi' in region_lower:
-            return self.regional_benchmarks['jakarta']
-        elif 'yogya' in region_lower or 'sleman' in region_lower or 'bantul' in region_lower:
+        v2.6-alpha: Uses 4-tier regional hierarchy instead of 6 static benchmarks.
+        Falls back to old system if market_config unavailable.
+        """
+        try:
+            # Try tier-based lookup first (v2.6-alpha)
+            from src.core.market_config import get_region_tier_info
+            
+            tier_info = get_region_tier_info(region_name)
+            benchmarks = tier_info['benchmarks']
+            
+            # Convert tier benchmark format to financial metrics format
+            return {
+                'current_avg': benchmarks['avg_price_m2'],
+                'historical_appreciation': benchmarks['expected_growth'],
+                'market_liquidity': benchmarks['liquidity'],
+                'tier': tier_info['tier'],
+                'peer_regions': tier_info['peer_regions']
+            }
+            
+        except (ImportError, KeyError) as e:
+            # Fallback to old 6-benchmark system if tier classification unavailable
+            logger.warning(f"Tier-based benchmark unavailable ({e}), using legacy system")
+            region_lower = region_name.lower()
+            
+            # Direct matches
+            for benchmark_name, data in self.regional_benchmarks.items():
+                if benchmark_name in region_lower:
+                    return data
+            
+            # Province-level matches
+            if 'jakarta' in region_lower or 'tangerang' in region_lower or 'bekasi' in region_lower:
+                return self.regional_benchmarks['jakarta']
+            elif 'yogya' in region_lower or 'sleman' in region_lower or 'bantul' in region_lower:
+                return self.regional_benchmarks['yogyakarta']
+            elif 'surabaya' in region_lower or 'sidoarjo' in region_lower:
+                return self.regional_benchmarks['surabaya']
+            elif 'bandung' in region_lower:
+                return self.regional_benchmarks['bandung']
+            elif 'semarang' in region_lower or 'solo' in region_lower:
+                return self.regional_benchmarks['semarang']
+            
+            # Default to Yogyakarta (mid-tier market)
             return self.regional_benchmarks['yogyakarta']
-        elif 'surabaya' in region_lower or 'sidoarjo' in region_lower:
-            return self.regional_benchmarks['surabaya']
-        elif 'bandung' in region_lower:
-            return self.regional_benchmarks['bandung']
-        elif 'semarang' in region_lower or 'solo' in region_lower:
-            return self.regional_benchmarks['semarang']
+    
+    def _get_tier_info(self, region_name: str) -> Dict[str, Any]:
+        """
+        Get tier classification information for a region
         
-        # Default to Yogyakarta (mid-tier market)
-        return self.regional_benchmarks['yogyakarta']
+        Returns dict with: tier, tier_benchmark_price, peer_regions
+        Returns None values if tier classification unavailable
+        """
+        try:
+            from src.core.market_config import get_region_tier_info
+            
+            tier_info = get_region_tier_info(region_name)
+            
+            return {
+                'tier': tier_info['tier'],
+                'tier_benchmark_price': tier_info['benchmarks']['avg_price_m2'],
+                'peer_regions': tier_info['peer_regions']
+            }
+        except (ImportError, KeyError) as e:
+            logger.debug(f"Tier info unavailable for {region_name}: {e}")
+            return {
+                'tier': None,
+                'tier_benchmark_price': None,
+                'peer_regions': None
+            }
+    
+    def calculate_relative_value_index(self,
+                                       region_name: str,
+                                       actual_price_m2: float,
+                                       infrastructure_score: float,
+                                       satellite_data: Dict[str, Any],
+                                       tier_info: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Calculate Relative Value Index (RVI) - v2.6-alpha
+        
+        RVI detects true undervaluation vs "just being cheap" by comparing actual price
+        to expected price based on peer regions, infrastructure quality, and development momentum.
+        
+        Formula:
+            Expected Price = Peer Region Avg × Infrastructure Premium × Momentum Premium
+            RVI = Actual Price / Expected Price
+        
+        Interpretation:
+            RVI < 0.80: Significantly undervalued (strong buy signal)
+            RVI 0.80-0.95: Moderately undervalued (buy opportunity)
+            RVI 0.95-1.05: Fairly valued (market equilibrium)
+            RVI 1.05-1.20: Moderately overvalued (caution)
+            RVI > 1.20: Significantly overvalued (speculation risk)
+        
+        Args:
+            region_name: Region being analyzed
+            actual_price_m2: Current land price per m² (IDR)
+            infrastructure_score: Infrastructure quality score (0-100)
+            satellite_data: Satellite change detection data
+            tier_info: Optional tier classification info (will fetch if None)
+        
+        Returns:
+            Dict with:
+                - rvi: Relative value index (float)
+                - expected_price_m2: Expected price based on fundamentals (float)
+                - actual_price_m2: Actual market price (float)
+                - peer_avg_price_m2: Average price of peer regions (float)
+                - infrastructure_premium: Infrastructure adjustment factor (float)
+                - momentum_premium: Development momentum adjustment (float)
+                - interpretation: RVI interpretation string
+                - confidence: Calculation confidence (0-1)
+        """
+        # Get tier info if not provided
+        if tier_info is None:
+            tier_info = self._get_tier_info(region_name)
+        
+        # If tier classification unavailable, return minimal RVI
+        if tier_info['tier'] is None or tier_info['peer_regions'] is None:
+            logger.warning(f"RVI calculation unavailable for {region_name} - no tier classification")
+            return {
+                'rvi': None,
+                'expected_price_m2': None,
+                'actual_price_m2': actual_price_m2,
+                'peer_avg_price_m2': None,
+                'infrastructure_premium': 1.0,
+                'momentum_premium': 1.0,
+                'interpretation': 'Insufficient peer data',
+                'confidence': 0.0
+            }
+        
+        # Step 1: Calculate peer region average price
+        # For now, use tier benchmark as peer average (later can enhance with live scraping)
+        peer_avg_price = tier_info.get('tier_benchmark_price', 3_000_000)
+        
+        # Step 2: Calculate infrastructure premium (Phase 2B.4: Tier-specific tolerance)
+        # Compare region's infra score to tier baseline with tier-appropriate sensitivity
+        try:
+            from src.core.market_config import get_region_tier_info, get_infrastructure_tolerance
+            tier_data = get_region_tier_info(region_name)
+            tier_baseline_infra = tier_data['benchmarks'].get('infrastructure_baseline', 50)
+            
+            # Phase 2B.4: Get tier-specific tolerance (±15% Tier 1, ±20% Tier 2, ±25% Tier 3, ±30% Tier 4)
+            infra_tolerance = get_infrastructure_tolerance(tier_info['tier'])
+            max_premium_pct = infra_tolerance['tolerance_pct']  # e.g., 0.15 for Tier 1, 0.30 for Tier 4
+        except (ImportError, KeyError):
+            # Fallback to standard baselines and fixed ±20% tolerance
+            tier_baseline_infra = {
+                'tier_1_metros': 75,
+                'tier_2_secondary': 60,
+                'tier_3_emerging': 45,
+                'tier_4_frontier': 30
+            }.get(tier_info['tier'], 50)
+            max_premium_pct = 0.20  # Fallback to fixed ±20%
+        
+        # Infrastructure premium: Tier-specific range based on deviation from tier baseline
+        # Tier 1: ±15% (predictable infrastructure)
+        # Tier 2: ±20% (standard variability)
+        # Tier 3: ±25% (emerging uncertainty)
+        # Tier 4: ±30% (frontier high variance)
+        # Formula: +1% per point above baseline, -1% per point below baseline (capped at tier tolerance)
+        infra_deviation = infrastructure_score - tier_baseline_infra
+        infra_premium_pct = max(-max_premium_pct, min(max_premium_pct, infra_deviation / 100.0))
+        infrastructure_premium = 1.0 + infra_premium_pct
+        
+        # Step 3: Calculate momentum premium
+        # Based on satellite-detected development activity
+        vegetation_loss = satellite_data.get('vegetation_loss_pixels', 0)
+        construction_pct = satellite_data.get('construction_activity_pct', 0.0)
+        
+        # Momentum premium: ±15% based on development activity
+        # High activity (construction > 15% or veg loss > 5000 pixels) = +10-15% premium
+        # Low activity (construction < 5% and veg loss < 1000 pixels) = -5-10% discount
+        if construction_pct > 0.15 or vegetation_loss > 5000:
+            momentum_premium = 1.10  # Strong development momentum
+        elif construction_pct > 0.10 or vegetation_loss > 3000:
+            momentum_premium = 1.05  # Moderate development momentum
+        elif construction_pct < 0.05 and vegetation_loss < 1000:
+            momentum_premium = 0.95  # Low development momentum
+        else:
+            momentum_premium = 1.00  # Average development momentum
+        
+        # Step 3.5 (Phase 2B.2): Check for airport premium
+        # Regions with airports opened in last 5 years get +25% benchmark premium
+        try:
+            from src.core.market_config import check_airport_premium
+            airport_data = check_airport_premium(region_name)
+            airport_premium = airport_data['premium_multiplier']
+            
+            if airport_data['has_premium']:
+                logger.info(f"   ✈️ Airport premium: +25% for {airport_data['airport_name']} "
+                           f"(opened {airport_data['opening_year']})")
+        except (ImportError, Exception) as e:
+            logger.debug(f"Airport premium check failed: {e}")
+            airport_premium = 1.0
+            airport_data = {'has_premium': False}
+        
+        # Step 4: Calculate expected price
+        # Phase 2B.2: Include airport premium in expected price
+        expected_price_m2 = peer_avg_price * infrastructure_premium * momentum_premium * airport_premium
+        
+        # Step 5: Calculate RVI
+        rvi = actual_price_m2 / expected_price_m2 if expected_price_m2 > 0 else None
+        
+        # Step 6: Interpret RVI
+        if rvi is None:
+            interpretation = 'Calculation error'
+            confidence = 0.0
+        elif rvi < 0.80:
+            interpretation = 'Significantly undervalued - Strong buy signal'
+            confidence = 0.85
+        elif rvi < 0.95:
+            interpretation = 'Moderately undervalued - Buy opportunity'
+            confidence = 0.85
+        elif rvi < 1.05:
+            interpretation = 'Fairly valued - Market equilibrium'
+            confidence = 0.90
+        elif rvi < 1.20:
+            interpretation = 'Moderately overvalued - Exercise caution'
+            confidence = 0.85
+        else:
+            interpretation = 'Significantly overvalued - Speculation risk'
+            confidence = 0.80
+        
+        logger.info(f"RVI calculated for {region_name}: {rvi:.3f} ({interpretation})")
+        
+        return {
+            'rvi': rvi,
+            'expected_price_m2': expected_price_m2,
+            'actual_price_m2': actual_price_m2,
+            'peer_avg_price_m2': peer_avg_price,
+            'infrastructure_premium': infrastructure_premium,
+            'momentum_premium': momentum_premium,
+            'airport_premium': airport_premium,  # Phase 2B.2
+            'interpretation': interpretation,
+            'confidence': confidence,
+            'breakdown': {
+                'peer_average': peer_avg_price,
+                'infra_adjustment': infrastructure_premium,
+                'infra_score_vs_baseline': f"{infrastructure_score:.0f} vs {tier_baseline_infra:.0f}",
+                'momentum_adjustment': momentum_premium,
+                'airport_adjustment': airport_premium,  # Phase 2B.2
+                'airport_info': airport_data if airport_data['has_premium'] else None,  # Phase 2B.2
+                'development_activity': f"{construction_pct:.1%} construction, {vegetation_loss:,} veg loss pixels",
+                'expected_price': expected_price_m2,
+                'actual_price': actual_price_m2,
+                'value_gap': actual_price_m2 - expected_price_m2,
+                'value_gap_pct': ((actual_price_m2 / expected_price_m2) - 1.0) if expected_price_m2 > 0 else 0.0
+            }
+        }
     
     def _get_data_sources(self,
                          market_data: Dict[str, Any],
@@ -593,6 +905,8 @@ class FinancialMetricsEngine:
         """
         Format financial projection as readable summary for reports
         """
+        data_sources_str = ', '.join(projection.data_sources) if projection.data_sources else 'N/A'
+        
         return f"""
 💰 FINANCIAL PROJECTION - {projection.region_name}
 
@@ -624,7 +938,7 @@ RISK ASSESSMENT:
   Infrastructure Risk:  {projection.infrastructure_risk}
   
 Projection Confidence:  {projection.projection_confidence:.0%}
-Data Sources:           {', '.join(projection.data_sources)}
+Data Sources:           {data_sources_str}
 """
 
 
