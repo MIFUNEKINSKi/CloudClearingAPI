@@ -19,6 +19,9 @@ import numpy as np
 from datetime import datetime, timedelta
 import ee
 
+# 🆕 v2.8: OSM Infrastructure Caching
+from src.core.osm_cache import OSMInfrastructureCache
+
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -44,6 +47,14 @@ class InfrastructureAnalyzer:
             "https://overpass.kumi.systems/api/interpreter",
             "https://overpass.openstreetmap.ru/api/interpreter"
         ]
+        
+        # 🆕 v2.8: Initialize OSM Infrastructure Cache (7-day expiry)
+        self.osm_cache = OSMInfrastructureCache(
+            cache_dir="./cache/osm",
+            expiry_days=7
+        )
+        logger.info("✅ OSM infrastructure cache initialized (7-day expiry)")
+        
         self.infrastructure_weights = {
             # Road infrastructure
             'motorway': 100,
@@ -135,6 +146,10 @@ class InfrastructureAnalyzer:
         """
         Analyze infrastructure context around a region using real data
         
+        🆕 v2.8: Cache-aware infrastructure analysis (7-day cache expiry)
+        - Cache HIT: Returns cached data instantly (~0.1s vs ~30s API call)
+        - Cache MISS: Queries OSM API and saves to cache
+        
         Args:
             bbox: Bounding box coordinates
             region_name: Name of the region being analyzed
@@ -154,6 +169,16 @@ class InfrastructureAnalyzer:
         }
         
         try:
+            # 🆕 v2.8: Check cache first (7-day expiry)
+            cached_data = self.osm_cache.get(region_name)
+            
+            if cached_data is not None:
+                logger.info(f"✅ Using cached infrastructure for {region_name}")
+                return self._process_cached_infrastructure(cached_data, bbox, region_name)
+            
+            # Cache miss - query OSM API
+            logger.info(f"🔴 Cache miss for {region_name} - querying OSM API")
+            
             # 🆕 IMPROVED: Expand bbox for infrastructure search (look 50km beyond region for rural areas)
             expanded_bbox = self._expand_bbox(bbox, expansion_km=50)
             
@@ -173,6 +198,17 @@ class InfrastructureAnalyzer:
                 analysis.update(self._get_regional_infrastructure_fallback(region_name))
                 return analysis
             
+            # 🆕 v2.8: Cache the raw OSM query results
+            cache_entry = {
+                'roads_data': roads_data,
+                'airports_data': airports_data,
+                'railways_data': railways_data,
+                'expanded_bbox': expanded_bbox,
+                'query_timestamp': datetime.now().isoformat()
+            }
+            self.osm_cache.save(region_name, cache_entry)
+            logger.info(f"💾 Cached infrastructure data for {region_name}")
+            
             # Analyze each infrastructure type
             road_analysis = self._analyze_road_infrastructure(roads_data, bbox)
             airport_analysis = self._analyze_airport_infrastructure(airports_data, bbox)
@@ -190,6 +226,58 @@ class InfrastructureAnalyzer:
             analysis['reasoning'].append("⚠️ Infrastructure data unavailable - using regional defaults")
             
             # Fallback to regional knowledge
+            analysis.update(self._get_regional_infrastructure_fallback(region_name))
+        
+        return analysis
+    
+    def _process_cached_infrastructure(self, 
+                                      cached_data: Dict[str, Any],
+                                      bbox: Dict[str, float],
+                                      region_name: str) -> Dict[str, Any]:
+        """
+        Process cached infrastructure data (exact same logic as fresh OSM query)
+        
+        🆕 v2.8: Enables instant infrastructure analysis from cache
+        
+        Args:
+            cached_data: Cached OSM query results
+            bbox: Current analysis bounding box
+            region_name: Region name for logging
+            
+        Returns:
+            Infrastructure analysis results
+        """
+        analysis = {
+            'infrastructure_score': 50,
+            'major_features': [],
+            'construction_projects': [],
+            'planned_developments': [],
+            'accessibility_score': 50,
+            'logistics_score': 50,
+            'reasoning': ['✅ Using cached infrastructure data (< 7 days old)']
+        }
+        
+        try:
+            # Extract cached OSM data
+            roads_data = cached_data.get('roads_data', [])
+            airports_data = cached_data.get('airports_data', [])
+            railways_data = cached_data.get('railways_data', [])
+            
+            # Analyze each infrastructure type (same logic as fresh query)
+            road_analysis = self._analyze_road_infrastructure(roads_data, bbox)
+            airport_analysis = self._analyze_airport_infrastructure(airports_data, bbox)
+            railway_analysis = self._analyze_railway_infrastructure(railways_data, bbox)
+            
+            # Combine analyses
+            analysis.update(self._combine_infrastructure_analysis(
+                road_analysis, airport_analysis, railway_analysis, region_name
+            ))
+            
+            logger.info(f"✅ Processed cached infrastructure for {region_name} (score: {analysis['infrastructure_score']})")
+            
+        except Exception as e:
+            logger.warning(f"Failed to process cached infrastructure for {region_name}: {e}")
+            # Fallback to regional knowledge on cache processing failure
             analysis.update(self._get_regional_infrastructure_fallback(region_name))
         
         return analysis
