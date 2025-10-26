@@ -104,12 +104,13 @@ class LamudiScraper(BaseLandPriceScraper):
         # Extract key location terms
         # Examples: "Sleman North" -> "Sleman", "Bantul Yogyakarta" -> "Bantul Yogyakarta"
         
-        # Lamudi URL structure: /tanah/buy/{location}/
+        # Lamudi URL structure: /tanah/jual/{location}/ (Indonesian "jual" = sell/sale)
+        # Fixed Oct 26, 2025: Changed from /buy/ to /jual/ (Indonesian language requirement)
         # URL encode the location
         location_slug = region_name.lower().replace(' ', '-')
         
         # Search for land (tanah) listings
-        search_url = f"{self.base_url}/tanah/buy/{location_slug}/"
+        search_url = f"{self.base_url}/tanah/jual/{location_slug}/"
         
         # Add filters: sort by newest, land only
         search_url += "?sort=newest"
