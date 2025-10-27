@@ -21,6 +21,7 @@ from .satellite_image_saver import SatelliteImageSaver
 # from .database import DatabaseManager  # Disabled due to SQLAlchemy compatibility issues
 from .speculative_scorer import SpeculativeScorer
 from .corrected_scoring import CorrectedInvestmentScorer  # ✅ NEW: Proper satellite-centric scoring
+from ..scrapers.scraper_orchestrator import LandPriceOrchestrator  # ✅ v2.8.2: For market data scraping
 
 # Import financial metrics engine
 try:
@@ -73,8 +74,16 @@ class AutomatedMonitor:
         from .infrastructure_analyzer import InfrastructureAnalyzer
         
         # v2.6-beta: Pass financial_engine for RVI-aware market multiplier
+        # ✅ v2.8.2 FIX: Use LandPriceOrchestrator instead of PriceIntelligenceEngine
+        # LandPriceOrchestrator has get_land_price() method used by corrected scorer
+        price_orchestrator = LandPriceOrchestrator(
+            cache_expiry_hours=24,
+            enable_live_scraping=True,
+            config=None  # Scrapers use default config if None
+        )
+        
         self.corrected_scorer = CorrectedInvestmentScorer(
-            PriceIntelligenceEngine(),
+            price_orchestrator,  # ✅ Fixed: was PriceIntelligenceEngine()
             InfrastructureAnalyzer(),
             financial_engine=None  # Will be set below if available
         )
