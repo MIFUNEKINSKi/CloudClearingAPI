@@ -1,0 +1,21 @@
+{
+  "region_name": "malang_south_highland",
+  "average_price_per_m2": 1800000.0,
+  "median_price_per_m2": 1800000.0,
+  "listing_count": 1,
+  "listings": [
+    {
+      "price_per_m2": 1800000.0,
+      "total_price": 1620000000.0,
+      "size_m2": 900.0,
+      "location": "Land Dijual di Lawang",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/malang/dijual-tanah-kav-perum-sumberporong-lawang-175005315588/",
+      "listing_type": "land"
+    }
+  ],
+  "source": "lamudi",
+  "scraped_at": "2025-10-27T10:00:46.446823",
+  "success": true,
+  "error_message": null
+}

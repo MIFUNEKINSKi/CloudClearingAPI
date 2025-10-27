@@ -1,0 +1,57 @@
+{
+  "region_name": "bekasi_industrial_belt",
+  "average_price_per_m2": 7648648.648648649,
+  "median_price_per_m2": 5500000.0,
+  "listing_count": 5,
+  "listings": [
+    {
+      "price_per_m2": 5500000.0,
+      "total_price": 273916500000.0,
+      "size_m2": 49803.0,
+      "location": "Land Dijual di Bekasi",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-barat/bekasi/dijual-4-9-ha-kavling-industri-pergudangan-hacaca-174180864857/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 5500000.0,
+      "total_price": 114427500000.0,
+      "size_m2": 20805.0,
+      "location": "Land Dijual di Bekasi",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-barat/bekasi/dijual-2-ha-kavling-industri-pergudangan-hacaca-m-174180805784/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 5500000.0,
+      "total_price": 159489000000.0,
+      "size_m2": 28998.0,
+      "location": "Land Dijual di Bekasi",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-barat/bekasi/-dijual-2-9-ha-kavling-industri-pergudangan-hacaca-174180771896/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 18243243.243243244,
+      "total_price": 13500000000.0,
+      "size_m2": 740.0,
+      "location": "Land Dijual di Jatiasih",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-barat/bekasi/dijual-murah-tanah-strategis-di-jati-asih-bekasi-d-175698293976/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 3500000.0,
+      "total_price": 33250000000.0,
+      "size_m2": 9500.0,
+      "location": "Land Dijual di Setu",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-45732e2a591c-2cde-199d13c-b1a3-7841",
+      "listing_type": "land"
+    }
+  ],
+  "source": "lamudi",
+  "scraped_at": "2025-10-27T09:59:47.102322",
+  "success": true,
+  "error_message": null
+}

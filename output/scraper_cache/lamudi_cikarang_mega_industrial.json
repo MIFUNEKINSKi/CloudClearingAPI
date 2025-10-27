@@ -1,0 +1,30 @@
+{
+  "region_name": "cikarang_mega_industrial",
+  "average_price_per_m2": 3500000.0,
+  "median_price_per_m2": 3500000.0,
+  "listing_count": 2,
+  "listings": [
+    {
+      "price_per_m2": 4500000.0,
+      "total_price": 45000000000.0,
+      "size_m2": 10000.0,
+      "location": "Land Dijual di Cikarang",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-7b949607a5c2-aef2-199870e-ad61-7faa",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 2500000.0,
+      "total_price": 245000000000.0,
+      "size_m2": 98000.0,
+      "location": "Land Dijual di Bekasi",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-barat/bekasi/lahan-industri-strategis-dan-siap-bangun-9-8-ha-di-17364917037/",
+      "listing_type": "land"
+    }
+  ],
+  "source": "lamudi",
+  "scraped_at": "2025-10-27T09:59:49.920227",
+  "success": true,
+  "error_message": null
+}

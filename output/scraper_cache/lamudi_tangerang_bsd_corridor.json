@@ -1,0 +1,30 @@
+{
+  "region_name": "tangerang_bsd_corridor",
+  "average_price_per_m2": 7500000.0,
+  "median_price_per_m2": 7500000.0,
+  "listing_count": 2,
+  "listings": [
+    {
+      "price_per_m2": 9500000.0,
+      "total_price": 1026000000.0,
+      "size_m2": 108.0,
+      "location": "Land Dijual di Karang Mulya",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/banten/tangerang/wilson-dijual-tanah-blok-depan-lokasi-bagus-di-met-175509678762/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 5500000.0,
+      "total_price": 385000000.0,
+      "size_m2": 70.0,
+      "location": "Land Dijual di Pondok Aren",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/banten/tangerang/dijual-tanah-kavling-atau-rumah-minimalis-172578954220/",
+      "listing_type": "land"
+    }
+  ],
+  "source": "lamudi",
+  "scraped_at": "2025-10-27T09:59:43.610170",
+  "success": true,
+  "error_message": null
+}

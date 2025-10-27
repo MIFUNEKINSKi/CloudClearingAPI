@@ -133,6 +133,42 @@ async def main():
         
         results = await monitor.run_weekly_monitoring()
         
+        # ✅ CCAPI-27.2: Track benchmark drift after monitoring completes
+        print()
+        print("📊 Tracking benchmark drift...")
+        try:
+            from src.core.benchmark_drift_monitor import BenchmarkDriftMonitor
+            
+            drift_monitor = BenchmarkDriftMonitor(
+                history_dir="./data/benchmark_drift",
+                retention_days=180,  # 6 months
+                enable_alerts=True
+            )
+            
+            # Track drift for all analyzed regions
+            regions_analyzed = results.get('regions_analyzed', [])
+            drift_summary = drift_monitor.track_drift(regions_analyzed)
+            
+            # Add drift summary to results
+            results['drift_monitoring'] = drift_summary
+            
+            # Log drift alerts
+            drift_alerts = drift_summary.get('alerts', {})
+            if drift_alerts.get('total', 0) > 0:
+                print(f"   ⚠️  Drift Alerts: {drift_alerts['critical']} CRITICAL, {drift_alerts['warning']} WARNING")
+                
+                # Show critical alerts
+                for alert in drift_alerts.get('details', []):
+                    if alert['alert_level'] == 'CRITICAL':
+                        print(f"      🔴 {alert['region_name']}: {alert['current_drift_pct']:+.1f}% drift "
+                              f"({alert['consecutive_weeks']} weeks)")
+            else:
+                print("   ✅ No drift alerts - benchmarks are healthy")
+                
+        except Exception as drift_error:
+            logger.warning(f"Drift monitoring failed (non-critical): {drift_error}")
+            results['drift_monitoring'] = {'status': 'failed', 'error': str(drift_error)}
+        
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds() / 60
         
@@ -163,6 +199,33 @@ async def main():
         print(f"   • Average Time per Region: {duration/len(java_regions):.1f} minutes")
         print(f"   • Regions per Hour: {len(regions_analyzed)/(duration/60):.1f}")
         print()
+        
+        # Drift monitoring results (CCAPI-27.2)
+        drift_data = results.get('drift_monitoring', {})
+        if drift_data.get('status') == 'complete':
+            drift_stats = drift_data.get('overall_stats', {})
+            drift_alerts = drift_data.get('alerts', {})
+            
+            print("📈 **BENCHMARK DRIFT MONITORING (v2.9.0):**")
+            print(f"   • Regions Tracked: {drift_data.get('regions_tracked', 0)}")
+            print(f"   • Average Drift: {drift_stats.get('avg_drift_pct', 0):+.1f}%")
+            print(f"   • Regions >10% Drift: {drift_stats.get('regions_above_10pct', 0)}")
+            print(f"   • Regions >20% Drift: {drift_stats.get('regions_above_20pct', 0)}")
+            print(f"   • Active Alerts: {drift_alerts.get('total', 0)} "
+                  f"({drift_alerts.get('critical', 0)} CRITICAL, {drift_alerts.get('warning', 0)} WARNING)")
+            
+            if drift_alerts.get('total', 0) > 0:
+                print()
+                print("   ⚠️  **DRIFT ALERTS REQUIRING ATTENTION:**")
+                for alert_detail in drift_alerts.get('details', [])[:5]:  # Show top 5
+                    region = alert_detail['region_name']
+                    drift = alert_detail['current_drift_pct']
+                    weeks = alert_detail['consecutive_weeks']
+                    level = alert_detail['alert_level']
+                    icon = "🔴" if level == "CRITICAL" else "🟡"
+                    print(f"      {icon} {region}: {drift:+.1f}% drift ({weeks} consecutive weeks)")
+            
+            print()
         
         # Investment analysis
         investment = results.get('investment_analysis', {})
@@ -203,6 +266,7 @@ async def main():
         print(f"   • Monitoring Data: output/monitoring/weekly_monitoring_*.json")
         print(f"   • PDF Report: output/reports/executive_summary_*.pdf")
         print(f"   • Satellite Images: output/satellite_images/weekly/")
+        print(f"   • Drift History: data/benchmark_drift/*_drift_history.json")
         print(f"   • Detailed Logs: logs/java_weekly_*.log")
         print()
         

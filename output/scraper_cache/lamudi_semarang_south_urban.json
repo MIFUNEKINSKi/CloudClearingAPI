@@ -1,0 +1,21 @@
+{
+  "region_name": "semarang_south_urban",
+  "average_price_per_m2": 1500000.0,
+  "median_price_per_m2": 1500000.0,
+  "listing_count": 1,
+  "listings": [
+    {
+      "price_per_m2": 1500000.0,
+      "total_price": 5700000000.0,
+      "size_m2": 3800.0,
+      "location": "Land Dijual di Sambiroto",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-451aa5a39523-7ebd-199e768-826d-71f1",
+      "listing_type": "land"
+    }
+  ],
+  "source": "lamudi",
+  "scraped_at": "2025-10-27T10:00:11.574343",
+  "success": true,
+  "error_message": null
+}

@@ -1,0 +1,30 @@
+{
+  "region_name": "gresik_port_industrial",
+  "average_price_per_m2": 4100000.0,
+  "median_price_per_m2": 4100000.0,
+  "listing_count": 2,
+  "listings": [
+    {
+      "price_per_m2": 3450000.0,
+      "total_price": 217350000.0,
+      "size_m2": 63.0,
+      "location": "Land Dijual di Bedilan",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/gresik/lahan-6-3-ha-ex-pabrik-kawasan-industri-gresik-baw-175465382096/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 4750000.0,
+      "total_price": 855000000.0,
+      "size_m2": 180.0,
+      "location": "Land Dijual di Menganti",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-7f30502601ff-4db3-199e25e-8530-7454",
+      "listing_type": "land"
+    }
+  ],
+  "source": "lamudi",
+  "scraped_at": "2025-10-27T10:00:39.653050",
+  "success": true,
+  "error_message": null
+}

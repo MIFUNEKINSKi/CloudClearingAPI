@@ -1,0 +1,27 @@
+{
+  "region_name": "jakarta_north_sprawl",
+  "week_a": "2025-10-04",
+  "week_b": "2025-10-11",
+  "saved_timestamp": "2025-10-25T12:18:39.103389",
+  "saved_images": {
+    "week_a_true_color": "output/satellite_images/weekly/jakarta_north_sprawl_20251025_121835/jakarta_north_sprawl_before_true_color_20251004.png",
+    "week_b_true_color": "output/satellite_images/weekly/jakarta_north_sprawl_20251025_121835/jakarta_north_sprawl_after_true_color_20251011.png",
+    "week_a_false_color": "output/satellite_images/weekly/jakarta_north_sprawl_20251025_121835/jakarta_north_sprawl_before_false_color_20251004.png",
+    "week_b_false_color": "output/satellite_images/weekly/jakarta_north_sprawl_20251025_121835/jakarta_north_sprawl_after_false_color_20251011.png",
+    "ndvi_change": "output/satellite_images/weekly/jakarta_north_sprawl_20251025_121835/jakarta_north_sprawl_ndvi_change_20251004_to_20251011.png"
+  },
+  "original_urls": {
+    "week_a_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/6eeaac8c667a87ac30f2a584887317fa-e3e2dff8ae556d11359ff783ed197d29:getPixels",
+    "week_b_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/1d4b8244fbf198c95af15ad09b704dfe-22e8676fbbf37edf5023ca6ef346b045:getPixels",
+    "week_a_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/c52fbddf46ca5c98b1df01dcf7a49bb3-9cb47a3b8cf9c7d44d77cf558cb50184:getPixels",
+    "week_b_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/5dacd62f5c8d78ab3eb5f67e9a20119e-43378892e22d89619f876aff9b9995af:getPixels",
+    "ndvi_change": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/1c355dfece5e1869ca3fdd1431b54d8c-d9cff8b21ca4a5b4b935aaf14e6c70a0:getPixels",
+    "week_a_date": "2025-10-04",
+    "week_b_date": "2025-10-11",
+    "description": {
+      "true_color": "Natural color satellite imagery (Red, Green, Blue bands)",
+      "false_color": "False color imagery highlighting vegetation (NIR, Red, Green)",
+      "ndvi_change": "NDVI change map: Red=vegetation loss, Green=vegetation gain"
+    }
+  }
+}

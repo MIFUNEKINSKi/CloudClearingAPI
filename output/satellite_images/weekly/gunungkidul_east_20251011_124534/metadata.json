@@ -1,0 +1,27 @@
+{
+  "region_name": "gunungkidul_east",
+  "week_a": "2025-07-26",
+  "week_b": "2025-08-02",
+  "saved_timestamp": "2025-10-11T12:45:37.545892",
+  "saved_images": {
+    "week_a_true_color": "output/satellite_images/weekly/gunungkidul_east_20251011_124534/gunungkidul_east_before_true_color_20250726.png",
+    "week_b_true_color": null,
+    "week_a_false_color": "output/satellite_images/weekly/gunungkidul_east_20251011_124534/gunungkidul_east_before_false_color_20250726.png",
+    "week_b_false_color": null,
+    "ndvi_change": "output/satellite_images/weekly/gunungkidul_east_20251011_124534/gunungkidul_east_ndvi_change_20250726_to_20250802.png"
+  },
+  "original_urls": {
+    "week_a_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/1233687fbcf75433279135339c307541-2e22120cdcf7548e9430b96c6ab33f58:getPixels",
+    "week_b_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/c28d736619dba278297b184e276bde8a-4ad636fcce3fda43d5cd2bfd68e06e1c:getPixels",
+    "week_a_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/b91203171d8a61e115cf1b4d880bae22-7edd2f0518b3b2ea2a7fb417b348cc34:getPixels",
+    "week_b_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/60428010175f1952b5f238b8d799989d-bb569c103e3882a5c36d10452179a911:getPixels",
+    "ndvi_change": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/24d145e5bc02acae8c71350818345362-6406ecfe582abbc0350427229eabf8f5:getPixels",
+    "week_a_date": "2025-07-26",
+    "week_b_date": "2025-08-02",
+    "description": {
+      "true_color": "Natural color satellite imagery (Red, Green, Blue bands)",
+      "false_color": "False color imagery highlighting vegetation (NIR, Red, Green)",
+      "ndvi_change": "NDVI change map: Red=vegetation loss, Green=vegetation gain"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "region_name": "jakarta_north_sprawl",
+  "average_price_per_m2": 5500000.0,
+  "median_price_per_m2": 5500000.0,
+  "listing_count": 3,
+  "listings": [
+    {
+      "price_per_m2": 5500000.0,
+      "total_price": 273916500000.0,
+      "size_m2": 49803.0,
+      "location": "Land Dijual di Bekasi",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-barat/bekasi/dijual-4-9-ha-kavling-industri-pergudangan-hacaca-174180864857/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 5500000.0,
+      "total_price": 114427500000.0,
+      "size_m2": 20805.0,
+      "location": "Land Dijual di Bekasi",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-barat/bekasi/dijual-2-ha-kavling-industri-pergudangan-hacaca-m-174180805784/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 5500000.0,
+      "total_price": 159489000000.0,
+      "size_m2": 28998.0,
+      "location": "Land Dijual di Bekasi",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-barat/bekasi/-dijual-2-9-ha-kavling-industri-pergudangan-hacaca-174180771896/",
+      "listing_type": "land"
+    }
+  ],
+  "source": "lamudi",
+  "scraped_at": "2025-10-26T20:43:19.858599",
+  "success": true,
+  "error_message": null
+}

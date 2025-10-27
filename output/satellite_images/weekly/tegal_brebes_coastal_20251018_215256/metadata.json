@@ -1,0 +1,27 @@
+{
+  "region_name": "tegal_brebes_coastal",
+  "week_a": "2025-10-04",
+  "week_b": "2025-10-11",
+  "saved_timestamp": "2025-10-18T21:53:01.417443",
+  "saved_images": {
+    "week_a_true_color": "output/satellite_images/weekly/tegal_brebes_coastal_20251018_215256/tegal_brebes_coastal_before_true_color_20251004.png",
+    "week_b_true_color": "output/satellite_images/weekly/tegal_brebes_coastal_20251018_215256/tegal_brebes_coastal_after_true_color_20251011.png",
+    "week_a_false_color": "output/satellite_images/weekly/tegal_brebes_coastal_20251018_215256/tegal_brebes_coastal_before_false_color_20251004.png",
+    "week_b_false_color": "output/satellite_images/weekly/tegal_brebes_coastal_20251018_215256/tegal_brebes_coastal_after_false_color_20251011.png",
+    "ndvi_change": "output/satellite_images/weekly/tegal_brebes_coastal_20251018_215256/tegal_brebes_coastal_ndvi_change_20251004_to_20251011.png"
+  },
+  "original_urls": {
+    "week_a_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/1cb7cabd7b7da71de6745671c131c582-6215bf635a4fcc9edc63cf7e29afdb34:getPixels",
+    "week_b_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/0ea16178cd2d245d8361863ecb30fd27-5cec51311b2c023575d6229b1e47a0ca:getPixels",
+    "week_a_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/ed0332832ad8f87c845de27a989d6c6a-5b028ed71877e4577b450cefc6532e4e:getPixels",
+    "week_b_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/08da288ac5de931b9f141f8497a612df-5abb3a26e103703260926d9fef554209:getPixels",
+    "ndvi_change": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/08cb2f085cea1e9a537c4b41e10ec8d4-dbf0d7434730218c06851f5fcf86f8aa:getPixels",
+    "week_a_date": "2025-10-04",
+    "week_b_date": "2025-10-11",
+    "description": {
+      "true_color": "Natural color satellite imagery (Red, Green, Blue bands)",
+      "false_color": "False color imagery highlighting vegetation (NIR, Red, Green)",
+      "ndvi_change": "NDVI change map: Red=vegetation loss, Green=vegetation gain"
+    }
+  }
+}

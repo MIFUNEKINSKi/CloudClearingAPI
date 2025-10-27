@@ -152,10 +152,7 @@ class PDFReportGenerator:
         # Add monitoring results
         story.extend(self._build_monitoring_results(data))
         
-        # Add alerts section
-        story.extend(self._build_alerts_section(data))
-        
-        # Add investment analysis
+        # Add investment analysis (MOVED UP - this is the main value!)
         story.extend(self._build_investment_analysis(data))
         
         # Add satellite imagery summary
@@ -163,6 +160,9 @@ class PDFReportGenerator:
         
         # Add regional breakdown
         story.extend(self._build_regional_breakdown(data))
+        
+        # Add alerts section (MOVED TO END - just technical details)
+        story.extend(self._build_alerts_section(data))
         
         # Add footer
         story.extend(self._build_footer(data))
@@ -436,21 +436,49 @@ class PDFReportGenerator:
                 elif satellite_changes > 0:
                     key_factors.append(f"<b>Low activity</b>: {satellite_changes:,} changes detected")
                 
-                # Infrastructure quality with specifics
-                if infrastructure_score >= 100:
-                    key_factors.append(f"<b>Excellent infrastructure</b> (Score: {infrastructure_score:.0f})")
-                elif infrastructure_score >= 80:
-                    key_factors.append(f"<b>Good connectivity</b> (Score: {infrastructure_score:.0f})")
-                elif infrastructure_score > 0:
-                    key_factors.append(f"<b>Developing infrastructure</b> (Score: {infrastructure_score:.0f})")
+                # Infrastructure quality with specifics - ONLY show if data available
+                infra_data_source = 'unknown'
+                if isinstance(data_sources, dict):
+                    # Check infrastructure structure (corrected key name)
+                    if 'infrastructure' in data_sources:
+                        infra_info = data_sources['infrastructure']
+                        if isinstance(infra_info, dict):
+                            infra_data_source = infra_info.get('data_source', 'unknown')
+                        elif isinstance(infra_info, str):
+                            infra_data_source = infra_info
                 
-                # Market conditions
-                if market_heat == 'hot':
-                    key_factors.append("<b>Hot market</b> - High demand")
-                elif market_heat == 'warm':
-                    key_factors.append("<b>Warming market</b> - Growing interest")
-                elif market_heat == 'cold':
-                    key_factors.append("<b>Buyer's market</b> - Good entry point")
+                # Only show infrastructure score if data was actually available
+                if infra_data_source not in ['unavailable', 'fallback', 'unknown', 'no_data']:
+                    if infrastructure_score >= 100:
+                        key_factors.append(f"<b>Excellent infrastructure</b> (Score: {infrastructure_score:.0f})")
+                    elif infrastructure_score >= 80:
+                        key_factors.append(f"<b>Good connectivity</b> (Score: {infrastructure_score:.0f})")
+                    elif infrastructure_score > 0:
+                        key_factors.append(f"<b>Developing infrastructure</b> (Score: {infrastructure_score:.0f})")
+                else:
+                    # Show that infrastructure data was unavailable
+                    key_factors.append(f"<i>⚠️ Infrastructure data unavailable (neutral baseline used)</i>")
+                
+                # Market conditions - ONLY show if data available
+                market_data_source = 'unknown'
+                if isinstance(data_sources, dict):
+                    if 'market' in data_sources:
+                        market_info = data_sources['market']
+                        if isinstance(market_info, dict):
+                            market_data_source = market_info.get('data_source', 'unknown')
+                        elif isinstance(market_info, str):
+                            market_data_source = market_info
+                
+                # Only show market analysis if data was actually available
+                if market_data_source not in ['unavailable', 'fallback', 'unknown', 'no_data']:
+                    if market_heat == 'hot':
+                        key_factors.append("<b>Hot market</b> - High demand")
+                    elif market_heat == 'warm':
+                        key_factors.append("<b>Warming market</b> - Growing interest")
+                    elif market_heat == 'cold':
+                        key_factors.append("<b>Buyer's market</b> - Good entry point")
+                else:
+                    key_factors.append(f"<i>⚠️ Market data unavailable (neutral baseline used)</i>")
                 
                 # Data source transparency and missing data warnings
                 sources_used = []
@@ -542,7 +570,31 @@ class PDFReportGenerator:
         if not regions_to_show:
             return story
         
-        story.append(Paragraph("🛰️ SATELLITE IMAGERY ANALYSIS", self.styles['SectionHeader']))
+        story.append(Paragraph("� INVESTMENT OPPORTUNITIES / SATELLITE IMAGERY", self.styles['SectionHeader']))
+        
+        # ✅ Add methodology explanation FIRST (before showing regions)
+        story.append(Paragraph(
+            "<b>Investment Methodology:</b> Our analysis combines satellite-detected land use changes with "
+            "market intelligence and infrastructure data. Each region receives an <b>investment score (0-100)</b> based on: "
+            "<b>(1) Development Activity</b> - volume and pace of land use changes detected via satellite, "
+            "<b>(2) Infrastructure Quality</b> - proximity to major roads, ports, airports, and active construction projects, "
+            "<b>(3) Market Dynamics</b> - property price trends and real estate market heat.",
+            self.styles['Normal']
+        ))
+        story.append(Paragraph(
+            "<b>Confidence Levels:</b> Each score includes a confidence percentage (20-90%) that reflects data completeness. "
+            "Higher confidence means we have real-time market data, detailed infrastructure analysis, and high-quality satellite imagery. "
+            "Lower confidence means we're relying primarily on satellite-detected changes with limited market/infrastructure data. "
+            "Typical confidence is 40-60% during early analysis phases.",
+            self.styles['Normal']
+        ))
+        story.append(Paragraph(
+            "<b>Imagery Notes:</b> Satellite imagery shows before/after comparisons where available. "
+            "NDVI (vegetation index) maps highlight <b style='color:red'>vegetation loss (red)</b> indicating land clearing "
+            "for potential construction sites, and <b style='color:green'>vegetation gain (green)</b> showing revegetation.",
+            self.styles['Normal']
+        ))
+        story.append(Spacer(1, 15))
         
         # Add before/after imagery for top investment opportunities
         investment_analysis = data.get('investment_analysis', {})
@@ -559,35 +611,28 @@ class PDFReportGenerator:
                 story.extend(self._add_region_imagery(region_data, rec))
                 regions_shown += 1
         
-        # If we have fewer than 3 regions from buy recommendations, add more high-change regions
+        # If we have fewer than 3 regions from buy recommendations, add WATCH list regions
         if regions_shown < 3:
-            high_change_regions = sorted(
-                [r for r in regions_to_show if r.get('region_name') not in [rec.get('region') for rec in buy_recommendations]], 
-                key=lambda x: x.get('change_count', 0), 
-                reverse=True
-            )
+            # ✅ FIXED: Only show regions with investment scores (WATCH list, score ≥25)
+            # Don't show PASS regions (<25) or regions without scores in "Investment Opportunities"
+            watch_list = yogyakarta_analysis.get('watch_list', [])
             
-            for region_data in high_change_regions[:3-regions_shown]:
-                story.extend(self._add_region_imagery(region_data))
-                regions_shown += 1
+            # Sort WATCH list by score (highest first)
+            watch_list_sorted = sorted(watch_list, key=lambda x: x.get('score', x.get('investment_score', 0)), reverse=True)
+            
+            for rec in watch_list_sorted[:3-regions_shown]:
+                region_name = rec.get('region', '')
+                region_data = next((r for r in regions_to_show if r.get('region_name') == region_name), None)
+                
+                if region_data:
+                    story.extend(self._add_region_imagery(region_data, rec))
+                    regions_shown += 1
         
         # Summary table for all regions with imagery - including scores and explanations
         # EXCLUDE regions already shown in Investment Opportunities section
         story.append(Paragraph("📊 Complete Regional Analysis", self.styles['SubsectionHeader']))
         
-        # Add methodology explanation ONCE at the beginning
-        story.append(Paragraph(
-            "<b>Investment Methodology:</b> Our analysis combines satellite-detected land use changes with "
-            "market intelligence and infrastructure data. Each region receives an investment score (0-100) based on: "
-            "<b>(1) Development Activity</b> - volume and pace of land use changes, "
-            "<b>(2) Infrastructure Quality</b> - proximity to roads, ports, airports, "
-            "<b>(3) Market Dynamics</b> - property price trends and market heat. "
-            "Confidence levels (20-90%) reflect data availability across these sources. "
-            "Satellite imagery shows before/after comparisons where available; NDVI (vegetation index) "
-            "maps highlight vegetation loss (red = clearing for development) and gain (green = revegetation).",
-            self.styles['Normal']
-        ))
-        story.append(Spacer(1, 15))
+        # ✅ Methodology already explained at top of section - no need to repeat it here
         
         # Create compact style for table cells with wrapping
         compact_style = ParagraphStyle(
@@ -602,8 +647,13 @@ class PDFReportGenerator:
         # Get investment analysis for scoring context
         investment_analysis = data.get('investment_analysis', {})
         yogyakarta_analysis = investment_analysis.get('yogyakarta_analysis', {})
+        # Use watch_list (new corrected system) or hold_recommendations (old system) for backward compatibility
+        watch_list = yogyakarta_analysis.get('watch_list', yogyakarta_analysis.get('hold_recommendations', []))
+        # ✅ NEW: Include pass_list so ALL scores appear in PDF (not just BUY/WATCH)
+        pass_list = yogyakarta_analysis.get('pass_list', [])
         all_recommendations = yogyakarta_analysis.get('buy_recommendations', []) + \
-                            yogyakarta_analysis.get('hold_recommendations', []) + \
+                            watch_list + \
+                            pass_list + \
                             yogyakarta_analysis.get('sell_recommendations', [])
         
         # Get list of regions already featured in Investment Opportunities
@@ -612,7 +662,17 @@ class PDFReportGenerator:
         # Only show regions NOT already in the Investment Opportunities table
         remaining_regions = [r for r in regions_analyzed if r.get('region_name') not in featured_region_names]
         
+        # ✅ NEW: Create a list to sort regions by score (highest to lowest)
+        regions_with_scores = []
         for region in remaining_regions:
+            rec = next((r for r in all_recommendations if r.get('region') == region['region_name']), None)
+            score = rec.get('score', rec.get('investment_score', 0)) if rec else 0
+            regions_with_scores.append((region, score))
+        
+        # Sort by score descending (highest first)
+        regions_with_scores.sort(key=lambda x: x[1], reverse=True)
+        
+        for region, _ in regions_with_scores:
             region_name = region['region_name'].replace('_', ' ').title()
             changes = region.get('change_count', 0)
             area = region.get('total_area_m2', 0) / 10000  # Convert m2 to hectares
@@ -727,16 +787,67 @@ class PDFReportGenerator:
         if investment_rec:
             score = investment_rec.get('score', investment_rec.get('investment_score', 0))
             confidence = investment_rec.get('confidence_level', investment_rec.get('confidence', 0.5))
+            
+            # Determine recommendation label - MUST match corrected_scoring.py thresholds!
+            recommendation = ""
+            
+            # Use the recommendation from the scoring system if available
+            if 'recommendation' in investment_rec:
+                rec_value = investment_rec['recommendation'].upper()
+                if rec_value == 'BUY':
+                    recommendation = "🟢 BUY"
+                elif rec_value == 'WATCH':
+                    recommendation = "🟡 WATCH"
+                else:
+                    recommendation = "⚪ PASS"
+            else:
+                # Fallback: Calculate based on CORRECT thresholds from corrected_scoring.py
+                if score >= 45 and confidence >= 0.70:
+                    recommendation = "🟢 BUY"
+                elif score >= 40 and confidence >= 0.60:
+                    recommendation = "🟢 BUY"
+                elif score >= 25 and confidence >= 0.40:
+                    recommendation = "🟡 WATCH"
+                else:
+                    recommendation = "⚪ PASS"
+            
             story.append(Paragraph(
-                f"<b>🏆 {region_name}</b> - Investment Score: {score:.1f}/100 ({confidence:.0%} confidence)",
+                f"<b>{recommendation} - {region_name}</b> - Investment Score: {score:.1f}/100 ({confidence:.0%} confidence)",
                 self.styles['SubsectionHeader']
             ))
             
-            # Add detailed investment factors
+            # Add detailed investment factors with change type breakdown
             story.append(Paragraph(
                 f"<b>Development Activity:</b> {changes:,} land use changes detected across {area_ha:.1f} hectares",
                 self.styles['Normal']
             ))
+            
+            # ✅ NEW: Show change type breakdown
+            change_types = region_data.get('change_types', {})
+            if change_types and isinstance(change_types, dict):
+                story.append(Paragraph(
+                    f"<b>Change Type Breakdown:</b>",
+                    self.styles['Normal']
+                ))
+                
+                total_changes = sum(change_types.values())
+                change_type_labels = {
+                    2: "Land clearing (vegetation → bare earth)",
+                    3: "Urban conversion (agriculture → urban)",
+                    4: "Construction activity (bare → built)",
+                    5: "Urban densification (expansion)",
+                    6: "Other significant changes"
+                }
+                
+                # Sort by count and show top change types
+                sorted_types = sorted(change_types.items(), key=lambda x: x[1], reverse=True)
+                for change_id, count in sorted_types[:5]:  # Top 5 change types
+                    percentage = (count / total_changes * 100) if total_changes > 0 else 0
+                    label = change_type_labels.get(int(change_id), f"Type {change_id}")
+                    story.append(Paragraph(
+                        f"   • {label}: {count:,} sites ({percentage:.1f}%)",
+                        self.styles['Normal']
+                    ))
             
             # Extract and display key investment factors
             factors = []
@@ -843,21 +954,109 @@ class PDFReportGenerator:
             for component in score_components:
                 story.append(Paragraph(f"   • {component}", self.styles['Normal']))
             
-            # Data availability warning if confidence is low
+            # ✅ NEW: Show detailed infrastructure breakdown
+            if infra_details:
+                story.append(Paragraph(
+                    f"<b>Infrastructure Breakdown ({infra_score:.0f}/100):</b>",
+                    self.styles['Normal']
+                ))
+                
+                infra_items = []
+                
+                # Roads
+                roads_count = infra_details.get('roads_count', 0)
+                if roads_count > 0:
+                    infra_items.append(f"Roads: {roads_count} major roads in region")
+                
+                # Airports
+                airports = infra_details.get('airports_nearby', 0)
+                if airports > 0:
+                    infra_items.append(f"Airports: {airports} nearby")
+                
+                # Railway
+                railway_access = infra_details.get('railway_access', False)
+                if railway_access:
+                    infra_items.append("Railway: Direct rail connection available")
+                
+                # Ports
+                port_distance = infra_details.get('port_distance_km')
+                if port_distance and port_distance < 50:
+                    infra_items.append(f"Port: {port_distance:.1f}km to nearest port")
+                
+                # Major features
+                major_features = infra_details.get('major_features', [])
+                if major_features and isinstance(major_features, list):
+                    for feature in major_features[:3]:  # Show top 3
+                        if isinstance(feature, dict):
+                            feat_type = feature.get('type', '').title()
+                            feat_name = feature.get('name', '')
+                            feat_dist = feature.get('distance_km', 0)
+                            if feat_name and feat_dist:
+                                infra_items.append(f"{feat_type}: {feat_name} ({feat_dist:.1f}km)")
+                
+                # Display infrastructure items
+                if infra_items:
+                    for item in infra_items:
+                        story.append(Paragraph(f"   • {item}", self.styles['Normal']))
+                else:
+                    story.append(Paragraph(f"   • Limited infrastructure data available", self.styles['Normal']))
+            
+            # ✅ NEW: Show detailed confidence breakdown for this specific region
+            story.append(Paragraph(
+                f"<b>Confidence Breakdown ({confidence:.0%}):</b>",
+                self.styles['Normal']
+            ))
+            
+            confidence_factors = []
             data_sources = investment_rec.get('data_sources', {})
             if isinstance(data_sources, dict):
                 availability = data_sources.get('availability', {})
-                missing_sources = []
-                if not availability.get('market_data', True):
-                    missing_sources.append('market pricing')
-                if not availability.get('infrastructure_data', True):
-                    missing_sources.append('infrastructure APIs')
                 
-                if missing_sources and confidence < 0.6:
-                    story.append(Paragraph(
-                        f"<i>⚠️ Limited data: {', '.join(missing_sources)} unavailable. Score based primarily on satellite activity.</i>",
-                        self.styles['Normal']
-                    ))
+                # Satellite data (always available for scored regions)
+                confidence_factors.append("✅ Satellite imagery: High-resolution change detection active")
+                
+                # Market data
+                if availability.get('market_data', False):
+                    confidence_factors.append("✅ Market data: Real-time property prices available")
+                else:
+                    confidence_factors.append("⚠️ Market data: API unavailable - using neutral baseline (0% trend)")
+                
+                # Infrastructure data
+                if availability.get('infrastructure_data', False):
+                    confidence_factors.append("✅ Infrastructure data: Live road/airport/port data available")
+                else:
+                    confidence_factors.append("⚠️ Infrastructure data: API unavailable - using neutral baseline (50/100)")
+                
+                # Historical validation
+                if availability.get('historical_validation', False):
+                    confidence_factors.append("✅ Historical validation: Past predictions verified")
+                
+            for conf_factor in confidence_factors:
+                story.append(Paragraph(f"   • {conf_factor}", self.styles['Normal']))
+            
+            # Summary of what confidence level means for THIS region
+            if confidence >= 0.7:
+                conf_summary = "High confidence - comprehensive data across all sources"
+            elif confidence >= 0.5:
+                conf_summary = "Moderate confidence - good satellite data, limited market/infrastructure APIs"
+            else:
+                conf_summary = "Lower confidence - primarily satellite-driven, awaiting real-time API integration"
+            
+            story.append(Paragraph(
+                f"   <i>{conf_summary}</i>",
+                self.styles['Normal']
+            ))
+            story.append(Spacer(1, 5))
+            
+            # 💰 NEW: Draw financial projection section if available
+            financial_projection = investment_rec.get('financial_projection')
+            if financial_projection:
+                self._draw_financial_projection(story, financial_projection, region_name)
+            
+            # 📊 NEW (v2.6-alpha): Draw RVI analysis if available
+            rvi_data = investment_rec.get('rvi_data')
+            if rvi_data:
+                self._draw_rvi_analysis(story, rvi_data, region_name)
         else:
             story.append(Paragraph(f"<b>📍 {region_name}</b>", self.styles['SubsectionHeader']))
             story.append(Paragraph(
@@ -1002,15 +1201,33 @@ class PDFReportGenerator:
                 area_ha = region['total_area_m2'] / 10000
                 
                 story.append(Paragraph(f"<b>{region_name}</b>", self.styles['Normal']))
+                # Handle division by zero for regions with no area
+                density_text = f"{changes/area_ha:.1f} changes/ha" if area_ha > 0 else "N/A"
                 story.append(Paragraph(
                     f"Changes: {changes:,} | Area: {area_ha:.1f} ha | "
-                    f"Density: {changes/area_ha:.1f} changes/ha",
+                    f"Density: {density_text}",
                     self.styles['Normal']
                 ))
                 
                 # Add satellite imagery information if available
+                saved_images = region.get('saved_images', {})
                 sat_images = region.get('satellite_images', {})
-                if sat_images.get('week_a_true_color'):
+                
+                if saved_images:
+                    # ✅ NEW: Show info about locally saved images
+                    week_a_date = saved_images.get('week_a_date', 'Unknown')
+                    week_b_date = saved_images.get('week_b_date', 'Unknown')
+                    image_dir = saved_images.get('output_dir', 'output/satellite_images/weekly/')
+                    story.append(Paragraph(
+                        f"📡 <b>Satellite Imagery Available:</b> Before ({week_a_date}) | After ({week_b_date})",
+                        self.styles['Normal']
+                    ))
+                    story.append(Paragraph(
+                        f"<i>Note: High-resolution satellite images saved to {image_dir}</i>",
+                        self.styles['Footer']
+                    ))
+                elif sat_images.get('week_a_true_color'):
+                    # Old URL-based imagery (fallback)
                     week_a_date = sat_images.get('week_a_date', 'Unknown')
                     week_b_date = sat_images.get('week_b_date', 'Unknown')
                     story.append(Paragraph(
@@ -1018,13 +1235,492 @@ class PDFReportGenerator:
                         self.styles['Normal']
                     ))
                     story.append(Paragraph(
-                        f"<i>Note: Imagery URLs are authentication-protected and available through the system dashboard.</i>",
+                        f"<i>Note: Satellite imagery available via Earth Engine (authentication required).</i>",
                         self.styles['Footer']
                     ))
                 
                 story.append(Spacer(1, 10))
         
         return story
+
+    def _draw_financial_projection(self, story: List, financial_data: Dict[str, Any], region_name: str):
+        """
+        Draw financial projection section with ROI, land values, and investment metrics
+        
+        Args:
+            story: PDF story list to append elements to
+            financial_data: Financial projection dictionary from FinancialProjection dataclass
+            region_name: Name of the region for context
+        """
+        if not financial_data:
+            return
+        
+        story.append(Spacer(1, 10))
+        story.append(Paragraph(
+            "💰 <b>Financial Projection</b>",
+            self.styles['SubsectionHeader']
+        ))
+        
+        # Extract financial metrics
+        current_value = financial_data.get('current_land_value_per_m2', 0)
+        future_value = financial_data.get('estimated_future_value_per_m2', 0)
+        roi_3yr = financial_data.get('projected_roi_3yr', 0)
+        roi_5yr = financial_data.get('projected_roi_5yr', 0)
+        appreciation_rate = financial_data.get('appreciation_rate_annual', 0)
+        
+        # Investment sizing
+        recommended_plot_size = financial_data.get('recommended_plot_size_m2', 0)
+        total_acquisition_cost = financial_data.get('total_acquisition_cost', 0)
+        break_even_years = financial_data.get('break_even_years', 0)
+        
+        # Development costs
+        dev_cost_index = financial_data.get('development_cost_index', 0)
+        terrain_difficulty = financial_data.get('terrain_difficulty', 'Unknown')
+        
+        # Data quality
+        data_sources = financial_data.get('data_sources', [])
+        confidence_score = financial_data.get('confidence_score', 0)
+        
+        # 📊 DATA PROVENANCE SECTION - Show where the data came from
+        story.append(Paragraph(
+            "<b>📊 Data Sources & Quality:</b>",
+            self.styles['Normal']
+        ))
+        
+        if data_sources:
+            # Map technical source names to user-friendly descriptions
+            source_details = {
+                'live_scrape': {
+                    'label': '🌐 Live Web Scraping',
+                    'description': 'Real-time data from Lamudi.co.id and Rumah.com',
+                    'quality': 'Highest',
+                    'icon': '✅'
+                },
+                'cached_data': {
+                    'label': '💾 Cached Market Data',
+                    'description': 'Recent data from previous scraping session (< 24 hours old)',
+                    'quality': 'High',
+                    'icon': '✅'
+                },
+                'regional_benchmark': {
+                    'label': '📍 Regional Benchmark',
+                    'description': 'Statistical averages for this region based on historical data',
+                    'quality': 'Moderate',
+                    'icon': '⚠️'
+                },
+                'fallback': {
+                    'label': '📊 Statistical Fallback',
+                    'description': 'General market estimates (scraping unavailable)',
+                    'quality': 'Limited',
+                    'icon': '⚠️'
+                }
+            }
+            
+            # Identify primary data source (first in list)
+            primary_source = None
+            if isinstance(data_sources, list) and len(data_sources) > 0:
+                primary_source = data_sources[0]
+            elif isinstance(data_sources, str):
+                primary_source = data_sources
+            
+            # Display primary data source prominently
+            if primary_source and primary_source in source_details:
+                source_info = source_details[primary_source]
+                story.append(Paragraph(
+                    f"   {source_info['icon']} <b>Primary Data Source:</b> {source_info['label']}",
+                    self.styles['Normal']
+                ))
+                story.append(Paragraph(
+                    f"      {source_info['description']}",
+                    self.styles['Normal']
+                ))
+                story.append(Paragraph(
+                    f"      Data Quality: <b>{source_info['quality']}</b>",
+                    self.styles['Normal']
+                ))
+            else:
+                # Fallback if source format is unexpected
+                formatted_sources = ', '.join([s.replace('_', ' ').title() for s in data_sources if isinstance(s, str)])
+                story.append(Paragraph(
+                    f"   • Data Sources: <b>{formatted_sources}</b>",
+                    self.styles['Normal']
+                ))
+        else:
+            story.append(Paragraph(
+                "   ⚠️ <i>Data source information unavailable</i>",
+                self.styles['Normal']
+            ))
+        
+        # Confidence score with interpretation
+        if confidence_score > 0:
+            confidence_label = (
+                "Very High" if confidence_score >= 0.85 else
+                "High" if confidence_score >= 0.75 else
+                "Good" if confidence_score >= 0.65 else
+                "Moderate" if confidence_score >= 0.50 else
+                "Limited"
+            )
+            confidence_icon = "✅" if confidence_score >= 0.75 else "⚠️"
+            story.append(Paragraph(
+                f"   {confidence_icon} <b>Confidence Score:</b> {confidence_score:.0%} ({confidence_label})",
+                self.styles['Normal']
+            ))
+            
+            # Explain what the confidence means
+            if confidence_score >= 0.80:
+                confidence_note = "High-quality data from multiple verified sources"
+            elif confidence_score >= 0.65:
+                confidence_note = "Good data quality with some interpolation"
+            elif confidence_score >= 0.50:
+                confidence_note = "Moderate confidence - use regional benchmarks as additional validation"
+            else:
+                confidence_note = "Limited data - projections are estimates only"
+            
+            story.append(Paragraph(
+                f"      <i>{confidence_note}</i>",
+                self.styles['Normal']
+            ))
+        
+        story.append(Spacer(1, 8))
+        
+        # Land Value Section
+        story.append(Paragraph(
+            "<b>Land Value Analysis:</b>",
+            self.styles['Normal']
+        ))
+        story.append(Paragraph(
+            f"   • Current Market Value: <b>Rp {current_value:,.0f}/m²</b>",
+            self.styles['Normal']
+        ))
+        story.append(Paragraph(
+            f"   • 18-Month Projection: <b>Rp {future_value:,.0f}/m²</b> "
+            f"({appreciation_rate:.1%} annual appreciation)",
+            self.styles['Normal']
+        ))
+        
+        # Calculate absolute gain for clarity
+        value_gain = future_value - current_value
+        story.append(Paragraph(
+            f"   • Expected Value Gain: <b>Rp {value_gain:,.0f}/m²</b> over 18 months",
+            self.styles['Normal']
+        ))
+        
+        story.append(Spacer(1, 5))
+        
+        # ROI Projections
+        story.append(Paragraph(
+            "<b>Return on Investment:</b>",
+            self.styles['Normal']
+        ))
+        story.append(Paragraph(
+            f"   • 3-Year ROI: <b>{roi_3yr:.1%}</b>",
+            self.styles['Normal']
+        ))
+        if roi_5yr > 0:
+            story.append(Paragraph(
+                f"   • 5-Year ROI: <b>{roi_5yr:.1%}</b>",
+                self.styles['Normal']
+            ))
+        if break_even_years > 0:
+            story.append(Paragraph(
+                f"   • Break-Even Point: <b>{break_even_years:.1f} years</b>",
+                self.styles['Normal']
+            ))
+        
+        story.append(Spacer(1, 5))
+        
+        # Investment Sizing Recommendations
+        if recommended_plot_size > 0:
+            story.append(Paragraph(
+                "<b>Investment Sizing:</b>",
+                self.styles['Normal']
+            ))
+            story.append(Paragraph(
+                f"   • Recommended Plot Size: <b>{recommended_plot_size:,.0f} m²</b> "
+                f"({recommended_plot_size / 10000:.2f} hectares)",
+                self.styles['Normal']
+            ))
+            if total_acquisition_cost > 0:
+                story.append(Paragraph(
+                    f"   • Total Acquisition Cost: <b>Rp {total_acquisition_cost:,.0f}</b> "
+                    f"(~${total_acquisition_cost / 15000:,.0f} USD)",
+                    self.styles['Normal']
+                ))
+                
+                # Calculate projected value at recommended size
+                future_total_value = future_value * recommended_plot_size
+                projected_gain = future_total_value - total_acquisition_cost
+                story.append(Paragraph(
+                    f"   • Projected 18-Month Value: <b>Rp {future_total_value:,.0f}</b>",
+                    self.styles['Normal']
+                ))
+                story.append(Paragraph(
+                    f"   • Estimated Gain: <b>Rp {projected_gain:,.0f}</b> "
+                    f"(~${projected_gain / 15000:,.0f} USD)",
+                    self.styles['Normal']
+                ))
+            
+            story.append(Spacer(1, 5))
+        
+        # Development Context
+        if dev_cost_index > 0 or terrain_difficulty != 'Unknown':
+            story.append(Paragraph(
+                "<b>Development Considerations:</b>",
+                self.styles['Normal']
+            ))
+            if dev_cost_index > 0:
+                story.append(Paragraph(
+                    f"   • Development Cost Index: <b>{dev_cost_index:.0f}/100</b> "
+                    f"({'High' if dev_cost_index > 70 else 'Moderate' if dev_cost_index > 40 else 'Low'} cost region)",
+                    self.styles['Normal']
+                ))
+            if terrain_difficulty != 'Unknown':
+                story.append(Paragraph(
+                    f"   • Terrain Difficulty: <b>{terrain_difficulty}</b>",
+                    self.styles['Normal']
+                ))
+            
+            story.append(Spacer(1, 5))
+        
+        # Add disclaimer for financial projections
+        story.append(Spacer(1, 5))
+        story.append(Paragraph(
+            "<i>Note: Financial projections are estimates based on current market data, satellite-detected development "
+            "activity, and infrastructure analysis. Actual returns may vary based on market conditions, regulatory changes, "
+            "and development timing. This is not financial advice.</i>",
+            self.styles['Footer']
+        ))
+        
+        story.append(Spacer(1, 10))
+
+    def _draw_rvi_analysis(self, story: List, rvi_data: Dict[str, Any], region_name: str):
+        """
+        Draw Relative Value Index (RVI) analysis section - NEW in v2.6-alpha
+        
+        Shows whether land is undervalued, fairly valued, or overvalued compared to
+        peer regions with similar infrastructure and development momentum.
+        
+        Args:
+            story: PDF story list to append elements to
+            rvi_data: RVI calculation results from FinancialMetricsEngine
+            region_name: Name of the region for context
+        """
+        if not rvi_data or rvi_data.get('rvi') is None:
+            return
+        
+        story.append(Spacer(1, 10))
+        story.append(Paragraph(
+            "📊 <b>Relative Value Index (RVI)</b>",
+            self.styles['SubsectionHeader']
+        ))
+        
+        # Extract RVI components
+        rvi = rvi_data.get('rvi', 0)
+        expected_price = rvi_data.get('expected_price_m2', 0)
+        interpretation = rvi_data.get('interpretation', 'Unknown')
+        breakdown = rvi_data.get('breakdown', {})
+        
+        # Visual indicator based on RVI value
+        # RVI < 0.8 = Significantly undervalued (strong buy)
+        # RVI 0.8-0.95 = Moderately undervalued (buy opportunity)
+        # RVI 0.95-1.05 = Fairly valued (neutral)
+        # RVI 1.05-1.25 = Moderately overvalued (caution)
+        # RVI > 1.25 = Significantly overvalued (avoid)
+        
+        if rvi < 0.8:
+            rvi_icon = "🟢"  # Strong buy signal
+            rvi_color = "green"
+        elif rvi < 0.95:
+            rvi_icon = "🟡"  # Buy opportunity
+            rvi_color = "orange"
+        elif rvi <= 1.05:
+            rvi_icon = "⚪"  # Neutral/fair value
+            rvi_color = "blue"
+        elif rvi <= 1.25:
+            rvi_icon = "🟠"  # Caution
+            rvi_color = "orange"
+        else:
+            rvi_icon = "🔴"  # Avoid
+            rvi_color = "red"
+        
+        # RVI Score Display
+        story.append(Paragraph(
+            f"{rvi_icon} <b>RVI Score:</b> {rvi:.3f}",
+            self.styles['Normal']
+        ))
+        story.append(Paragraph(
+            f"   <b>{interpretation}</b>",
+            self.styles['Normal']
+        ))
+        
+        story.append(Spacer(1, 8))
+        
+        # What RVI Means - Educational Component
+        story.append(Paragraph(
+            "<b>What is RVI?</b>",
+            self.styles['Normal']
+        ))
+        story.append(Paragraph(
+            "   The Relative Value Index compares actual land prices to expected prices based on:",
+            self.styles['Normal']
+        ))
+        story.append(Paragraph(
+            "   • Peer region average prices (similar tier/location)",
+            self.styles['Normal']
+        ))
+        story.append(Paragraph(
+            "   • Infrastructure quality premium/discount",
+            self.styles['Normal']
+        ))
+        story.append(Paragraph(
+            "   • Development momentum (satellite-detected activity)",
+            self.styles['Normal']
+        ))
+        
+        story.append(Spacer(1, 8))
+        
+        # Price Comparison
+        if expected_price > 0:
+            actual_price = expected_price / rvi if rvi > 0 else 0
+            price_gap = actual_price - expected_price
+            price_gap_pct = (price_gap / expected_price * 100) if expected_price > 0 else 0
+            
+            story.append(Paragraph(
+                "<b>Price Analysis:</b>",
+                self.styles['Normal']
+            ))
+            story.append(Paragraph(
+                f"   • Expected Market Price: <b>Rp {expected_price:,.0f}/m²</b>",
+                self.styles['Normal']
+            ))
+            story.append(Paragraph(
+                f"   • Actual Observed Price: <b>Rp {actual_price:,.0f}/m²</b>",
+                self.styles['Normal']
+            ))
+            
+            # Value gap with interpretation
+            if price_gap < 0:  # Actual < Expected = Undervalued
+                story.append(Paragraph(
+                    f"   • Value Gap: <b style='color: green'>Rp {abs(price_gap):,.0f}/m² below market</b> "
+                    f"({abs(price_gap_pct):.1f}% discount)",
+                    self.styles['Normal']
+                ))
+            elif price_gap > 0:  # Actual > Expected = Overvalued
+                story.append(Paragraph(
+                    f"   • Value Gap: <b style='color: red'>Rp {price_gap:,.0f}/m² above market</b> "
+                    f"({price_gap_pct:.1f}% premium)",
+                    self.styles['Normal']
+                ))
+            else:
+                story.append(Paragraph(
+                    "   • Value Gap: <b>Fairly priced</b> (at market equilibrium)",
+                    self.styles['Normal']
+                ))
+            
+            story.append(Spacer(1, 8))
+        
+        # RVI Component Breakdown
+        if breakdown:
+            story.append(Paragraph(
+                "<b>RVI Calculation Breakdown:</b>",
+                self.styles['Normal']
+            ))
+            
+            # Peer average baseline
+            peer_avg = breakdown.get('peer_average', 0)
+            if peer_avg > 0:
+                story.append(Paragraph(
+                    f"   • Peer Region Average: <b>Rp {peer_avg:,.0f}/m²</b>",
+                    self.styles['Normal']
+                ))
+            
+            # Infrastructure adjustment
+            infra_adj = breakdown.get('infra_adjustment', 1.0)
+            infra_pct = (infra_adj - 1.0) * 100
+            if infra_adj > 1.0:
+                story.append(Paragraph(
+                    f"   • Infrastructure Premium: <b>+{infra_pct:.1f}%</b> (superior access)",
+                    self.styles['Normal']
+                ))
+            elif infra_adj < 1.0:
+                story.append(Paragraph(
+                    f"   • Infrastructure Discount: <b>{infra_pct:.1f}%</b> (limited access)",
+                    self.styles['Normal']
+                ))
+            else:
+                story.append(Paragraph(
+                    "   • Infrastructure Adjustment: <b>Neutral</b> (average access)",
+                    self.styles['Normal']
+                ))
+            
+            # Momentum adjustment
+            momentum_adj = breakdown.get('momentum_adjustment', 1.0)
+            momentum_pct = (momentum_adj - 1.0) * 100
+            if momentum_adj > 1.0:
+                story.append(Paragraph(
+                    f"   • Development Momentum Premium: <b>+{momentum_pct:.1f}%</b> (high activity)",
+                    self.styles['Normal']
+                ))
+            elif momentum_adj < 1.0:
+                story.append(Paragraph(
+                    f"   • Development Momentum Discount: <b>{momentum_pct:.1f}%</b> (low activity)",
+                    self.styles['Normal']
+                ))
+            else:
+                story.append(Paragraph(
+                    "   • Development Momentum: <b>Neutral</b> (average activity)",
+                    self.styles['Normal']
+                ))
+            
+            # Total expected price formula
+            if peer_avg > 0:
+                story.append(Spacer(1, 5))
+                story.append(Paragraph(
+                    f"   <b>Formula:</b> Rp {peer_avg:,.0f} × {infra_adj:.3f} × {momentum_adj:.3f} = "
+                    f"<b>Rp {expected_price:,.0f}/m²</b>",
+                    self.styles['Normal']
+                ))
+            
+            story.append(Spacer(1, 8))
+        
+        # Investment Implications
+        story.append(Paragraph(
+            "<b>Investment Implications:</b>",
+            self.styles['Normal']
+        ))
+        
+        if rvi < 0.8:
+            story.append(Paragraph(
+                "   🟢 <b>Strong Buy Signal:</b> Land is trading significantly below its expected value based on "
+                "infrastructure and development momentum. This presents a compelling value opportunity.",
+                self.styles['Normal']
+            ))
+        elif rvi < 0.95:
+            story.append(Paragraph(
+                "   🟡 <b>Buy Opportunity:</b> Land is moderately undervalued compared to peers. "
+                "Good entry point for long-term investors.",
+                self.styles['Normal']
+            ))
+        elif rvi <= 1.05:
+            story.append(Paragraph(
+                "   ⚪ <b>Fairly Valued:</b> Land is trading near expected market equilibrium. "
+                "Investment decision should focus on other factors (development potential, location strategy).",
+                self.styles['Normal']
+            ))
+        elif rvi <= 1.25:
+            story.append(Paragraph(
+                "   🟠 <b>Caution - Overvalued:</b> Land is trading above expected value. "
+                "Ensure strong development catalysts justify the premium pricing.",
+                self.styles['Normal']
+            ))
+        else:
+            story.append(Paragraph(
+                "   🔴 <b>Avoid - Significantly Overvalued:</b> Land is trading well above market expectations. "
+                "High risk of price correction unless exceptional development catalysts are present.",
+                self.styles['Normal']
+            ))
+        
+        story.append(Spacer(1, 10))
 
     def _create_region_activity_chart(self, regions_data: List[Dict[str, Any]]) -> BytesIO:
         """Create a bar chart of regional activity"""

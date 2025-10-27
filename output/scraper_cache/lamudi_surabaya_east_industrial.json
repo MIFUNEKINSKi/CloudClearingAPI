@@ -1,0 +1,39 @@
+{
+  "region_name": "surabaya_east_industrial",
+  "average_price_per_m2": 11833333.333333334,
+  "median_price_per_m2": 12500000.0,
+  "listing_count": 3,
+  "listings": [
+    {
+      "price_per_m2": 4500000.0,
+      "total_price": 900000000.0,
+      "size_m2": 200.0,
+      "location": "Land Dijual di Rungkut",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/surabaya/dijual-murah-tanah-shm-di-rungkut-surabaya-174963316734/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 12500000.0,
+      "total_price": 4187500000.0,
+      "size_m2": 335.0,
+      "location": "Land Dijual di Mulyorejo",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/surabaya/murah-kavling-pakuwon-city-tanah-san-antonio-strat-175713374758/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 18500000.0,
+      "total_price": 5550000000.0,
+      "size_m2": 300.0,
+      "location": "Land Dijual di Surabaya",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-122baaa2ab25-a3d2-19a1040-b223-7673",
+      "listing_type": "land"
+    }
+  ],
+  "source": "lamudi",
+  "scraped_at": "2025-10-27T10:00:36.505556",
+  "success": true,
+  "error_message": null
+}

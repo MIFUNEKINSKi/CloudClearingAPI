@@ -1,0 +1,27 @@
+{
+  "region_name": "banyuwangi_ferry_corridor",
+  "week_a": "2025-09-28",
+  "week_b": "2025-10-05",
+  "saved_timestamp": "2025-10-12T12:24:45.304224",
+  "saved_images": {
+    "week_a_true_color": "output/satellite_images/weekly/banyuwangi_ferry_corridor_20251012_122439/banyuwangi_ferry_corridor_before_true_color_20250928.png",
+    "week_b_true_color": "output/satellite_images/weekly/banyuwangi_ferry_corridor_20251012_122439/banyuwangi_ferry_corridor_after_true_color_20251005.png",
+    "week_a_false_color": "output/satellite_images/weekly/banyuwangi_ferry_corridor_20251012_122439/banyuwangi_ferry_corridor_before_false_color_20250928.png",
+    "week_b_false_color": "output/satellite_images/weekly/banyuwangi_ferry_corridor_20251012_122439/banyuwangi_ferry_corridor_after_false_color_20251005.png",
+    "ndvi_change": "output/satellite_images/weekly/banyuwangi_ferry_corridor_20251012_122439/banyuwangi_ferry_corridor_ndvi_change_20250928_to_20251005.png"
+  },
+  "original_urls": {
+    "week_a_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/48a9aa3533863720f098121236912644-10fad2897c03338371b8b96d711517c0:getPixels",
+    "week_b_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/448f797661f8c045e98f6e1581fd3403-32b4e3301eb07f080e09d262790e8b09:getPixels",
+    "week_a_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/b0905f7c2e1f43debd8aa3b71c08a4d4-d1af88f5b7e2e6073950d76b8777874c:getPixels",
+    "week_b_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/18f8a12f6df19b72c8f4b9fdbad020fc-d3fa6c3beaf42c98280e8e55ffa0be39:getPixels",
+    "ndvi_change": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/0e5c606a4a398e430d7c408454e4ba2c-0a842770bf8297204cd94dd888bf3d61:getPixels",
+    "week_a_date": "2025-09-28",
+    "week_b_date": "2025-10-05",
+    "description": {
+      "true_color": "Natural color satellite imagery (Red, Green, Blue bands)",
+      "false_color": "False color imagery highlighting vegetation (NIR, Red, Green)",
+      "ndvi_change": "NDVI change map: Red=vegetation loss, Green=vegetation gain"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "region_name": "bogor_puncak_highland",
+  "average_price_per_m2": 4650000.0,
+  "median_price_per_m2": 4650000.0,
+  "listing_count": 2,
+  "listings": [
+    {
+      "price_per_m2": 5800000.0,
+      "total_price": 49450800000.0,
+      "size_m2": 8526.0,
+      "location": "Land Dijual di Parung",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-barat/bogor/bu-cepat-tanah-usaha-parung-bonus-gudang-nego-samp-175763997171/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 3500000.0,
+      "total_price": 21000000000.0,
+      "size_m2": 6000.0,
+      "location": "Land Dijual di Cileungsi",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-89833a204af5-8ac9-19961ac-92fa-783f",
+      "listing_type": "land"
+    }
+  ],
+  "source": "lamudi",
+  "scraped_at": "2025-10-27T10:00:03.619276",
+  "success": true,
+  "error_message": null
+}

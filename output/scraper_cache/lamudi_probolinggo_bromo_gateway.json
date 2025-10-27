@@ -1,0 +1,57 @@
+{
+  "region_name": "probolinggo_bromo_gateway",
+  "average_price_per_m2": 5385759.885659838,
+  "median_price_per_m2": 1500000.0,
+  "listing_count": 5,
+  "listings": [
+    {
+      "price_per_m2": 5478799.4282991905,
+      "total_price": 11500000000.0,
+      "size_m2": 2099.0,
+      "location": "Land Dijual di Jati",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/probolinggo/tanah-murah-dr-saleh-probolinggo-173434749996/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 950000.0,
+      "total_price": 83600000000.0,
+      "size_m2": 88000.0,
+      "location": "Land Dijual di Gending",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/probolinggo/tanah-di-raya-gending-probolinggo-173734255760/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 1500000.0,
+      "total_price": 7074000000.0,
+      "size_m2": 4716.0,
+      "location": "Land Dijual di Probolinggo",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/probolinggo/tanah-luas-murah-lokasi-strategis-0-jalan-raya-pai-171100748653/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 17500000.0,
+      "total_price": 23975000000.0,
+      "size_m2": 1370.0,
+      "location": "Land Dijual di Jati",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/probolinggo/raya-panglima-sudirman-kota-probolinggo-172834141051/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 1500000.0,
+      "total_price": 1821000000.0,
+      "size_m2": 1214.0,
+      "location": "Land Dijual di Probolinggo",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/probolinggo/jual-tanah-komersial-sukokerto-pajarakan-proboling-175523189480/",
+      "listing_type": "land"
+    }
+  ],
+  "source": "lamudi",
+  "scraped_at": "2025-10-27T10:00:53.720294",
+  "success": true,
+  "error_message": null
+}

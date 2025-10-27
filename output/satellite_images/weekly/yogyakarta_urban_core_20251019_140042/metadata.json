@@ -1,0 +1,27 @@
+{
+  "region_name": "yogyakarta_urban_core",
+  "week_a": "2025-10-05",
+  "week_b": "2025-10-12",
+  "saved_timestamp": "2025-10-19T14:00:45.851945",
+  "saved_images": {
+    "week_a_true_color": "output/satellite_images/weekly/yogyakarta_urban_core_20251019_140042/yogyakarta_urban_core_before_true_color_20251005.png",
+    "week_b_true_color": "output/satellite_images/weekly/yogyakarta_urban_core_20251019_140042/yogyakarta_urban_core_after_true_color_20251012.png",
+    "week_a_false_color": "output/satellite_images/weekly/yogyakarta_urban_core_20251019_140042/yogyakarta_urban_core_before_false_color_20251005.png",
+    "week_b_false_color": "output/satellite_images/weekly/yogyakarta_urban_core_20251019_140042/yogyakarta_urban_core_after_false_color_20251012.png",
+    "ndvi_change": "output/satellite_images/weekly/yogyakarta_urban_core_20251019_140042/yogyakarta_urban_core_ndvi_change_20251005_to_20251012.png"
+  },
+  "original_urls": {
+    "week_a_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/13501931abc1955fa3392c324db2a9a9-9589226a74d7e408736399661a4f021f:getPixels",
+    "week_b_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/91d352d600389b97ef2ed70ef4637255-97acc1bfefe2d2b868348f554e1908ec:getPixels",
+    "week_a_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/c5928219f5c802f5538000c1cf3621c5-96caa668ab7b8d04b5fff9b8b5a52c61:getPixels",
+    "week_b_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/1d5d69bfa708d922e2a0d77578414d62-d5f2bb1b4d9c3d3d77e4ebb477f3eb9c:getPixels",
+    "ndvi_change": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/28d57d9f2750b51cf51d741cd4fa1265-96cfaefe0e1ed37463b0b04384e970ae:getPixels",
+    "week_a_date": "2025-10-05",
+    "week_b_date": "2025-10-12",
+    "description": {
+      "true_color": "Natural color satellite imagery (Red, Green, Blue bands)",
+      "false_color": "False color imagery highlighting vegetation (NIR, Red, Green)",
+      "ndvi_change": "NDVI change map: Red=vegetation loss, Green=vegetation gain"
+    }
+  }
+}

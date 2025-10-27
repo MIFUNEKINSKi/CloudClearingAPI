@@ -1,0 +1,66 @@
+{
+  "region_name": "jember_southern_coast",
+  "average_price_per_m2": 3290521.11410602,
+  "median_price_per_m2": 3500000.0,
+  "listing_count": 6,
+  "listings": [
+    {
+      "price_per_m2": 2500000.0,
+      "total_price": 720000000.0,
+      "size_m2": 288.0,
+      "location": "Land Dijual di Jember",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/jember/tanah-kavling-siap-bangun-dekat-kampus-unmuh-jembe-175324888870/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 4043126.684636119,
+      "total_price": 1500000000.0,
+      "size_m2": 371.0,
+      "location": "Land Dijual di Jember",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/jember/banting-harga-tanah-strategis-pinggir-jalan-cocok-173165732763/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 2400000.0,
+      "total_price": 1828800000.0,
+      "size_m2": 762.0,
+      "location": "Land Dijual di Jember",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/jember/tanah-kavling-murah-dekat-kampus-jember-cocok-untu-173165609662/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 3500000.0,
+      "total_price": 33705000000.0,
+      "size_m2": 9630.0,
+      "location": "Land Dijual di Kaliwates",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/jember/dijual-tanah-luas-dan-murah-di-jl-gajah-mada-jembe-174763782289/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 3500000.0,
+      "total_price": 1792000000.0,
+      "size_m2": 512.0,
+      "location": "Land Dijual di Panti",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/jember/tanah-luas-di-dekat-fakultas-kedokteran-unej-jalan-169874041571/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 3800000.0,
+      "total_price": 2014000000.0,
+      "size_m2": 530.0,
+      "location": "Land Dijual di Patrang",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/jember/tanah-strategis-dekat-fakultas-kedokteran-unej-171376722755/",
+      "listing_type": "land"
+    }
+  ],
+  "source": "lamudi",
+  "scraped_at": "2025-10-27T10:00:56.582950",
+  "success": true,
+  "error_message": null
+}

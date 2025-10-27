@@ -1,0 +1,27 @@
+{
+  "region_name": "jember_southern_coast",
+  "week_a": "2025-10-05",
+  "week_b": "2025-10-12",
+  "saved_timestamp": "2025-10-19T16:22:33.651764",
+  "saved_images": {
+    "week_a_true_color": "output/satellite_images/weekly/jember_southern_coast_20251019_162229/jember_southern_coast_before_true_color_20251005.png",
+    "week_b_true_color": "output/satellite_images/weekly/jember_southern_coast_20251019_162229/jember_southern_coast_after_true_color_20251012.png",
+    "week_a_false_color": "output/satellite_images/weekly/jember_southern_coast_20251019_162229/jember_southern_coast_before_false_color_20251005.png",
+    "week_b_false_color": "output/satellite_images/weekly/jember_southern_coast_20251019_162229/jember_southern_coast_after_false_color_20251012.png",
+    "ndvi_change": "output/satellite_images/weekly/jember_southern_coast_20251019_162229/jember_southern_coast_ndvi_change_20251005_to_20251012.png"
+  },
+  "original_urls": {
+    "week_a_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/6fc250a9272d80082050e691b5dbe8a9-7cff1014988873f93fc9d03f0656d532:getPixels",
+    "week_b_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/e7e3e40187a1e857a951be2213fe4b16-5eba8d73b24ad6bb99572ac500c86538:getPixels",
+    "week_a_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/45fd8758ddc6c177fb2ebfeb05fe9ef5-62f56e79e5779cb88f4e967a567088ae:getPixels",
+    "week_b_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/e02601db6877a7d1ab2b8319321490b9-57346854aa00c3d69a0d6b91812b2d68:getPixels",
+    "ndvi_change": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/2915684bec66f2a2fee01a162fd6cbb9-9e28e0c1717d97b1c317e14ce2922f50:getPixels",
+    "week_a_date": "2025-10-05",
+    "week_b_date": "2025-10-12",
+    "description": {
+      "true_color": "Natural color satellite imagery (Red, Green, Blue bands)",
+      "false_color": "False color imagery highlighting vegetation (NIR, Red, Green)",
+      "ndvi_change": "NDVI change map: Red=vegetation loss, Green=vegetation gain"
+    }
+  }
+}

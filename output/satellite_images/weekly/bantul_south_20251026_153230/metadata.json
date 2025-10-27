@@ -1,0 +1,27 @@
+{
+  "region_name": "bantul_south",
+  "week_a": "2025-10-05",
+  "week_b": "2025-10-12",
+  "saved_timestamp": "2025-10-26T15:32:35.057858",
+  "saved_images": {
+    "week_a_true_color": "output/satellite_images/weekly/bantul_south_20251026_153230/bantul_south_before_true_color_20251005.png",
+    "week_b_true_color": "output/satellite_images/weekly/bantul_south_20251026_153230/bantul_south_after_true_color_20251012.png",
+    "week_a_false_color": "output/satellite_images/weekly/bantul_south_20251026_153230/bantul_south_before_false_color_20251005.png",
+    "week_b_false_color": "output/satellite_images/weekly/bantul_south_20251026_153230/bantul_south_after_false_color_20251012.png",
+    "ndvi_change": "output/satellite_images/weekly/bantul_south_20251026_153230/bantul_south_ndvi_change_20251005_to_20251012.png"
+  },
+  "original_urls": {
+    "week_a_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/49547f0083375748667157de882f4cf7-411317b42eadd281403616d7d48dc379:getPixels",
+    "week_b_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/9a992a2752e06c30c54610c228e5a218-37cd5f542b2b89cad93d2235a9a2a57d:getPixels",
+    "week_a_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/c8adfb8f6b8bb12e22b3fa74a04d38ea-0deba660adba183a231bc71dd6f9c887:getPixels",
+    "week_b_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/0566f70b7f8cd29d6c85ab7ac29978ee-32781d9e88095c614827a082cbaf5988:getPixels",
+    "ndvi_change": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/376737d74ce492527751b2132cee3b4e-1a307a3354bd1be1905cb8f80bb32f3b:getPixels",
+    "week_a_date": "2025-10-05",
+    "week_b_date": "2025-10-12",
+    "description": {
+      "true_color": "Natural color satellite imagery (Red, Green, Blue bands)",
+      "false_color": "False color imagery highlighting vegetation (NIR, Red, Green)",
+      "ndvi_change": "NDVI change map: Red=vegetation loss, Green=vegetation gain"
+    }
+  }
+}

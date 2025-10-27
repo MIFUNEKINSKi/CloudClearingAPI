@@ -1,0 +1,75 @@
+{
+  "region_name": "yogyakarta_kulon_progo_airport",
+  "average_price_per_m2": 5345361.781076067,
+  "median_price_per_m2": 5100000.0,
+  "listing_count": 7,
+  "listings": [
+    {
+      "price_per_m2": 3750000.0,
+      "total_price": 1867500000.0,
+      "size_m2": 498.0,
+      "location": "Land Dijual di Kalasan",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/yogyakarta/sleman/tanah-strategis-di-tirtomartani-kalasan-sleman-17578432508/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 2900000.0,
+      "total_price": 2465000000.0,
+      "size_m2": 850.0,
+      "location": "Land Dijual di Ngaglik",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/yogyakarta/sleman/tanah-shmp-4-menit-dari-kampus-uii-luas-850m2-hook-175551239031/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 7100000.0,
+      "total_price": 894600000.0,
+      "size_m2": 126.0,
+      "location": "Land Dijual di Kotagede",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-8a9f28c43b-100a-19a233c-9912-74fd",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 4600000.0,
+      "total_price": 920000000.0,
+      "size_m2": 200.0,
+      "location": "Land Dijual di Seyegan",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/yogyakarta/sleman/tanah-asri-di-sleman-jogja-akses-mobil-shm-pekaran-175300145644/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 5100000.0,
+      "total_price": 596700000.0,
+      "size_m2": 117.0,
+      "location": "Land Dijual di Seyegan",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/yogyakarta/sleman/tanah-kavling-dijual-dekat-perkantoran-sleman-lt-1-173372446954/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 6500000.0,
+      "total_price": 3406000000.0,
+      "size_m2": 524.0,
+      "location": "Land Dijual di Umbulharjo",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/yogyakarta/yogyakarta-1/murah-tanah-strategis-giwangan-shm-dekat-terminal-175834389181/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 7467532.467532467,
+      "total_price": 2300000000.0,
+      "size_m2": 308.0,
+      "location": "Land Dijual di Depok",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/yogyakarta/sleman/tanah-condong-catur-dekat-pakuwon-mall-rs-jih-upn-175103561536/",
+      "listing_type": "land"
+    }
+  ],
+  "source": "lamudi",
+  "scraped_at": "2025-10-27T10:00:22.864974",
+  "success": true,
+  "error_message": null
+}

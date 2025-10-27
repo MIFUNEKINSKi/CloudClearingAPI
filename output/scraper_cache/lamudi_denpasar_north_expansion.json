@@ -1,0 +1,21 @@
+{
+  "region_name": "denpasar_north_expansion",
+  "average_price_per_m2": 2800000.0,
+  "median_price_per_m2": 2800000.0,
+  "listing_count": 1,
+  "listings": [
+    {
+      "price_per_m2": 2800000.0,
+      "total_price": 2800000000.0,
+      "size_m2": 1000.0,
+      "location": "Land Dijual di Denpasar Selatan",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/bali/denpasar/dijual-tanah-lokasi-di-sanur-beach-jln-hang-tuah-d-173804024211/",
+      "listing_type": "land"
+    }
+  ],
+  "source": "lamudi",
+  "scraped_at": "2025-10-27T11:32:52.305737",
+  "success": true,
+  "error_message": null
+}

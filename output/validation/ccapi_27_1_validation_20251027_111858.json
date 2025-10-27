@@ -1,0 +1,60 @@
+{
+  "timestamp": "2025-10-27T11:18:53.857305",
+  "version": "v2.6-beta (CCAPI-27.1)",
+  "regions_tested": [],
+  "success_metrics": {
+    "status": "FAILED",
+    "reason": "No regions successfully analyzed"
+  },
+  "failures": [
+    {
+      "region": "jakarta_north_sprawl",
+      "reason": "Analysis returned None"
+    },
+    {
+      "region": "bandung_north_expansion",
+      "reason": "Analysis returned None"
+    },
+    {
+      "region": "tangerang_bsd_corridor",
+      "reason": "Analysis returned None"
+    },
+    {
+      "region": "yogyakarta_urban_core",
+      "reason": "Analysis returned None"
+    },
+    {
+      "region": "semarang_port_expansion",
+      "reason": "Analysis returned None"
+    },
+    {
+      "region": "solo_raya_expansion",
+      "reason": "Analysis returned None"
+    },
+    {
+      "region": "denpasar_north_expansion",
+      "reason": "Analysis returned None"
+    },
+    {
+      "region": "purwokerto_south_expansion",
+      "reason": "Analysis returned None"
+    },
+    {
+      "region": "tegal_brebes_coastal",
+      "reason": "Analysis returned None"
+    },
+    {
+      "region": "probolinggo_bromo_gateway",
+      "reason": "Analysis returned None"
+    },
+    {
+      "region": "banyuwangi_ferry_corridor",
+      "reason": "Analysis returned None"
+    },
+    {
+      "region": "jember_southern_coast",
+      "reason": "Analysis returned None"
+    }
+  ],
+  "detailed_analysis": []
+}

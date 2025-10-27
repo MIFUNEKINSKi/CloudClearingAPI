@@ -1,0 +1,27 @@
+{
+  "region_name": "yogyakarta_kulon_progo_airport",
+  "week_a": "2025-10-05",
+  "week_b": "2025-10-12",
+  "saved_timestamp": "2025-10-19T10:54:34.013290",
+  "saved_images": {
+    "week_a_true_color": "output/satellite_images/weekly/yogyakarta_kulon_progo_airport_20251019_105429/yogyakarta_kulon_progo_airport_before_true_color_20251005.png",
+    "week_b_true_color": "output/satellite_images/weekly/yogyakarta_kulon_progo_airport_20251019_105429/yogyakarta_kulon_progo_airport_after_true_color_20251012.png",
+    "week_a_false_color": "output/satellite_images/weekly/yogyakarta_kulon_progo_airport_20251019_105429/yogyakarta_kulon_progo_airport_before_false_color_20251005.png",
+    "week_b_false_color": "output/satellite_images/weekly/yogyakarta_kulon_progo_airport_20251019_105429/yogyakarta_kulon_progo_airport_after_false_color_20251012.png",
+    "ndvi_change": "output/satellite_images/weekly/yogyakarta_kulon_progo_airport_20251019_105429/yogyakarta_kulon_progo_airport_ndvi_change_20251005_to_20251012.png"
+  },
+  "original_urls": {
+    "week_a_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/27c01c8761bed00b513c64c2e8652948-1899d15827c13000ab3c439f6d9b7d41:getPixels",
+    "week_b_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/673c500702099892c52f4527f8bc8e56-fe96c4536ae1bd3e135634ad99874efb:getPixels",
+    "week_a_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/49aa05e878da61db47d1a786d23c876a-ece0eda5ac05529fb0e641ca13278cc5:getPixels",
+    "week_b_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/36fbd54092bb64066da3a2a53ab39f91-4423cb50c427093d969c423d6a572b3d:getPixels",
+    "ndvi_change": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/a09111102bdac50fcccaa028ea82649d-01739b26f3c56632d76eadb3d8b5e83f:getPixels",
+    "week_a_date": "2025-10-05",
+    "week_b_date": "2025-10-12",
+    "description": {
+      "true_color": "Natural color satellite imagery (Red, Green, Blue bands)",
+      "false_color": "False color imagery highlighting vegetation (NIR, Red, Green)",
+      "ndvi_change": "NDVI change map: Red=vegetation loss, Green=vegetation gain"
+    }
+  }
+}

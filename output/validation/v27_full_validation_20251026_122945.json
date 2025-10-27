@@ -1,0 +1,299 @@
+{
+  "validation_date": "2025-10-26T12:29:45.374671",
+  "version": "2.7.0-alpha (CCAPI-27.1)",
+  "regions_tested": 12,
+  "validation_results": [
+    {
+      "region_name": "jakarta_north_sprawl",
+      "tier": "tier_1_metros",
+      "final_score": 27.312499999999996,
+      "base_score": 25.0,
+      "infrastructure_multiplier": 1.15,
+      "market_multiplier": 0.95,
+      "confidence": 0.95,
+      "recommendation": "WATCH",
+      "actual_rvi": null,
+      "expected_rvi_range": [
+        0.95,
+        1.05
+      ],
+      "rvi_sensible": false,
+      "tier_1_plus_applied": false,
+      "airport_premium_applied": false,
+      "tier_tolerance_applied": "\u00b115%",
+      "improvement_score": 45,
+      "validation_notes": "Tier 1 metro - high infra, active market"
+    },
+    {
+      "region_name": "tangerang_bsd_corridor",
+      "tier": "tier_1_metros",
+      "final_score": 32.775,
+      "base_score": 30.0,
+      "infrastructure_multiplier": 1.15,
+      "market_multiplier": 0.95,
+      "confidence": 0.95,
+      "recommendation": "WATCH",
+      "actual_rvi": null,
+      "expected_rvi_range": [
+        1.0,
+        1.15
+      ],
+      "rvi_sensible": false,
+      "tier_1_plus_applied": false,
+      "airport_premium_applied": false,
+      "tier_tolerance_applied": "\u00b115%",
+      "improvement_score": 45,
+      "validation_notes": "Tier 1+ ultra-premium - Phase 2B.3 fix (9.5M benchmark)"
+    },
+    {
+      "region_name": "surabaya_west_expansion",
+      "tier": "tier_1_metros",
+      "final_score": 27.312499999999996,
+      "base_score": 25.0,
+      "infrastructure_multiplier": 1.15,
+      "market_multiplier": 0.95,
+      "confidence": 0.95,
+      "recommendation": "WATCH",
+      "actual_rvi": null,
+      "expected_rvi_range": [
+        0.85,
+        0.95
+      ],
+      "rvi_sensible": false,
+      "tier_1_plus_applied": false,
+      "airport_premium_applied": false,
+      "tier_tolerance_applied": "\u00b115%",
+      "improvement_score": 45,
+      "validation_notes": "Tier 1 metro - second-tier metro pricing, undervalued"
+    },
+    {
+      "region_name": "bandung_north_corridor",
+      "tier": "tier_2_secondary",
+      "final_score": 21.375,
+      "base_score": 25.0,
+      "infrastructure_multiplier": 0.9,
+      "market_multiplier": 0.95,
+      "confidence": 0.95,
+      "recommendation": "PASS",
+      "actual_rvi": null,
+      "expected_rvi_range": [
+        0.95,
+        1.05
+      ],
+      "rvi_sensible": false,
+      "tier_1_plus_applied": false,
+      "airport_premium_applied": false,
+      "tier_tolerance_applied": "\u00b120%",
+      "improvement_score": 45,
+      "validation_notes": "Tier 2 - provincial capital with strong university presence"
+    },
+    {
+      "region_name": "semarang_north_coast",
+      "tier": "tier_2_secondary",
+      "final_score": 21.849999999999998,
+      "base_score": 20.0,
+      "infrastructure_multiplier": 1.15,
+      "market_multiplier": 0.95,
+      "confidence": 0.95,
+      "recommendation": "PASS",
+      "actual_rvi": null,
+      "expected_rvi_range": [
+        0.8,
+        0.9
+      ],
+      "rvi_sensible": false,
+      "tier_1_plus_applied": false,
+      "airport_premium_applied": false,
+      "tier_tolerance_applied": "\u00b120%",
+      "improvement_score": 45,
+      "validation_notes": "Tier 2 - port city with industrial growth, undervalued"
+    },
+    {
+      "region_name": "malang_south_expansion",
+      "tier": "tier_2_secondary",
+      "final_score": 21.849999999999998,
+      "base_score": 20.0,
+      "infrastructure_multiplier": 1.15,
+      "market_multiplier": 0.95,
+      "confidence": 0.95,
+      "recommendation": "PASS",
+      "actual_rvi": null,
+      "expected_rvi_range": [
+        0.9,
+        1.0
+      ],
+      "rvi_sensible": false,
+      "tier_1_plus_applied": false,
+      "airport_premium_applied": false,
+      "tier_tolerance_applied": "\u00b120%",
+      "improvement_score": 45,
+      "validation_notes": "Tier 2 - university city with tourism"
+    },
+    {
+      "region_name": "yogyakarta_sleman_north",
+      "tier": "tier_3_emerging",
+      "final_score": 27.312499999999996,
+      "base_score": 25.0,
+      "infrastructure_multiplier": 1.15,
+      "market_multiplier": 0.95,
+      "confidence": 0.95,
+      "recommendation": "WATCH",
+      "actual_rvi": null,
+      "expected_rvi_range": [
+        0.95,
+        1.05
+      ],
+      "rvi_sensible": false,
+      "tier_1_plus_applied": false,
+      "airport_premium_applied": false,
+      "tier_tolerance_applied": "\u00b125%",
+      "improvement_score": 45,
+      "validation_notes": "Tier 3 - Phase 2B.2 airport premium test (YIA catalyst)"
+    },
+    {
+      "region_name": "solo_east_industrial",
+      "tier": "tier_3_emerging",
+      "final_score": 21.849999999999998,
+      "base_score": 20.0,
+      "infrastructure_multiplier": 1.15,
+      "market_multiplier": 0.95,
+      "confidence": 0.95,
+      "recommendation": "PASS",
+      "actual_rvi": null,
+      "expected_rvi_range": [
+        0.85,
+        0.95
+      ],
+      "rvi_sensible": false,
+      "tier_1_plus_applied": false,
+      "airport_premium_applied": false,
+      "tier_tolerance_applied": "\u00b125%",
+      "improvement_score": 45,
+      "validation_notes": "Tier 3 - emerging industrial zone"
+    },
+    {
+      "region_name": "banyuwangi_north_coast",
+      "tier": "tier_3_emerging",
+      "final_score": 21.849999999999998,
+      "base_score": 20.0,
+      "infrastructure_multiplier": 1.15,
+      "market_multiplier": 0.95,
+      "confidence": 0.95,
+      "recommendation": "PASS",
+      "actual_rvi": null,
+      "expected_rvi_range": [
+        1.0,
+        1.1
+      ],
+      "rvi_sensible": false,
+      "tier_1_plus_applied": false,
+      "airport_premium_applied": false,
+      "tier_tolerance_applied": "\u00b125%",
+      "improvement_score": 45,
+      "validation_notes": "Tier 3 - Phase 2B.2 airport premium test (BWX)"
+    },
+    {
+      "region_name": "purwokerto_south",
+      "tier": "tier_3_emerging",
+      "final_score": 21.849999999999998,
+      "base_score": 20.0,
+      "infrastructure_multiplier": 1.15,
+      "market_multiplier": 0.95,
+      "confidence": 0.95,
+      "recommendation": "PASS",
+      "actual_rvi": null,
+      "expected_rvi_range": [
+        0.75,
+        0.85
+      ],
+      "rvi_sensible": false,
+      "tier_1_plus_applied": false,
+      "airport_premium_applied": false,
+      "tier_tolerance_applied": "\u00b125%",
+      "improvement_score": 45,
+      "validation_notes": "Tier 3 - periurban growth corridor"
+    },
+    {
+      "region_name": "magelang_west",
+      "tier": "tier_4_frontier",
+      "final_score": 19.0,
+      "base_score": 20.0,
+      "infrastructure_multiplier": 1.0,
+      "market_multiplier": 0.95,
+      "confidence": 0.95,
+      "recommendation": "PASS",
+      "actual_rvi": null,
+      "expected_rvi_range": [
+        0.85,
+        0.95
+      ],
+      "rvi_sensible": false,
+      "tier_1_plus_applied": false,
+      "airport_premium_applied": false,
+      "tier_tolerance_applied": "\u00b130%",
+      "improvement_score": 45,
+      "validation_notes": "Tier 4 - tourism-driven development"
+    },
+    {
+      "region_name": "pacitan_coastal",
+      "tier": "tier_4_frontier",
+      "final_score": 17.099999999999998,
+      "base_score": 20.0,
+      "infrastructure_multiplier": 0.9,
+      "market_multiplier": 0.95,
+      "confidence": 0.95,
+      "recommendation": "PASS",
+      "actual_rvi": null,
+      "expected_rvi_range": [
+        0.85,
+        0.95
+      ],
+      "rvi_sensible": false,
+      "tier_1_plus_applied": false,
+      "airport_premium_applied": false,
+      "tier_tolerance_applied": "\u00b130%",
+      "improvement_score": 45,
+      "validation_notes": "Tier 4 - Phase 2B.4 test (\u00b130% tolerance for frontier)"
+    }
+  ],
+  "validation_summary": {
+    "total_regions_tested": 12,
+    "avg_improvement_score": 45.0,
+    "rvi_sensibility_pct": 0.0,
+    "rvi_sensible_count": 0,
+    "tier_1_plus_validated": false,
+    "airport_premium_validated": false,
+    "tier_breakdown": {
+      "tier_1_metros": {
+        "count": 3,
+        "avg_improvement": 45.0,
+        "rvi_sensibility_rate": 0.0,
+        "avg_final_score": 29.13333333333333,
+        "avg_confidence": 0.9499999999999998
+      },
+      "tier_2_secondary": {
+        "count": 3,
+        "avg_improvement": 45.0,
+        "rvi_sensibility_rate": 0.0,
+        "avg_final_score": 21.691666666666663,
+        "avg_confidence": 0.9499999999999998
+      },
+      "tier_3_emerging": {
+        "count": 4,
+        "avg_improvement": 45.0,
+        "rvi_sensibility_rate": 0.0,
+        "avg_final_score": 23.215624999999996,
+        "avg_confidence": 0.95
+      },
+      "tier_4_frontier": {
+        "count": 2,
+        "avg_improvement": 45.0,
+        "rvi_sensibility_rate": 0.0,
+        "avg_final_score": 18.049999999999997,
+        "avg_confidence": 0.95
+      }
+    }
+  },
+  "gate_passed": false,
+  "recommendation": "INVESTIGATE SCORING DISCREPANCIES"
+}

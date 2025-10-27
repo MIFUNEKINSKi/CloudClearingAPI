@@ -96,33 +96,49 @@ Tested URLs (all failed):
 
 ---
 
-### 3. 99.co ✅ **APPEARS VALID** (Needs Live Testing)
+### 3. 99.co ⚠️ **RATE LIMITED** (Functional but Aggressive Limits)
 
 **URL Pattern:** Already uses correct `/jual/` Indonesian format
 
 **Evidence:**
 ```
 ✅ URL: https://www.99.co/id/jual/tanah/yogyakarta
-   → Returns: HTTP 200
+   → Returns: HTTP 200 on first request
    → Response Size: 561KB (substantial content)
+   
+❌ Subsequent requests:
+   → HTTP 429 "Too Many Requests"
+   → Rate limit hit after 1-2 requests within 2 seconds
 ```
 
-**Status:** URL accessible, but needs live scraping test to confirm:
-1. Listings are present in HTML
-2. Parsing logic extracts data correctly
-3. Price/size parsing handles 99.co format
+**Status:** URL accessible and correct, but requires slower request cadence
 
-**Testing Required:**
+**Testing Results (Oct 26, 2025 - Live Test)**:
+- Yogyakarta (1st request): 0 listings found (possible parsing issue or no results)
+- Jakarta (2nd request): HTTP 429 Too Many Requests
+- Bali (3rd request): HTTP 429 Too Many Requests
+
+**Root Cause**: 99.co has aggressive rate limiting (likely 1 request per 5-10 seconds)
+
+**Implications**:
+- May work in production monitoring (2-minute intervals between regions)
+- Needs slower request rate for testing
+- Parsing logic may need adjustment for 99.co HTML structure
+
+**Testing Required** (with proper rate limiting):
 ```python
-# Test script needed:
+# Test script with delays:
 from src.scrapers.ninety_nine_scraper import NinetyNineScraper
+import time
+
 scraper = NinetyNineScraper()
+
+# Test one region with proper spacing
 result = scraper.get_price_data("yogyakarta", max_listings=5)
-assert result.success == True
-assert result.listing_count > 0
+time.sleep(10)  # Wait 10 seconds between regions
 ```
 
-**Priority:** 🟢 LOW (appears functional, but untested in production)
+**Priority:** � MEDIUM (may work in production, needs slower testing)
 
 ---
 

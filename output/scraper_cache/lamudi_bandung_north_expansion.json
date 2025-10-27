@@ -1,0 +1,30 @@
+{
+  "region_name": "bandung_north_expansion",
+  "average_price_per_m2": 3392857.1428571427,
+  "median_price_per_m2": 3392857.1428571427,
+  "listing_count": 2,
+  "listings": [
+    {
+      "price_per_m2": 4285714.285714285,
+      "total_price": 1500000000.0,
+      "size_m2": 350.0,
+      "location": "Land Dijual di Cibiru Hilir",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-barat/bandung/dijual-tanah-strategis-dekat-pintu-tol-di-cileunyi-174166457516/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 2500000.0,
+      "total_price": 12715000000.0,
+      "size_m2": 5086.0,
+      "location": "Land Dijual di Jawa Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-ae6b8f5bef3f-55db-1982329-9433-7eed",
+      "listing_type": "land"
+    }
+  ],
+  "source": "lamudi",
+  "scraped_at": "2025-10-26T20:43:23.526057",
+  "success": true,
+  "error_message": null
+}

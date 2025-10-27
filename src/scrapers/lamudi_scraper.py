@@ -91,6 +91,120 @@ class LamudiScraper(BaseLandPriceScraper):
             success=True
         )
     
+    def _extract_city_from_region(self, region_name: str) -> str:
+        """
+        Extract city/location slug from internal region name
+        
+        Maps internal region identifiers to Lamudi-compatible city slugs.
+        
+        Args:
+            region_name: Internal region identifier (e.g., "jakarta_north_sprawl", "Sleman North")
+            
+        Returns:
+            City slug for Lamudi (e.g., "jakarta", "sleman")
+            
+        Examples:
+            jakarta_north_sprawl → jakarta
+            bandung_north_expansion → bandung
+            yogyakarta_periurban → yogyakarta
+            tegal_brebes_coastal → tegal
+            Sleman North → sleman
+            Bantul South → bantul
+        """
+        # Normalize to lowercase
+        normalized = region_name.lower()
+        
+        # Location mapping dictionary (internal region name prefix → Lamudi city slug)
+        # Maps our region identifiers to Indonesian city names that Lamudi recognizes
+        location_map = {
+            # Java - Major Cities
+            'jakarta': 'jakarta',
+            'bandung': 'bandung',
+            'surabaya': 'surabaya',
+            'semarang': 'semarang',
+            'yogyakarta': 'yogyakarta',
+            'solo': 'solo',
+            'surakarta': 'solo',  # Solo is also known as Surakarta
+            'malang': 'malang',
+            'bogor': 'bogor',
+            'depok': 'depok',
+            'tangerang': 'tangerang',
+            'bekasi': 'bekasi',
+            'cirebon': 'cirebon',
+            'tegal': 'tegal',
+            'pekalongan': 'pekalongan',
+            'purwokerto': 'purwokerto',
+            
+            # Yogyakarta Special Region
+            'sleman': 'sleman',
+            'bantul': 'bantul',
+            'gunungkidul': 'gunungkidul',
+            'kulonprogo': 'kulonprogo',
+            'kulon progo': 'kulonprogo',
+            
+            # Central Java
+            'magelang': 'magelang',
+            'salatiga': 'salatiga',
+            'purwokerto': 'purwokerto',
+            'cilacap': 'cilacap',
+            'brebes': 'brebes',
+            
+            # West Java
+            'cimahi': 'cimahi',
+            'tasikmalaya': 'tasikmalaya',
+            'cianjur': 'cianjur',
+            'sukabumi': 'sukabumi',
+            'karawang': 'karawang',
+            'purwakarta': 'purwakarta',
+            
+            # Banten
+            'serang': 'serang',
+            'cilegon': 'cilegon',
+            
+            # East Java
+            'gresik': 'gresik',
+            'sidoarjo': 'sidoarjo',
+            'mojokerto': 'mojokerto',
+            'pasuruan': 'pasuruan',
+            'probolinggo': 'probolinggo',
+            'banyuwangi': 'banyuwangi',
+            'jember': 'jember',
+            'kediri': 'kediri',
+            'madiun': 'madiun',
+            'blitar': 'blitar',
+            
+            # Bali
+            'denpasar': 'denpasar',
+            'bali': 'denpasar',  # Bali region defaults to Denpasar
+            'badung': 'badung',
+            'gianyar': 'gianyar',
+            'tabanan': 'tabanan',
+            'sanur': 'sanur',
+            'ubud': 'ubud',
+            'seminyak': 'seminyak',
+            'kuta': 'kuta',
+        }
+        
+        # Try exact match first (for simple region names)
+        if normalized in location_map:
+            return location_map[normalized]
+        
+        # Extract first meaningful word from region identifier
+        # Handle both underscore format (jakarta_north_sprawl) and space format (Jakarta North)
+        parts = normalized.replace('_', ' ').split()
+        
+        # Try each part starting from the beginning
+        for part in parts:
+            if part in location_map:
+                return location_map[part]
+        
+        # If no match found, try to extract the first word (likely the city)
+        # and return it as-is (fallback for unmapped cities)
+        first_word = parts[0] if parts else normalized
+        
+        logger.warning(f"No location mapping found for '{region_name}', using first word: '{first_word}'")
+        return first_word
+    
     def _build_search_url(self, region_name: str) -> str:
         """
         Build Lamudi search URL for land in region
@@ -101,13 +215,14 @@ class LamudiScraper(BaseLandPriceScraper):
         Returns:
             Full search URL
         """
-        # Extract key location terms
-        # Examples: "Sleman North" -> "Sleman", "Bantul Yogyakarta" -> "Bantul Yogyakarta"
-        
         # Lamudi URL structure: /tanah/jual/{location}/ (Indonesian "jual" = sell/sale)
         # Fixed Oct 26, 2025: Changed from /buy/ to /jual/ (Indonesian language requirement)
-        # URL encode the location
-        location_slug = region_name.lower().replace(' ', '-')
+        # Fixed Oct 26, 2025: Added location mapping to extract city from region identifier
+        
+        # Extract city slug from region name (e.g., "jakarta_north_sprawl" → "jakarta")
+        location_slug = self._extract_city_from_region(region_name)
+        
+        logger.debug(f"Mapped region '{region_name}' → city slug '{location_slug}'")
         
         # Search for land (tanah) listings
         search_url = f"{self.base_url}/tanah/jual/{location_slug}/"
@@ -121,6 +236,9 @@ class LamudiScraper(BaseLandPriceScraper):
         """
         Parse listings from Lamudi search results page
         
+        FIXED Oct 26, 2025: Lamudi now uses JavaScript rendering for listing cards,
+        but includes JSON-LD structured data in the initial HTML. We extract from that.
+        
         Args:
             soup: BeautifulSoup object of search results
             region_name: Region being searched
@@ -131,8 +249,40 @@ class LamudiScraper(BaseLandPriceScraper):
         """
         listings = []
         
-        # Lamudi typically uses class names like 'listing-card' or 'property-card'
-        # Structure varies, so we try multiple selectors
+        # PRIORITY 1: Try JSON-LD structured data (Lamudi includes this in initial HTML)
+        json_ld_scripts = soup.find_all('script', type='application/ld+json')
+        
+        for script in json_ld_scripts:
+            try:
+                import json
+                data = json.loads(script.string)
+                
+                # Handle both single objects and arrays
+                if isinstance(data, list):
+                    for item in data:
+                        if isinstance(item, dict) and 'about' in item:
+                            # "about" contains array of Accommodation objects
+                            accommodations = item.get('about', [])
+                            for accommodation in accommodations[:max_listings]:
+                                listing = self._parse_json_ld_listing(accommodation, region_name)
+                                if listing:
+                                    listings.append(listing)
+                elif isinstance(data, dict) and 'about' in data:
+                    accommodations = data.get('about', [])
+                    for accommodation in accommodations[:max_listings]:
+                        listing = self._parse_json_ld_listing(accommodation, region_name)
+                        if listing:
+                            listings.append(listing)
+            except Exception as e:
+                logger.debug(f"Failed to parse JSON-LD: {str(e)}")
+                continue
+        
+        if listings:
+            logger.info(f"Extracted {len(listings)} listings from JSON-LD structured data")
+            return listings[:max_listings]
+        
+        # FALLBACK: Try HTML parsing (legacy method - may not work with JS rendering)
+        logger.debug("No JSON-LD found, trying HTML parsing...")
         
         # Try primary selector
         listing_cards = soup.find_all('div', class_=re.compile(r'ListingCard|PropertyCard|listing-item', re.I))
@@ -158,6 +308,108 @@ class LamudiScraper(BaseLandPriceScraper):
         
         logger.info(f"Successfully parsed {len(listings)} listings from {len(listing_cards)} cards")
         return listings
+    
+    def _parse_json_ld_listing(self, accommodation: dict, region_name: str) -> Optional[ScrapedListing]:
+        """
+        Parse listing from JSON-LD Accommodation object
+        
+        JSON-LD structure from Lamudi:
+        {
+            "@type": "Accommodation",
+            "name": "Land Dijual di...",
+            "description": "...",
+            "floorSize": {"@type": "QuantitativeValue", "value": "498", "unitCode": "MTK"},
+            "geo": {"@type": "GeoCoordinates", "latitude": "-7.757521", "longitude": "110.453468"},
+            "address": {...},
+            "url": "https://www.lamudi.co.id/jual/..."
+        }
+        
+        Args:
+            accommodation: JSON-LD Accommodation object
+            region_name: Region name
+            
+        Returns:
+            ScrapedListing or None if parsing fails
+        """
+        try:
+            # Extract floor size (land area in m²)
+            floor_size_obj = accommodation.get('floorSize', {})
+            if not isinstance(floor_size_obj, dict):
+                return None
+            
+            size_str = floor_size_obj.get('value', '0')
+            try:
+                land_area_m2 = float(size_str)
+            except (ValueError, TypeError):
+                return None
+            
+            if land_area_m2 == 0:
+                return None
+            
+            # Lamudi JSON-LD doesn't include price directly
+            # We need to extract from description or use default estimation
+            # For now, we'll extract what we can and mark price as needing fallback
+            
+            description = accommodation.get('description', '')
+            name = accommodation.get('name', '')
+            
+            # Try to extract price from description (common patterns)
+            price_per_m2 = 0
+            total_price = 0
+            
+            # Pattern 1: "Harga 3,75jt/m2" or "3.75 juta/m"
+            import re
+            price_patterns = [
+                r'(?:harga|price)?\s*(\d+[,.]\d+)\s*(?:jt|juta|million)(?:/| per )?m',  # 3.75 juta/m
+                r'(\d+[,.]\d+)\s*(?:jt|juta|million)(?:/| per )?m²?',  # 3.75jt/m2
+                r'(\d+[,.]\d+)\s*(?:miliar|milyar|billion)',  # Total price in billions
+            ]
+            
+            for pattern in price_patterns:
+                match = re.search(pattern, description + ' ' + name, re.IGNORECASE)
+                if match:
+                    price_str = match.group(1).replace(',', '.')
+                    try:
+                        price_value = float(price_str)
+                        # Determine if it's price/m2 or total
+                        if 'jt' in match.group(0).lower() or 'juta' in match.group(0).lower():
+                            if '/m' in match.group(0).lower() or ' per m' in match.group(0).lower():
+                                price_per_m2 = price_value * 1_000_000  # Convert juta to rupiah
+                                total_price = price_per_m2 * land_area_m2
+                            else:
+                                total_price = price_value * 1_000_000  # Total price in juta
+                                price_per_m2 = total_price / land_area_m2 if land_area_m2 > 0 else 0
+                        elif 'miliar' in match.group(0).lower() or 'milyar' in match.group(0).lower():
+                            total_price = price_value * 1_000_000_000  # Convert miliar to rupiah
+                            price_per_m2 = total_price / land_area_m2 if land_area_m2 > 0 else 0
+                        
+                        if price_per_m2 > 0:
+                            break
+                    except (ValueError, ZeroDivisionError):
+                        continue
+            
+            # If we couldn't extract price, skip this listing
+            if price_per_m2 == 0 and total_price == 0:
+                logger.debug(f"Skipping listing '{name}' - no price found in JSON-LD")
+                return None
+            
+            # Create listing with correct dataclass fields
+            listing = ScrapedListing(
+                price_per_m2=price_per_m2,
+                total_price=total_price,
+                size_m2=land_area_m2,
+                location=name,  # Use property name as location
+                listing_date=None,  # JSON-LD doesn't include date
+                source_url=accommodation.get('url', ''),
+                listing_type='land'
+            )
+            
+            logger.debug(f"Parsed JSON-LD listing: {name[:50]}... - {land_area_m2}m² @ Rp{price_per_m2:,.0f}/m²")
+            return listing
+            
+        except Exception as e:
+            logger.debug(f"Failed to parse JSON-LD listing: {str(e)}")
+            return None
     
     def _parse_listing_card(self, card, region_name: str) -> Optional[ScrapedListing]:
         """

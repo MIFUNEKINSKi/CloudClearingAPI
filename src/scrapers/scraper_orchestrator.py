@@ -1,9 +1,10 @@
 """
 Land Price Scraper Orchestrator
 CloudClearingAPI - October 19, 2025
+Phase 2A.6: Enhanced with configurable retry logic and timeout handling
 
 Coordinates multiple scrapers with priority logic:
-1. Live scraping (Lamudi, Rumah.com)
+1. Live scraping (Lamudi, Rumah.com, 99.co)
 2. Cached results (if < 24-48h old)
 3. Fallback to static regional benchmarks
 """
@@ -15,6 +16,7 @@ from pathlib import Path
 from .base_scraper import ScrapeResult
 from .lamudi_scraper import LamudiScraper
 from .rumah_scraper import RumahComScraper
+from .ninety_nine_scraper import NinetyNineScraper  # Phase 2A.5: Third-tier fallback
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +25,8 @@ class LandPriceOrchestrator:
     """
     Orchestrates land price data collection from multiple sources with fallback logic
     
-    Priority:
-    1. Live scraping (try Lamudi first, then Rumah.com)
+    Priority (Phase 2A.5 - Multi-Source Fallback):
+    1. Live scraping (try Lamudi first, then Rumah.com, then 99.co)
     2. Cached results (if valid and not expired)
     3. Static regional benchmarks (last resort)
     """
@@ -32,7 +34,8 @@ class LandPriceOrchestrator:
     def __init__(self, 
                  cache_dir: Optional[Path] = None,
                  cache_expiry_hours: int = 24,
-                 enable_live_scraping: bool = True):
+                 enable_live_scraping: bool = True,
+                 config: Optional[Dict[str, Any]] = None):
         """
         Initialize orchestrator with scrapers
         
@@ -40,17 +43,26 @@ class LandPriceOrchestrator:
             cache_dir: Directory for caching scraped data
             cache_expiry_hours: Hours before cache expires
             enable_live_scraping: If False, skip live scraping and use cache/fallback only
+            config: Optional config dict for retry logic and timeouts (Phase 2A.6)
         """
         self.enable_live_scraping = enable_live_scraping
         
-        # Initialize scrapers
+        # Initialize scrapers (Phase 2A.5: Added 99.co as third source)
+        # Phase 2A.6: Pass config to scrapers for retry/timeout settings
         self.lamudi = LamudiScraper(
             cache_dir=cache_dir,
-            cache_expiry_hours=cache_expiry_hours
+            cache_expiry_hours=cache_expiry_hours,
+            config=config
         )
         self.rumah_com = RumahComScraper(
             cache_dir=cache_dir,
-            cache_expiry_hours=cache_expiry_hours
+            cache_expiry_hours=cache_expiry_hours,
+            config=config
+        )
+        self.ninety_nine = NinetyNineScraper(
+            cache_dir=cache_dir,
+            cache_expiry_hours=cache_expiry_hours,
+            config=config
         )
         
         # Static regional benchmarks (fallback)
@@ -99,25 +111,27 @@ class LandPriceOrchestrator:
         """
         Get land price data with cascading fallback logic
         
-        Priority:
+        Priority (Phase 2A.5 - Multi-Source Fallback):
         1. Try live scraping from Lamudi
         2. If Lamudi fails, try Rumah.com
-        3. If both fail, check cache from either source
-        4. If cache empty/expired, use static benchmark
+        3. If Rumah.com fails, try 99.co
+        4. If all fail, check cache from any source
+        5. If cache empty/expired, use static benchmark
         
         Args:
             region_name: Region to get prices for (e.g., "Sleman Yogyakarta")
             max_listings: Maximum listings to scrape
             
         Returns:
-            Dict with price data and metadata
+            Dict with price data and metadata (includes 'data_source' field)
         """
         logger.info(f"Orchestrating land price data for: {region_name}")
         
-        # Phase 1: Live Scraping (if enabled)
+        # Phase 1: Live Scraping (if enabled) - Try all 3 sources sequentially
         if self.enable_live_scraping:
-            # Try Lamudi first
-            logger.info("Phase 1: Attempting live scraping...")
+            logger.info("Phase 1: Attempting live scraping (3-source cascading fallback)...")
+            
+            # Try Lamudi first (primary source)
             lamudi_result = self._try_live_scrape(self.lamudi, region_name, max_listings)
             
             if lamudi_result['success']:
@@ -126,7 +140,7 @@ class LandPriceOrchestrator:
             
             logger.warning(f"✗ Lamudi scraping failed: {lamudi_result.get('error')}")
             
-            # Try Rumah.com as backup
+            # Try Rumah.com as second source
             rumah_result = self._try_live_scrape(self.rumah_com, region_name, max_listings)
             
             if rumah_result['success']:
@@ -134,18 +148,28 @@ class LandPriceOrchestrator:
                 return rumah_result
             
             logger.warning(f"✗ Rumah.com scraping failed: {rumah_result.get('error')}")
+            
+            # Phase 2A.5: Try 99.co as third source (NEW)
+            ninety_nine_result = self._try_live_scrape(self.ninety_nine, region_name, max_listings)
+            
+            if ninety_nine_result['success']:
+                logger.info(f"✓ Live scraping successful (99.co): {ninety_nine_result['listing_count']} listings")
+                return ninety_nine_result
+            
+            logger.warning(f"✗ 99.co scraping failed: {ninety_nine_result.get('error')}")
+            logger.warning("✗ All 3 live scraping sources failed")
         else:
             logger.info("Live scraping disabled, skipping Phase 1")
         
         # Phase 2: Check Cache (even if expired, it's better than nothing)
-        logger.info("Phase 2: Checking cache...")
+        logger.info("Phase 2: Checking cache from all sources...")
         cache_result = self._check_cache(region_name)
         
         if cache_result:
             logger.info(f"✓ Using cached data (source: {cache_result['data_source']}, age: {cache_result.get('cache_age_hours', 0):.1f}h)")
             return cache_result
         
-        logger.warning("✗ No valid cache found")
+        logger.warning("✗ No valid cache found from any source")
         
         # Phase 3: Fallback to Static Benchmark
         logger.info("Phase 3: Using static regional benchmark (last resort)")
@@ -191,6 +215,8 @@ class LandPriceOrchestrator:
         """
         Check cache from all scrapers (even if expired)
         
+        Phase 2A.5: Now checks all 3 sources (Lamudi, Rumah.com, 99.co)
+        
         Args:
             region_name: Region to check
             
@@ -211,6 +237,14 @@ class LandPriceOrchestrator:
             result = self._convert_scrape_result_to_dict(rumah_cache)
             result['cache_age_hours'] = self.rumah_com._get_cache_age(rumah_cache)
             result['data_source'] = 'rumah_com_cached'
+            return result
+        
+        # Phase 2A.5: Try 99.co cache (NEW)
+        ninety_nine_cache = self.ninety_nine._load_from_cache(region_name)
+        if ninety_nine_cache and ninety_nine_cache.success:
+            result = self._convert_scrape_result_to_dict(ninety_nine_cache)
+            result['cache_age_hours'] = self.ninety_nine._get_cache_age(ninety_nine_cache)
+            result['data_source'] = '99.co_cached'
             return result
         
         return None
@@ -311,6 +345,8 @@ class LandPriceOrchestrator:
         """
         Get status of orchestrator and its components
         
+        Phase 2A.5: Now includes 99.co scraper status
+        
         Returns:
             Dict with status information
         """
@@ -321,16 +357,26 @@ class LandPriceOrchestrator:
                     'name': 'Lamudi',
                     'source_id': self.lamudi.get_source_name(),
                     'cache_dir': str(self.lamudi.cache_dir),
-                    'cache_expiry_hours': self.lamudi.cache_expiry_hours
+                    'cache_expiry_hours': self.lamudi.cache_expiry_hours,
+                    'priority': 1
                 },
                 {
                     'name': 'Rumah.com',
                     'source_id': self.rumah_com.get_source_name(),
                     'cache_dir': str(self.rumah_com.cache_dir),
-                    'cache_expiry_hours': self.rumah_com.cache_expiry_hours
+                    'cache_expiry_hours': self.rumah_com.cache_expiry_hours,
+                    'priority': 2
+                },
+                {
+                    'name': '99.co',
+                    'source_id': self.ninety_nine.get_source_name(),
+                    'cache_dir': str(self.ninety_nine.cache_dir),
+                    'cache_expiry_hours': self.ninety_nine.cache_expiry_hours,
+                    'priority': 3
                 }
             ],
-            'benchmark_regions': list(self.regional_benchmarks.keys())
+            'benchmark_regions': list(self.regional_benchmarks.keys()),
+            'total_sources': 3  # Phase 2A.5: Now 3 live sources
         }
 
 

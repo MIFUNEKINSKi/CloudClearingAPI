@@ -1,0 +1,27 @@
+{
+  "region_name": "yogyakarta_urban",
+  "week_a": "2025-10-06",
+  "week_b": "2025-10-13",
+  "saved_timestamp": "2025-10-27T09:47:55.146797",
+  "saved_images": {
+    "week_a_true_color": "output/satellite_images/weekly/yogyakarta_urban_20251027_094750/yogyakarta_urban_before_true_color_20251006.png",
+    "week_b_true_color": "output/satellite_images/weekly/yogyakarta_urban_20251027_094750/yogyakarta_urban_after_true_color_20251013.png",
+    "week_a_false_color": "output/satellite_images/weekly/yogyakarta_urban_20251027_094750/yogyakarta_urban_before_false_color_20251006.png",
+    "week_b_false_color": "output/satellite_images/weekly/yogyakarta_urban_20251027_094750/yogyakarta_urban_after_false_color_20251013.png",
+    "ndvi_change": "output/satellite_images/weekly/yogyakarta_urban_20251027_094750/yogyakarta_urban_ndvi_change_20251006_to_20251013.png"
+  },
+  "original_urls": {
+    "week_a_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/26442fc20dc429ac741740193a171a99-6cce1d7efca8ebfc100c21456167ee8b:getPixels",
+    "week_b_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/3367ef02a9c31c629e98a61782c2150e-c8b7b75fc10caf60bd69ebb3d76b67cd:getPixels",
+    "week_a_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/752ad84964daf162ca813554b7be7798-c82361ed91542c14fa9c871f620975c7:getPixels",
+    "week_b_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/02eaa3549eec06e1a21fd69cce80b390-e4fc3fb3e281495ae087e73f37dcd20c:getPixels",
+    "ndvi_change": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/11ee6c557969234343802a85b3823111-3cce9d92d001085baca2a0047256c0b8:getPixels",
+    "week_a_date": "2025-10-06",
+    "week_b_date": "2025-10-13",
+    "description": {
+      "true_color": "Natural color satellite imagery (Red, Green, Blue bands)",
+      "false_color": "False color imagery highlighting vegetation (NIR, Red, Green)",
+      "ndvi_change": "NDVI change map: Red=vegetation loss, Green=vegetation gain"
+    }
+  }
+}

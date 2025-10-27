@@ -8,7 +8,7 @@ Author: CloudClearingAPI Team
 Date: September 2025
 """
 
-import ee
+import ee  # type: ignore[import]
 from typing import Dict, List, Tuple, Optional, Any
 import numpy as np
 import geopandas as gpd
@@ -82,9 +82,9 @@ class SentinelProcessor:
             
             # Monkey-patch Google API client to reduce retries from 5 to 2
             try:
-                import googleapiclient.http
+                import googleapiclient.http  # type: ignore
                 if hasattr(googleapiclient.http, '_RETRY_DEFAULT_MAX_RETRIES'):
-                    googleapiclient.http._RETRY_DEFAULT_MAX_RETRIES = 2
+                    googleapiclient.http._RETRY_DEFAULT_MAX_RETRIES = 2  # type: ignore
                     logger.info("Reduced API retry count from 5 to 2")
             except Exception as e:
                 logger.warning(f"Could not reduce retry count: {e}")
@@ -95,7 +95,7 @@ class SentinelProcessor:
         
         # Load s2cloudless collection if available
         try:
-            self.s2cloudless = ee.ImageCollection('COPERNICUS/S2_CLOUD_PROBABILITY')
+            self.s2cloudless = ee.ImageCollection('COPERNICUS/S2_CLOUD_PROBABILITY')  # type: ignore
             self.use_s2cloudless = True
             logger.info("s2cloudless collection loaded successfully")
         except Exception as e:
@@ -189,7 +189,7 @@ class SentinelProcessor:
             'days_back_from_target': lookback_days
         }
     
-    def mask_s2_clouds_advanced(self, image: ee.Image) -> ee.Image:
+    def mask_s2_clouds_advanced(self, image: ee.Image) -> ee.Image:  # type: ignore
         """
         Advanced cloud masking using s2cloudless + QA60 + cirrus detection
         
@@ -248,7 +248,7 @@ class SentinelProcessor:
         # Scale surface reflectance and apply combined mask
         return image.updateMask(combined_mask).divide(10000)
     
-    def mask_s2_clouds(self, image: ee.Image) -> ee.Image:
+    def mask_s2_clouds(self, image: ee.Image) -> ee.Image:  # type: ignore
         """
         Backward compatibility wrapper - uses advanced masking
         """
@@ -257,7 +257,7 @@ class SentinelProcessor:
     def create_weekly_composite(self, 
                               start_date: str, 
                               end_date: str, 
-                              bbox: ee.Geometry) -> ee.Image:
+                              bbox: ee.Geometry) -> ee.Image:  # type: ignore
         """
         Create weekly median composite from Sentinel-2 collection
         
@@ -271,10 +271,10 @@ class SentinelProcessor:
         """
         # Use the harmonized Sentinel-2 collection (replaces deprecated S2_SR)
         # First, let's try without cloud masking to test basic functionality
-        collection = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+        collection = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')  # type: ignore
                      .filterDate(start_date, end_date)
                      .filterBounds(bbox)
-                     .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30))  # Stricter cloud filter instead of masking
+                     .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30))  # type: ignore
                      .select(['B2', 'B3', 'B4', 'B8', 'B11', 'B12']))  # Only select needed bands
         
         # Create median composite and clip to area
@@ -299,7 +299,7 @@ class SpectralIndices:
     """Calculate various spectral indices for change detection"""
     
     @staticmethod
-    def ndvi(image: ee.Image) -> ee.Image:
+    def ndvi(image: ee.Image) -> ee.Image:  # type: ignore
         """
         Calculate Normalized Difference Vegetation Index
         NDVI = (NIR - Red) / (NIR + Red)
@@ -325,7 +325,7 @@ class SpectralIndices:
             return ee.Image.constant(0.0).rename('NDVI')
     
     @staticmethod  
-    def ndbi(image: ee.Image) -> ee.Image:
+    def ndbi(image: ee.Image) -> ee.Image:  # type: ignore
         """
         Calculate Normalized Difference Built-up Index
         NDBI = (SWIR - NIR) / (SWIR + NIR)
@@ -355,7 +355,7 @@ class SpectralIndices:
             return ee.Image.constant(0.0).rename('NDBI')
     
     @staticmethod
-    def bsi(image: ee.Image) -> ee.Image:
+    def bsi(image: ee.Image) -> ee.Image:  # type: ignore
         """
         Calculate Bare Soil Index
         BSI = ((SWIR + Red) - (NIR + Blue)) / ((SWIR + Red) + (NIR + Blue))
@@ -369,7 +369,7 @@ class SpectralIndices:
             }).rename('BSI')
     
     @staticmethod
-    def ndwi(image: ee.Image) -> ee.Image:
+    def ndwi(image: ee.Image) -> ee.Image:  # type: ignore
         """
         Calculate Normalized Difference Water Index
         NDWI = (Green - NIR) / (Green + NIR)
@@ -379,7 +379,7 @@ class SpectralIndices:
 class ChangeDetector:
     """Main class for detecting land development changes"""
     
-    def __init__(self, config: ChangeDetectionConfig = None):
+    def __init__(self, config: Optional[ChangeDetectionConfig] = None):
         self.config = config or ChangeDetectionConfig()
         self.processor = SentinelProcessor(self.config)
         self.indices = SpectralIndices()
@@ -682,9 +682,9 @@ class ChangeDetector:
             }
     
     def _apply_change_rules(self, 
-                          ndvi_diff: ee.Image,
-                          ndbi_diff: ee.Image, 
-                          bsi_diff: ee.Image) -> ee.Image:
+                          ndvi_diff: ee.Image,  # type: ignore
+                          ndbi_diff: ee.Image,  # type: ignore
+                          bsi_diff: ee.Image) -> ee.Image:  # type: ignore
         """Apply heuristic rules to identify different change types"""
         
         # Rule 1: Vegetation loss + built-up gain = Development
@@ -706,8 +706,8 @@ class ChangeDetector:
         return changes.selfMask()
     
     def _vectorize_changes(self, 
-                          changes: ee.Image, 
-                          bbox: ee.Geometry) -> ee.FeatureCollection:
+                          changes: ee.Image,  # type: ignore
+                          bbox: ee.Geometry) -> ee.FeatureCollection:  # type: ignore
         """Convert change raster to vector polygons with timeout handling"""
         
         try:
@@ -750,8 +750,8 @@ class ChangeDetector:
         return vectors
     
     def _calculate_statistics(self, 
-                            vectors: ee.FeatureCollection,
-                            changes: ee.Image) -> Dict[str, Any]:
+                            vectors: ee.FeatureCollection,  # type: ignore
+                            changes: ee.Image) -> Dict[str, Any]:  # type: ignore
         """Calculate summary statistics for detected changes with timeout handling"""
         
         import signal
@@ -828,7 +828,7 @@ class ChangeDetector:
             }
     
     def _export_results(self, 
-                       vectors: ee.FeatureCollection,
+                       vectors: ee.FeatureCollection,  # type: ignore
                        week_a: str, 
                        week_b: str) -> None:
         """Export change vectors to Google Drive"""

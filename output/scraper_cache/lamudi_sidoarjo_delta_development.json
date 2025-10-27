@@ -1,0 +1,21 @@
+{
+  "region_name": "sidoarjo_delta_development",
+  "average_price_per_m2": 2699784.0172786177,
+  "median_price_per_m2": 2699784.0172786177,
+  "listing_count": 1,
+  "listings": [
+    {
+      "price_per_m2": 2699784.0172786177,
+      "total_price": 12500000000.0,
+      "size_m2": 4630.0,
+      "location": "Land Dijual di Banjarbendo",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-59c13a92ba31-f201-199f2d6-9b7a-7528",
+      "listing_type": "land"
+    }
+  ],
+  "source": "lamudi",
+  "scraped_at": "2025-10-27T10:00:43.596531",
+  "success": true,
+  "error_message": null
+}

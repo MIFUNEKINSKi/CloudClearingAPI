@@ -1,0 +1,27 @@
+{
+  "region_name": "magelang_corridor",
+  "week_a": "2025-09-14",
+  "week_b": "2025-09-21",
+  "saved_timestamp": "2025-10-12T11:53:12.851323",
+  "saved_images": {
+    "week_a_true_color": "output/satellite_images/weekly/magelang_corridor_20251012_115308/magelang_corridor_before_true_color_20250914.png",
+    "week_b_true_color": "output/satellite_images/weekly/magelang_corridor_20251012_115308/magelang_corridor_after_true_color_20250921.png",
+    "week_a_false_color": "output/satellite_images/weekly/magelang_corridor_20251012_115308/magelang_corridor_before_false_color_20250914.png",
+    "week_b_false_color": "output/satellite_images/weekly/magelang_corridor_20251012_115308/magelang_corridor_after_false_color_20250921.png",
+    "ndvi_change": "output/satellite_images/weekly/magelang_corridor_20251012_115308/magelang_corridor_ndvi_change_20250914_to_20250921.png"
+  },
+  "original_urls": {
+    "week_a_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/57b81b9d7c75b8da59d96c997ee30f81-1548ae0599106053c41d691ed4266860:getPixels",
+    "week_b_true_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/ee73b405a3652e1f68531e42450801bd-2b5d7a99b906dfbcbdd4e9f61175078d:getPixels",
+    "week_a_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/db12e9ae9cf5adfe941163ce2d65c55a-1f4e50bbecc4a3b812b99f9c20a4e6f9:getPixels",
+    "week_b_false_color": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/17c52fe7b07d6b650ba42a7f9b75717b-590329eb5c6e50f280bb50fdf182f1c3:getPixels",
+    "ndvi_change": "https://earthengine.googleapis.com/v1/projects/gen-lang-client-0401113271/thumbnails/f87742a1d41c59842d310d3c592bc6ba-576813aad070ab2ffae98fcfc6a3c104:getPixels",
+    "week_a_date": "2025-09-14",
+    "week_b_date": "2025-09-21",
+    "description": {
+      "true_color": "Natural color satellite imagery (Red, Green, Blue bands)",
+      "false_color": "False color imagery highlighting vegetation (NIR, Red, Green)",
+      "ndvi_change": "NDVI change map: Red=vegetation loss, Green=vegetation gain"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "region_name": "anyer_carita_coastal",
+  "average_price_per_m2": 1400000.0,
+  "median_price_per_m2": 1400000.0,
+  "listing_count": 2,
+  "listings": [
+    {
+      "price_per_m2": 1500000.0,
+      "total_price": 19500000000.0,
+      "size_m2": 13000.0,
+      "location": "Land Dijual di Anyar",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/banten/serang/dijual-termurah-langsung-pemilik-tanah-hadap-panta-170054448766/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 1300000.0,
+      "total_price": 15600000000.0,
+      "size_m2": 12000.0,
+      "location": "Land Dijual di Banten",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-d7088a89bddc-33fa-197f517-89a4-79ca",
+      "listing_type": "land"
+    }
+  ],
+  "source": "lamudi",
+  "scraped_at": "2025-10-27T10:01:06.596293",
+  "success": true,
+  "error_message": null
+}

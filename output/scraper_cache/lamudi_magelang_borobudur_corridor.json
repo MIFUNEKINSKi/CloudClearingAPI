@@ -1,0 +1,39 @@
+{
+  "region_name": "magelang_borobudur_corridor",
+  "average_price_per_m2": 5500000.0,
+  "median_price_per_m2": 5500000.0,
+  "listing_count": 3,
+  "listings": [
+    {
+      "price_per_m2": 5500000.0,
+      "total_price": 5654000000.0,
+      "size_m2": 1028.0,
+      "location": "Land Dijual di Panjang",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/semarang/termurah-tanah-105m-selatan-kamous-untidar-17227842913/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 2500000.0,
+      "total_price": 8250000000.0,
+      "size_m2": 3300.0,
+      "location": "Land Dijual di Magelang",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/magelang/dijual-tanah-di-jalan-menuju-pintu-gate-tol-magela-172613771237/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 8500000.0,
+      "total_price": 4335000000.0,
+      "size_m2": 510.0,
+      "location": "Land Dijual di Borobudur",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/magelang/tanah-perumahan-strategis-borobudur-lowokwaru-mala-174427575784/",
+      "listing_type": "land"
+    }
+  ],
+  "source": "lamudi",
+  "scraped_at": "2025-10-27T10:00:26.169547",
+  "success": true,
+  "error_message": null
+}
