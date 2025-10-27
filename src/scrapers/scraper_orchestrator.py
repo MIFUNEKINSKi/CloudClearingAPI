@@ -195,7 +195,7 @@ class LandPriceOrchestrator:
             result = scraper.get_price_data(region_name, max_listings)
             
             if result.success and result.listing_count > 0:
-                return self._convert_scrape_result_to_dict(result)
+                return self._convert_scrape_result_to_dict(result, region_name)  # Pass region_name for trend calc
             else:
                 return {
                     'success': False,
@@ -226,7 +226,7 @@ class LandPriceOrchestrator:
         # Try Lamudi cache first
         lamudi_cache = self.lamudi._load_from_cache(region_name)
         if lamudi_cache and lamudi_cache.success:
-            result = self._convert_scrape_result_to_dict(lamudi_cache)
+            result = self._convert_scrape_result_to_dict(lamudi_cache, region_name)  # Pass region_name
             result['cache_age_hours'] = self.lamudi._get_cache_age(lamudi_cache)
             result['data_source'] = 'lamudi_cached'
             return result
@@ -234,7 +234,7 @@ class LandPriceOrchestrator:
         # Try Rumah.com cache
         rumah_cache = self.rumah_com._load_from_cache(region_name)
         if rumah_cache and rumah_cache.success:
-            result = self._convert_scrape_result_to_dict(rumah_cache)
+            result = self._convert_scrape_result_to_dict(rumah_cache, region_name)  # Pass region_name
             result['cache_age_hours'] = self.rumah_com._get_cache_age(rumah_cache)
             result['data_source'] = 'rumah_com_cached'
             return result
@@ -242,7 +242,7 @@ class LandPriceOrchestrator:
         # Phase 2A.5: Try 99.co cache (NEW)
         ninety_nine_cache = self.ninety_nine._load_from_cache(region_name)
         if ninety_nine_cache and ninety_nine_cache.success:
-            result = self._convert_scrape_result_to_dict(ninety_nine_cache)
+            result = self._convert_scrape_result_to_dict(ninety_nine_cache, region_name)  # Pass region_name
             result['cache_age_hours'] = self.ninety_nine._get_cache_age(ninety_nine_cache)
             result['data_source'] = '99.co_cached'
             return result
@@ -257,9 +257,14 @@ class LandPriceOrchestrator:
             region_name: Region name
             
         Returns:
-            Dict with benchmark data
+            Dict with benchmark data including trend estimates
         """
         benchmark = self._find_nearest_benchmark(region_name)
+        
+        # Use historical appreciation to estimate trend
+        annual_appreciation = benchmark.get('historical_appreciation', 5.0)
+        monthly_trend = annual_appreciation / 12.0
+        market_heat = self._classify_market_heat(annual_appreciation)
         
         return {
             'success': True,
@@ -269,8 +274,10 @@ class LandPriceOrchestrator:
             'data_source': 'static_benchmark',
             'benchmark_region': self._get_benchmark_region_name(region_name),
             'data_confidence': 0.5,  # Lower confidence for static data
-            'historical_appreciation': benchmark['historical_appreciation'],
-            'market_liquidity': benchmark['market_liquidity']
+            'historical_appreciation': annual_appreciation,
+            'market_liquidity': benchmark['market_liquidity'],
+            'price_trend_30d': monthly_trend,  # NEW: Estimate from historical data
+            'market_heat': market_heat  # NEW: Classify from appreciation rate
         }
     
     def _find_nearest_benchmark(self, region_name: str) -> Dict[str, Any]:
@@ -319,8 +326,124 @@ class LandPriceOrchestrator:
         
         return 'Yogyakarta'  # Default
     
-    def _convert_scrape_result_to_dict(self, result: ScrapeResult) -> Dict[str, Any]:
-        """Convert ScrapeResult to dict for consistency"""
+    def _calculate_price_trend(self, region_name: str, current_price: float) -> tuple:
+        """
+        Calculate 30-day price trend by comparing current price with cached historical data
+        
+        Strategy:
+        1. Try to find cache from 25-35 days ago (ideal window)
+        2. If not found, use benchmark historical_appreciation rate
+        3. Calculate trend percentage and classify market heat
+        
+        Args:
+            region_name: Region name
+            current_price: Current average price per m²
+            
+        Returns:
+            (price_trend_pct: float, market_heat: str)
+        """
+        try:
+            # Try to load historical cache (from any scraper)
+            # Look for cache that's approximately 30 days old
+            from datetime import datetime, timedelta
+            import os
+            
+            target_age_days = 30
+            tolerance_days = 5  # Accept cache 25-35 days old
+            
+            # Check all scraper caches for historical data
+            for scraper in [self.lamudi, self.rumah_com, self.ninety_nine]:
+                cache_file = scraper.cache_dir / f"{region_name.lower().replace(' ', '_')}.json"
+                
+                if cache_file.exists():
+                    try:
+                        # Check file age
+                        file_mtime = datetime.fromtimestamp(os.path.getmtime(cache_file))
+                        age_days = (datetime.now() - file_mtime).days
+                        
+                        # If cache is in the ideal window (25-35 days)
+                        if target_age_days - tolerance_days <= age_days <= target_age_days + tolerance_days:
+                            cached_result = scraper._load_from_cache(region_name)
+                            if cached_result and cached_result.success and cached_result.average_price_per_m2 > 0:
+                                historical_price = cached_result.average_price_per_m2
+                                
+                                # Calculate percentage change
+                                trend_pct = ((current_price - historical_price) / historical_price) * 100
+                                
+                                # Classify market heat based on annualized trend
+                                # 30-day trend → annualized: * (365/30) = * 12.17
+                                annualized_trend = trend_pct * 12.17
+                                market_heat = self._classify_market_heat(annualized_trend)
+                                
+                                logger.info(f"   📊 Price Trend ({age_days}d): {trend_pct:+.1f}% (annualized: {annualized_trend:+.1f}%)")
+                                
+                                return trend_pct, market_heat
+                    except Exception as e:
+                        logger.debug(f"   Error reading cache from {scraper.get_source_name()}: {e}")
+                        continue
+            
+            # No suitable historical cache found - use benchmark appreciation rate
+            benchmark = self._find_nearest_benchmark(region_name)
+            annual_appreciation = benchmark.get('historical_appreciation', 5.0)  # Default 5%/yr
+            
+            # Convert annual rate to 30-day rate
+            monthly_rate = annual_appreciation / 12.0
+            trend_pct = monthly_rate  # Approximate 30-day trend
+            
+            market_heat = self._classify_market_heat(annual_appreciation)
+            
+            logger.info(f"   📊 Price Trend (benchmark): {trend_pct:+.1f}%/mo (annual: {annual_appreciation:+.1f}%/yr)")
+            
+            return trend_pct, market_heat
+            
+        except Exception as e:
+            logger.warning(f"   ⚠️ Price trend calculation failed: {e}")
+            return 0.0, 'neutral'
+    
+    def _classify_market_heat(self, annualized_trend_pct: float) -> str:
+        """
+        Classify market heat based on annualized price trend
+        
+        Args:
+            annualized_trend_pct: Annualized price trend percentage
+            
+        Returns:
+            Market heat classification string
+        """
+        if annualized_trend_pct >= 15:
+            return 'booming'
+        elif annualized_trend_pct >= 8:
+            return 'strong'
+        elif annualized_trend_pct >= 2:
+            return 'warming'
+        elif annualized_trend_pct >= 0:
+            return 'stable'
+        elif annualized_trend_pct >= -5:
+            return 'cooling'
+        else:
+            return 'declining'
+    
+    def _convert_scrape_result_to_dict(self, result: ScrapeResult, region_name: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Convert ScrapeResult to dict for consistency
+        
+        Args:
+            result: ScrapeResult from scraper
+            region_name: Optional region name for trend calculation
+            
+        Returns:
+            Dict with price data including trend calculations
+        """
+        # Calculate price trend if we have historical cache data
+        price_trend_30d = 0.0
+        market_heat = 'neutral'
+        
+        if region_name:
+            price_trend_30d, market_heat = self._calculate_price_trend(
+                region_name, 
+                result.average_price_per_m2
+            )
+        
         return {
             'success': result.success,
             'average_price_per_m2': result.average_price_per_m2,
@@ -329,6 +452,8 @@ class LandPriceOrchestrator:
             'data_source': result.source,
             'scraped_at': result.scraped_at.isoformat(),
             'data_confidence': 0.85,  # High confidence for live data
+            'price_trend_30d': price_trend_30d,  # NEW: 30-day price trend percentage
+            'market_heat': market_heat,  # NEW: Market heat classification
             'listings': [
                 {
                     'price_per_m2': listing.price_per_m2,
