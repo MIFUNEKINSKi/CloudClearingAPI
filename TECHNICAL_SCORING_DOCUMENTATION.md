@@ -6459,14 +6459,57 @@ CLOUD COVERAGE:
 - **Integration:** Non-blocking error handling, zero impact on core monitoring
 
 **Deployment:**
-- **Commit:** 2ec16b0 (implementation), df78316 (docs), 39468f9 (bug fix)
-- **Status:** ✅ **DEPLOYED TO PRODUCTION** - Awaiting first production weekly cycle validation
+- **Commits:** 
+  - 2ec16b0 (implementation)
+  - df78316 (docs)
+  - 39468f9 (bug fix: benchmark Dict extraction)
+  - ffc4288 (bug fix: drift monitoring data source + first PDF date attempt)
+  - cf15aaa (bug fix: price trend calculation)
+  - f589b64 (bug fix: PDF date field selection)
+- **Status:** ✅ **DEPLOYED TO PRODUCTION** - Awaiting validation run
 - **Tag:** v2.9.0 (pending successful validation run)
+
+**Bug Fixes Implemented (October 27, 2025):**
+
+1. **Drift Monitoring Data Source (commit ffc4288)**
+   - **Problem:** Drift monitor attempted to use `regions_analyzed` which lacks financial projection data
+   - **Error:** `'list' object has no attribute 'get'` - tracking failed completely
+   - **Solution:** Changed to use `investment_analysis` recommendations (buy + watch + pass) which include complete financial projections
+   - **File:** `run_weekly_java_monitor.py`
+
+2. **Price Trend Calculation (commit cf15aaa)**
+   - **Problem:** Live scraper data missing `price_trend_30d` and `market_heat` fields, causing market momentum to always show 0.0%
+   - **Root Cause:** `_convert_scrape_result_to_dict()` only returned current price without historical comparison
+   - **Solution:** 
+     - Added `_calculate_price_trend()`: Compares current price with 25-35 day old cache, falls back to benchmark historical appreciation
+     - Added `_classify_market_heat()`: Classifies trends (booming ≥15%, strong 8-15%, warming 2-8%, stable 0-2%, cooling -5-0%, declining <-5%)
+     - Updated `_convert_scrape_result_to_dict()` to accept `region_name` and calculate trends
+     - Updated `_get_benchmark_fallback()` to include trend estimates
+     - Updated all callers (`_try_live_scrape()`, `_check_cache()`) to pass `region_name`
+   - **Impact:** Market momentum now shows real/estimated trends, RVI-aware multipliers have proper data, accurate market heat classification
+   - **File:** `src/scrapers/scraper_orchestrator.py` (+134 lines)
+
+3. **PDF Report Analysis Period (commits ffc4288, f589b64)**
+   - **Problem:** Complete Regional Analysis table showing hardcoded "June 23-30, 2025" fallback
+   - **First Attempt (ffc4288):** Used `date_range_used` field, but this is descriptive text ("5 weeks ago") not actual dates
+   - **Final Solution (f589b64):** Use `week_b` field which contains actual date ranges ("2025-09-22 to 2025-09-29")
+   - **Fallback Chain:** `week_b` → `week_a` → `date_range_used` → `'N/A'`
+   - **File:** `src/core/pdf_report_generator.py`
+
+**Validation Criteria (Pre-v2.9.0 Tag):**
+- [ ] `price_trend_30d` shows non-zero values in monitoring logs
+- [ ] `market_heat` classification appears (booming/strong/warming/stable/cooling/declining)
+- [ ] Market momentum appears in PDF report with non-zero percentages
+- [ ] Data Sources correctly shows 'lamudi'/'rumah_com'/etc instead of 'Regional Benchmarks'
+- [ ] Complete Regional Analysis table shows actual dates (e.g., "2025-09-22 to 2025-09-29")
+- [ ] Drift tracking executes successfully and creates history files in `./data/benchmark_drift/`
 
 **Known Issues Fixed:**
 - ✅ `get_tier_benchmark()` Dict extraction (commit 39468f9)
-- ✅ Drift monitoring using wrong data source (commit [current] - switched from `regions_analyzed` to `investment_analysis` recommendations)
-- ✅ PDF report hardcoded fallback date "June 23-30, 2025" (commit [current] - use `date_range_used` field)
+- ✅ Drift monitoring data source (commit ffc4288 - switched to `investment_analysis`)
+- ✅ Price trend calculation missing (commit cf15aaa - added historical comparison)
+- ✅ Market heat classification missing (commit cf15aaa - added trend-based classification)
+- ✅ PDF report hardcoded date fallback (commits ffc4288, f589b64 - use `week_b` field)
 
 **Usage:**
 ```bash
@@ -6806,7 +6849,7 @@ docs/
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| **2.9.0** | 2025-10-27 | Chris Moore | **BENCHMARK DRIFT MONITORING (CCAPI-27.2):** Implemented comprehensive drift monitoring system to prevent RVI model degradation. Added `BenchmarkDriftMonitor` class (608 lines) with automated drift tracking, persistence-based alerts (WARNING >10% for 4+ weeks, CRITICAL >20% for 2+ weeks), JSON storage with 6-month retention, and zero additional API calls. Created admin recalibration tool (`tools/recalibrate_benchmarks.py`, 512 lines) with review/propose/apply/rollback workflow. Fixed critical bugs: `get_tier_benchmark()` Dict extraction, drift monitoring data source (switched from `regions_analyzed` to investment analysis), PDF report hardcoded date fallback. Added comprehensive development roadmap (v2.7-v2.9+) with 12 planned features across 4 tiers. Status: Deployed to production, awaiting first production cycle validation. |
+| **2.9.0** | 2025-10-27 | Chris Moore | **BENCHMARK DRIFT MONITORING + CRITICAL BUG FIXES (CCAPI-27.2):** Implemented comprehensive drift monitoring system to prevent RVI model degradation. Added `BenchmarkDriftMonitor` class (608 lines) with automated drift tracking, persistence-based alerts (WARNING >10% for 4+ weeks, CRITICAL >20% for 2+ weeks), JSON storage with 6-month retention, and zero additional API calls. Created admin recalibration tool (`tools/recalibrate_benchmarks.py`, 512 lines) with review/propose/apply/rollback workflow. **Critical Bug Fixes:** (1) Drift monitoring data source - switched from `regions_analyzed` to `investment_analysis` (commit ffc4288), (2) Price trend calculation - added `_calculate_price_trend()` with 30-day historical comparison and market heat classification (commit cf15aaa, +134 lines), (3) PDF report dates - use `week_b` field for actual dates instead of hardcoded fallback (commits ffc4288, f589b64), (4) Benchmark Dict extraction (commit 39468f9). Added comprehensive development roadmap (v2.7-v2.9+) with 12 planned features across 4 tiers. Status: Deployed to production, awaiting validation run. |
 | **2.8.0** | 2025-10-26 | Chris Moore | **PERFORMANCE OPTIMIZATION:** Added comprehensive v2.8.0 documentation for OSM Infrastructure Caching (7-day TTL, 48% faster monitoring, 86% API load reduction). Created `src/core/osm_cache.py` with `OSMInfrastructureCache` class, modified `infrastructure_analyzer.py` with cache-first logic, added integration test validation. Documented cache strategy (JSON storage, expiry logic, hit rate projections), performance metrics (162x speedup per cached region, 87→45 min monitoring runtime), logging patterns, error handling, and production readiness checklist. Status: Production-ready, fully tested, zero breaking changes. |
 | **2.7.0** | 2025-10-26 | Chris Moore | **PRODUCTION RELEASE:** Added comprehensive v2.7.0 documentation including CCAPI-27.0 (Budget-Driven Investment Sizing) with 15/15 tests passing, critical bug fixes (#1: market data retrieval, #2: RVI parameters), production validation results, before/after comparisons, deployment status, and next development task (7-day OSM caching). Updated version history table, Recent Updates section with detailed implementation guide, and v2.7 roadmap summary with deployment status. |
 | 2.6-beta | 2025-10-26 | Chris Moore | **Phase 2B completion:** Added RVI-aware market multipliers, airport premium, Tier 1+ classification, tier-specific infrastructure tolerances, and comprehensive integration validation. |
