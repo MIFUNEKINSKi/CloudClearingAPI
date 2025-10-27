@@ -130,9 +130,14 @@ class BenchmarkDriftMonitor:
                 logger.warning(f"⚠️ Region {region_name} not found in tier classification")
                 return None
             
-            benchmark_price = get_tier_benchmark(tier)
-            if not benchmark_price:
+            benchmark_data = get_tier_benchmark(tier, region_name)
+            if not benchmark_data:
                 logger.warning(f"⚠️ No benchmark found for tier {tier}")
+                return None
+            
+            benchmark_price = benchmark_data.get('avg_price_m2')
+            if not benchmark_price:
+                logger.warning(f"⚠️ No avg_price_m2 in benchmark for tier {tier}")
                 return None
             
             # Calculate drift percentage
@@ -608,8 +613,16 @@ class BenchmarkDriftMonitor:
         else:
             return 'NONE'
     
-    def _extract_live_price(self, region_data: Dict[str, Any]) -> Optional[float]:
+    def _extract_live_price(self, region_data: Any) -> Optional[float]:
         """Extract live price from region analysis data"""
+        # Handle direct numeric value (for testing)
+        if isinstance(region_data, (int, float)):
+            return float(region_data) if region_data > 0 else None
+        
+        # Handle dict input (production usage)
+        if not isinstance(region_data, dict):
+            return None
+        
         # Try financial projection first
         financial = region_data.get('financial_projection')
         if financial and isinstance(financial, dict):
@@ -628,8 +641,16 @@ class BenchmarkDriftMonitor:
         
         return None
     
-    def _extract_data_source(self, region_data: Dict[str, Any]) -> str:
+    def _extract_data_source(self, region_data: Any) -> str:
         """Extract data source from region analysis data"""
+        # Handle direct string value (for testing)
+        if isinstance(region_data, str):
+            return region_data
+        
+        # Handle dict input (production usage)
+        if not isinstance(region_data, dict):
+            return "unknown"
+        
         financial = region_data.get('financial_projection', {})
         if isinstance(financial, dict):
             sources = financial.get('data_sources', [])
@@ -638,8 +659,16 @@ class BenchmarkDriftMonitor:
         
         return "unknown"
     
-    def _extract_confidence(self, region_data: Dict[str, Any]) -> float:
+    def _extract_confidence(self, region_data: Any) -> float:
         """Extract confidence from region analysis data"""
+        # Handle direct numeric value (for testing)
+        if isinstance(region_data, (int, float)):
+            return float(region_data) if 0 <= region_data <= 1 else 0.75
+        
+        # Handle dict input (production usage)
+        if not isinstance(region_data, dict):
+            return 0.75  # Default confidence
+        
         # Try dynamic score confidence
         dynamic_score = region_data.get('dynamic_score', {})
         if isinstance(dynamic_score, dict):
