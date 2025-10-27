@@ -676,8 +676,8 @@ class PDFReportGenerator:
             region_name = region['region_name'].replace('_', ' ').title()
             changes = region.get('change_count', 0)
             area = region.get('total_area_m2', 0) / 10000  # Convert m2 to hectares
-            # Use the date_range_used from the region data, or fall back to a calculated period
-            period = region.get('analysis_period') or region.get('date_range_used', 'N/A')
+            # Use week_b (most recent analysis period) or fall back to week_a or date_range_used description
+            period = region.get('week_b') or region.get('week_a') or region.get('date_range_used', 'N/A')
             
             # Find investment score and explanation
             rec = next((r for r in all_recommendations if r.get('region') == region['region_name']), None)
