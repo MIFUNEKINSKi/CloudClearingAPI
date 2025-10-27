@@ -6398,10 +6398,415 @@ CLOUD COVERAGE:
 
 ---
 
+## Development Roadmap (v2.7 - v2.9+)
+
+### Overview
+**Goal:** Enhance platform robustness, maintainability, performance, algorithmic accuracy, and prepare for wider distribution based on v2.6-beta experience and recent production audits.
+
+**Timeline:** October - December 2025  
+**Current Status:** Tier 1 In Progress (CCAPI-27.2 Complete)
+
+---
+
+### Tier 1: Core Stability & Validation (HIGHEST PRIORITY)
+
+#### CCAPI-27.1: Full End-to-End v2.6-beta Validation
+**Status:** ✅ **COMPLETE** (v2.8.2)  
+**Achievement:** Validated entire system achieving 100/100 on success criteria  
+**Version:** v2.8.2 (Production-validated)
+
+#### CCAPI-27.2: Implement Benchmark Drift Monitoring
+**Status:** ✅ **COMPLETE** (v2.9.0)  
+**Timeline:** October 27, 2025  
+**Effort:** 16-20 hours (actual)
+
+**Goal:** Prevent RVI model degradation by monitoring benchmark vs. live price divergence with automated alerts and admin-approved recalibration workflow.
+
+**Core Features:**
+- **Drift Calculation:** `drift_pct = (live_price - benchmark) / benchmark * 100`
+- **Persistence-Based Alerts:**
+  - WARNING: >10% drift for 4+ consecutive weeks
+  - CRITICAL: >20% drift for 2+ consecutive weeks
+- **JSON Storage:** `./data/benchmark_drift/{region}_drift_history.json` with 6-month rolling retention (180 days)
+- **Zero Additional API Calls:** Post-processing only, uses live prices already collected
+- **Admin Recalibration Tool:** Review → Propose → Confirm → Apply workflow with backup/rollback
+
+**Components Delivered:**
+- **BenchmarkDriftMonitor** (`src/core/benchmark_drift_monitor.py`, 608 lines):
+  - 8 core methods: `calculate_drift()`, `track_drift()`, `get_drift_history()`, `_check_drift_alerts()`, `get_tier_drift_summary()`, `generate_recalibration_recommendations()`, `_save_drift_snapshot()`
+  - 6 helper methods: `_classify_alert_level()`, `_count_consecutive_drift()`, `_create_drift_alert()`, `_extract_live_price()`, `_extract_data_source()`, `_extract_confidence()`
+  - Bug fixed: `get_tier_benchmark()` returns Dict, must extract `avg_price_m2` before calculation
+  
+- **Integration** (`run_weekly_java_monitor.py`, 3 sections):
+  - Section 1 (post-monitoring): Initialize drift monitor, call `track_drift()` with investment analysis data
+  - Section 2 (results output): Display drift statistics, alert counts, top 5 drift alerts
+  - Section 3 (output files): Document drift history file paths
+  
+- **Recalibration Tool** (`tools/recalibrate_benchmarks.py`, 512 lines):
+  - `review` command: Display current drift status for all tiers (🟢 HEALTHY, 🟡 WARNING, 🔴 CRITICAL)
+  - `propose` command: Generate recalibration recommendations using 30-day rolling average
+  - `apply` command: Update `market_config.py` benchmarks with timestamped backup
+  - `rollback` command: Restore from backup
+  - Safety features: Interactive confirmations, timestamped backups, recalibration history log
+
+**Data Models:**
+- **DriftSnapshot** (dataclass): `timestamp`, `region_name`, `tier`, `benchmark_price`, `live_price`, `drift_pct`, `data_source`, `confidence`, `alert_level`
+- **DriftAlert**: `region`, `tier`, `current_drift_pct`, `consecutive_weeks`, `alert_level`, `first_detected`, `avg_drift_pct`, `recommendation`
+
+**Performance:**
+- **Overhead Target:** <5 minutes for 29 regions
+- **Storage:** ~10MB per region per 6 months (conservative estimate)
+- **Integration:** Non-blocking error handling, zero impact on core monitoring
+
+**Deployment:**
+- **Commit:** 2ec16b0 (implementation), df78316 (docs), 39468f9 (bug fix)
+- **Status:** ✅ **DEPLOYED TO PRODUCTION** - Awaiting first production weekly cycle validation
+- **Tag:** v2.9.0 (pending successful validation run)
+
+**Known Issues Fixed:**
+- ✅ `get_tier_benchmark()` Dict extraction (commit 39468f9)
+- ✅ Drift monitoring using wrong data source (commit [current] - switched from `regions_analyzed` to `investment_analysis` recommendations)
+- ✅ PDF report hardcoded fallback date "June 23-30, 2025" (commit [current] - use `date_range_used` field)
+
+**Usage:**
+```bash
+# Automatic execution (weekly monitoring)
+python run_weekly_java_monitor.py
+# Drift tracking happens automatically after monitoring completes
+
+# Manual recalibration workflow
+python tools/recalibrate_benchmarks.py review          # View current drift
+python tools/recalibrate_benchmarks.py propose         # Generate recommendations
+python tools/recalibrate_benchmarks.py apply --tier=tier_1_metros  # Apply specific
+python tools/recalibrate_benchmarks.py apply --all     # Apply all tiers
+python tools/recalibrate_benchmarks.py rollback        # Undo last change
+```
+
+**Next Steps:**
+1. ✅ Complete production validation run (in progress)
+2. ⏳ Verify drift history files created correctly
+3. ⏳ Tag v2.9.0 after successful validation
+4. ⏳ Monitor first 2-4 weeks of production data
+5. ⏳ Test recalibration tool with real drift data
+
+---
+
+#### CCAPI-27.3: Enhance Testing with Synthetic & Property-Based Tests
+**Status:** 🔲 **NEXT** (Scheduled)  
+**Priority:** HIGH  
+**Effort:** 20-24 hours
+
+**Goal:** Improve test suite robustness and catch edge cases/regressions before they reach production.
+
+**Tasks:**
+1. Create `test_data/synthetic_regions.json` with edge cases:
+   - Zero satellite changes
+   - Extreme infrastructure scores (0, 100)
+   - Missing financial data
+   - Negative price trends
+   - Boundary tier conditions
+
+2. Implement `tests/test_synthetic_edge_cases.py`:
+   - Test scoring with synthetic edge cases
+   - Validate graceful degradation
+   - Ensure no crashes on malformed data
+
+3. Introduce `hypothesis` for property-based testing (`tests/test_property_based.py`):
+   - Property: Scores always 0-100
+   - Property: Confidence always 0-1
+   - Property: Multipliers always positive
+   - Property: Recommendations consistent with scores
+
+4. Expand test coverage towards 85%:
+   - Current: ~60% coverage
+   - Target: 85% coverage
+   - Focus: Core scoring logic, financial metrics, drift monitoring
+
+**Expected Outcomes:**
+- Catch regressions before deployment
+- Validate edge case handling
+- Improve code confidence
+- Reduce manual testing burden
+
+---
+
+### Tier 2: Maintainability, Performance & Deployability
+
+#### CCAPI-27.4: Refactor Documentation into Modular Structure
+**Status:** 🔲 **Planned**  
+**Priority:** MEDIUM  
+**Effort:** 12-16 hours
+
+**Goal:** Improve documentation clarity, maintainability, and accessibility by splitting monolithic TECHNICAL_SCORING_DOCUMENTATION.md into modular files.
+
+**Proposed Structure:**
+```
+docs/
+├── 00-Overview.md                    # System introduction, quick start
+├── 01-Core-Algorithms.md             # Scoring formulas, thresholds
+├── 02-Data-Sources.md                # GEE, OSM, web scraping
+├── 03-Financial-Metrics.md           # ROI calculations, benchmarks
+├── 04-Drift-Monitoring.md            # CCAPI-27.2 details
+├── 05-Infrastructure-Analysis.md     # OSM caching, scoring logic
+├── 06-Operations-Guide.md            # Running monitoring, troubleshooting
+├── 07-Developer-Guide.md             # Architecture, adding features
+├── 08-API-Reference.md               # Core class documentation
+└── 09-Changelog.md                   # Version history
+```
+
+**Enhancements:**
+- Audience tags (👤 USER, 👷 OPERATOR, 🔧 DEVELOPER)
+- Mermaid diagrams for data flows
+- Cross-references between documents
+- Searchable table of contents
+- Progressive disclosure (simple → complex)
+
+---
+
+#### CCAPI-27.5: Implement GEE Caching & Async Orchestration
+**Status:** 🔲 **Planned**  
+**Priority:** MEDIUM-HIGH (High performance impact)  
+**Effort:** 28-38 hours (24-32h base + 4-6h GEE caching)
+
+**Goal:** Significantly reduce weekly monitoring runtime and improve scalability.
+
+**Tasks:**
+1. **GEE Asset Caching** (4-6 hours):
+   - Export `current_composite` to a GEE Asset after each run
+   - Load Asset as `historical_composite` on subsequent runs
+   - Implement cache invalidation logic (weekly refresh)
+   - Expected savings: ~15-20 minutes per run (skip historical composite generation)
+
+2. **Async Orchestration** (20-28 hours):
+   - Refactor `run_weekly_java_monitor.py` to use `asyncio`
+   - Convert scrapers to use `aiohttp` for concurrent requests
+   - Parallelize OSM infrastructure queries (non-blocking)
+   - Concurrent region analysis (CPU-bound tasks with `concurrent.futures`)
+   - Expected savings: 50-60% runtime reduction (87 min → 35-40 min)
+
+**Performance Targets:**
+- **Current:** 87 minutes for 29 regions (~3 min/region)
+- **Target:** 35-40 minutes for 29 regions (~1.2 min/region)
+- **Throughput:** 40-50 regions/hour (vs. current 20 regions/hour)
+
+**Technical Approach:**
+- Use `asyncio.gather()` for concurrent I/O operations
+- Use `ThreadPoolExecutor` for CPU-bound GEE computations
+- Maintain rate limiting for web scraping (2s between requests)
+- Preserve error handling and fallback logic
+
+---
+
+#### CCAPI-27.Y: Containerization & Deployment Automation
+**Status:** 🔲 **Planned**  
+**Priority:** MEDIUM (Essential for public release)  
+**Effort:** 16-24 hours  
+**Placement:** Recommended after CCAPI-27.3 (Testing)
+
+**Goal:** Simplify deployment and ensure environment consistency using Docker and potentially Terraform.
+
+**Tasks:**
+1. **Dockerfile** (6-8 hours):
+   - Multi-stage build (dependencies → runtime)
+   - Python 3.10+ base image
+   - Install system dependencies (GDAL, etc.)
+   - Copy application code
+   - Configure GEE authentication
+   - Set environment variables
+
+2. **docker-compose.yml** (4-6 hours):
+   - Local development setup
+   - Service definitions (app, optional database for caching)
+   - Volume mounts for `data/`, `output/`, `logs/`
+   - Environment variable management
+
+3. **Terraform (Optional)** (6-10 hours):
+   - AWS/GCP/Azure deployment scripts
+   - Compute instance provisioning
+   - Storage bucket setup
+   - Network security groups
+   - Automated secrets management
+
+**Deliverables:**
+- `Dockerfile` with production-ready configuration
+- `docker-compose.yml` for local development
+- `README-Docker.md` with usage instructions
+- Optional: `terraform/` directory with IaC scripts
+
+---
+
+#### CCAPI-27.6: Integrate Auto-Documentation Generation
+**Status:** 🔲 **Planned**  
+**Priority:** MEDIUM  
+**Effort:** 16-20 hours  
+**Dependencies:** CCAPI-27.4 (Modular Documentation)
+
+**Goal:** Link documentation directly to code and provide a searchable web portal.
+
+**Tasks:**
+1. **Setup MkDocs** (8-10 hours):
+   - Install MkDocs with Material theme
+   - Configure `mkdocs.yml` with navigation structure
+   - Migrate modular docs from CCAPI-27.4
+   - Add API reference generation (mkdocstrings)
+   - Configure search, syntax highlighting, diagrams
+
+2. **CI/CD Integration** (4-6 hours):
+   - GitHub Actions workflow for auto-deployment
+   - Deploy to GitHub Pages on main branch push
+   - Automated build validation
+   - Version tags for documentation releases
+
+3. **Docstring Refinement** (4-4 hours):
+   - Update function docstrings to Google/NumPy style
+   - Add parameter types and return value documentation
+   - Include usage examples in docstrings
+
+**Deliverables:**
+- `mkdocs.yml` configuration
+- `.github/workflows/docs.yml` for auto-deployment
+- Live documentation site at `https://[username].github.io/CloudClearingAPI/`
+- Automated version synchronization
+
+---
+
+### Tier 3: Algorithmic Refinements & Accuracy (Lower Priority)
+
+#### CCAPI-27.7: Investigate & Refine RVI Formula Stability
+**Status:** 🔲 **Planned**  
+**Priority:** LOW  
+**Effort:** 12-16 hours
+
+**Goal:** Address potential compounding bias in the RVI (Regional Value Index) calculation.
+
+**Investigation Areas:**
+- Analyze RVI drift over time (historical data)
+- Test alternative normalization methods
+- Evaluate impact of market multipliers on RVI stability
+- Consider decoupling RVI from market trends
+
+---
+
+#### CCAPI-27.8: Implement Empirical Calibration for ROI Momentum Boost
+**Status:** 🔲 **Planned**  
+**Priority:** LOW  
+**Effort:** 20-24 hours
+
+**Goal:** Ground the `development_momentum_boost` in historical data instead of heuristic assumptions.
+
+**Approach:**
+- Collect historical development data (pre/post satellite changes)
+- Analyze actual ROI correlation with development activity
+- Fit statistical model (linear regression, ML)
+- Replace heuristic boost with data-driven multiplier
+
+---
+
+#### CCAPI-27.9: Expand Tier 4 Region Dataset & Validation
+**Status:** 🔲 **Planned**  
+**Priority:** LOW  
+**Effort:** 10-12 hours
+
+**Goal:** Improve model confidence and validation for frontier markets.
+
+**Tasks:**
+- Identify 10-15 additional Tier 4 regions
+- Collect benchmark pricing data
+- Validate scoring algorithm performance
+- Adjust thresholds if needed for frontier markets
+
+---
+
+### Tier 4: Reporting & User Experience (Lower Priority)
+
+#### CCAPI-27.10: Add Data Provenance to Reports
+**Status:** 🔲 **Planned**  
+**Priority:** LOW  
+**Effort:** 6-8 hours
+
+**Goal:** Increase transparency about data sources and freshness in outputs.
+
+**Enhancements:**
+- Add "Data Sources" section to PDF reports
+- Show data collection timestamps
+- Indicate live vs. cached vs. benchmark data
+- Display confidence levels for each data source
+
+---
+
+#### CCAPI-27.11: Introduce Dynamic Charts in PDF Summary
+**Status:** 🔲 **Planned**  
+**Priority:** LOW  
+**Effort:** 12-16 hours
+
+**Goal:** Enhance visual insights in the PDF report.
+
+**Chart Types:**
+- Price trend line charts (30-day history)
+- Infrastructure score spider charts
+- Investment score distribution histograms
+- Drift monitoring timeline charts
+
+---
+
+### Post-v2.7 / Future Roadmap
+
+#### Communication: Create YouTube Demo Video
+**Status:** 🔲 **Future**  
+**Purpose:** Produce a 2-3 minute walkthrough showcasing CloudClearingAPI's capabilities and outputs (useful for public release/showcasing)
+
+#### CCAPI-Next.1: Probabilistic Confidence Propagation
+**Status:** 🔲 **Future**
+
+#### CCAPI-Next.2: Soft Tier Blending
+**Status:** 🔲 **Future**
+
+#### CCAPI-Next.3: Automated HTML Summary Dashboard
+**Status:** 🔲 **Future**
+
+#### CCAPI-Next.4: Partial Benchmark Update Automation (Scripted Phase 2)
+**Status:** 🔲 **Future**
+
+#### CCAPI-Next.5: Performance Profiling (post-Async)
+**Status:** 🔲 **Future**
+
+#### v2.8+: Advanced Features
+- Bayesian Confidence Propagation
+- Infrastructure Graph Metrics
+- ML Augmentation
+- Automated Report Delivery (S3)
+- Streamlit UI Layer
+
+---
+
+### Roadmap Summary Table
+
+| ID | Feature | Priority | Effort | Status |
+|----|---------|----------|--------|--------|
+| **CCAPI-27.1** | Full End-to-End Validation | CRITICAL | ~~8-12h~~ | ✅ COMPLETE |
+| **CCAPI-27.2** | Benchmark Drift Monitoring | HIGH | ~~16-20h~~ | ✅ COMPLETE |
+| **CCAPI-27.3** | Synthetic/Property Tests | HIGH | 20-24h | 🔲 NEXT |
+| **CCAPI-27.Y** | Containerize & Deploy Automate | MEDIUM | 16-24h | 🔲 Planned |
+| **CCAPI-27.5** | GEE Cache & Async Orchestr. | MEDIUM | 28-38h | 🔲 Planned |
+| **CCAPI-27.4** | Modular Documentation | MEDIUM | 12-16h | 🔲 Planned |
+| **CCAPI-27.6** | Auto-Documentation (MkDocs) | MEDIUM | 16-20h | 🔲 Planned |
+| **CCAPI-27.10** | Data Provenance Reports | LOW | 6-8h | 🔲 Planned |
+| **CCAPI-27.11** | Dynamic PDF Charts | LOW | 12-16h | 🔲 Planned |
+| **CCAPI-27.7** | RVI Formula Stability | LOW | 12-16h | 🔲 Planned |
+| **CCAPI-27.8** | Empirical ROI Calibration | LOW | 20-24h | 🔲 Planned |
+| **CCAPI-27.9** | Expand Tier 4 Dataset | LOW | 10-12h | 🔲 Planned |
+
+**Total Remaining v2.7 Effort (Tier 1 & 2 only):** ~108-146 hours (~2.7-3.6 weeks)
+
+**Roadmap Philosophy:** Prioritizes stability (testing), deployability (Docker/Terraform), and performance (Async/Caching) after critical validation steps.
+
+---
+
 ## Document Version History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| **2.9.0** | 2025-10-27 | Chris Moore | **BENCHMARK DRIFT MONITORING (CCAPI-27.2):** Implemented comprehensive drift monitoring system to prevent RVI model degradation. Added `BenchmarkDriftMonitor` class (608 lines) with automated drift tracking, persistence-based alerts (WARNING >10% for 4+ weeks, CRITICAL >20% for 2+ weeks), JSON storage with 6-month retention, and zero additional API calls. Created admin recalibration tool (`tools/recalibrate_benchmarks.py`, 512 lines) with review/propose/apply/rollback workflow. Fixed critical bugs: `get_tier_benchmark()` Dict extraction, drift monitoring data source (switched from `regions_analyzed` to investment analysis), PDF report hardcoded date fallback. Added comprehensive development roadmap (v2.7-v2.9+) with 12 planned features across 4 tiers. Status: Deployed to production, awaiting first production cycle validation. |
 | **2.8.0** | 2025-10-26 | Chris Moore | **PERFORMANCE OPTIMIZATION:** Added comprehensive v2.8.0 documentation for OSM Infrastructure Caching (7-day TTL, 48% faster monitoring, 86% API load reduction). Created `src/core/osm_cache.py` with `OSMInfrastructureCache` class, modified `infrastructure_analyzer.py` with cache-first logic, added integration test validation. Documented cache strategy (JSON storage, expiry logic, hit rate projections), performance metrics (162x speedup per cached region, 87→45 min monitoring runtime), logging patterns, error handling, and production readiness checklist. Status: Production-ready, fully tested, zero breaking changes. |
 | **2.7.0** | 2025-10-26 | Chris Moore | **PRODUCTION RELEASE:** Added comprehensive v2.7.0 documentation including CCAPI-27.0 (Budget-Driven Investment Sizing) with 15/15 tests passing, critical bug fixes (#1: market data retrieval, #2: RVI parameters), production validation results, before/after comparisons, deployment status, and next development task (7-day OSM caching). Updated version history table, Recent Updates section with detailed implementation guide, and v2.7 roadmap summary with deployment status. |
 | 2.6-beta | 2025-10-26 | Chris Moore | **Phase 2B completion:** Added RVI-aware market multipliers, airport premium, Tier 1+ classification, tier-specific infrastructure tolerances, and comprehensive integration validation. |
@@ -6417,8 +6822,8 @@ CLOUD COVERAGE:
 
 ---
 
-**End of Technical Documentation**
-**Current Version: 2.8.0 (OSM Infrastructure Caching - Performance Optimization)**  
-**Status: ⚡ PRODUCTION READY - v2.8.0 Deployed (48% Faster Monitoring)**  
-**Last Updated:** October 26, 2025
+**End of Technical Documentation**  
+**Current Version: 2.9.0 (Benchmark Drift Monitoring - RVI Model Protection)**  
+**Status: ✅ PRODUCTION DEPLOYED - v2.9.0 Awaiting Validation (Drift Monitoring Active)**  
+**Last Updated:** October 27, 2025
 

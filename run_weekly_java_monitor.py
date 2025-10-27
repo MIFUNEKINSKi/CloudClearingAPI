@@ -145,9 +145,14 @@ async def main():
                 enable_alerts=True
             )
             
-            # Track drift for all analyzed regions
-            regions_analyzed = results.get('regions_analyzed', [])
-            drift_summary = drift_monitor.track_drift(regions_analyzed)
+            # Track drift using investment analysis data (includes financial projections)
+            investment_analysis = results.get('investment_analysis', {}).get('yogyakarta_analysis', {})
+            all_recommendations = (
+                investment_analysis.get('buy_recommendations', []) +
+                investment_analysis.get('watch_list', []) +
+                investment_analysis.get('pass_list', [])
+            )
+            drift_summary = drift_monitor.track_drift(all_recommendations)
             
             # Add drift summary to results
             results['drift_monitoring'] = drift_summary
