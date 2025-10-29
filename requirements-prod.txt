@@ -1,0 +1,70 @@
+# CloudClearingAPI Production Requirements
+# Optimized for Docker images - excludes dev/test dependencies
+# Version: 2.9.1
+
+# ============================================================================
+# Core Geospatial Dependencies
+# ============================================================================
+earthengine-api>=0.1.370
+google-auth>=2.0.0
+google-auth-oauthlib>=1.0.0
+google-api-python-client>=2.0.0
+rasterio>=1.3.0
+geopandas>=0.13.0
+shapely>=2.0.0
+numpy>=1.24.0
+scikit-image>=0.21.0
+scipy>=1.10.0
+
+# ============================================================================
+# Web Framework (for future API)
+# ============================================================================
+fastapi>=0.100.0
+uvicorn[standard]>=0.22.0
+pydantic>=2.0.0
+
+# ============================================================================
+# Database (optional - commented for minimal deployment)
+# ============================================================================
+# psycopg2-binary>=2.9.0
+# sqlalchemy>=2.0.0
+# alembic>=1.11.0
+# asyncpg>=0.28.0
+# geoalchemy2>=0.14.0
+
+# ============================================================================
+# Data Processing
+# ============================================================================
+pandas>=2.0.0
+xarray>=2023.1.0
+# dask[complete]>=2023.1.0  # Commented - large dependency
+
+# ============================================================================
+# Visualization (minimal for PDF generation)
+# ============================================================================
+# folium>=0.14.0  # Commented - not needed for batch processing
+# plotly>=5.15.0  # Commented - not needed for batch processing
+matplotlib>=3.7.0
+# seaborn>=0.12.0  # Commented - not needed
+
+# ============================================================================
+# PDF Generation
+# ============================================================================
+reportlab>=4.0.0
+Pillow>=10.0.0
+
+# ============================================================================
+# Utilities
+# ============================================================================
+python-dotenv>=1.0.0
+pyyaml>=6.0
+click>=8.1.0
+rich>=13.0.0
+# loguru>=0.7.0  # Using standard logging instead
+
+# ============================================================================
+# Web Scraping & HTTP
+# ============================================================================
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0

@@ -1,0 +1,51 @@
+# CloudClearingAPI Terraform Configuration Example
+# Copy this file to terraform.tfvars and customize
+
+# ============================================================================
+# General Configuration
+# ============================================================================
+project_name = "cloudclearing"
+environment  = "dev"  # Change to "staging" or "prod" for other environments
+aws_region   = "us-east-1"
+
+# ============================================================================
+# Network Configuration
+# ============================================================================
+vpc_cidr             = "10.0.0.0/16"
+enable_nat_gateway   = true   # Set to false for dev to save costs (~$30/month per NAT)
+enable_vpc_endpoints = true   # Reduces data transfer costs
+enable_flow_logs     = false  # Set to true for production (increases costs)
+
+# ============================================================================
+# Application Configuration
+# ============================================================================
+earthengine_project = "your-gee-project-id"  # REQUIRED: Your GEE Cloud Project ID
+log_level           = "INFO"  # DEBUG, INFO, WARNING, ERROR
+
+# ============================================================================
+# ECS Configuration
+# ============================================================================
+# Task sizing based on workload:
+# - Dev: 1024 CPU / 4096 MB (small regions, testing)
+# - Staging: 2048 CPU / 8192 MB (full validation)
+# - Prod: 4096 CPU / 16384 MB (29 regions, optimal performance)
+
+ecs_task_cpu    = "2048"  # 2 vCPU
+ecs_task_memory = "8192"  # 8 GB
+
+# ============================================================================
+# Monitoring & Alerts
+# ============================================================================
+alarm_email_endpoints = [
+  "your-email@example.com"
+  # Add additional emails as needed
+]
+
+enable_cost_alerts   = true
+monthly_budget_limit = "100"  # USD
+enable_dashboard     = true
+
+# ============================================================================
+# Data Retention
+# ============================================================================
+logs_retention_days = 90  # Reduce to 30 for dev, keep 90+ for prod

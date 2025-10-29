@@ -1,0 +1,278 @@
+# CloudClearingAPI Docker Build & Push to ECR
+# Version: 2.9.1 (CCAPI-28.0)
+# Triggers: Push to main, manual dispatch
+# Purpose: Build, test, and push Docker images to Amazon ECR
+
+name: Docker Build & Push to ECR
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'requirements.txt'
+      - 'run_weekly_java_monitor.py'
+      - '.github/workflows/docker-build-push.yml'
+  
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'Dockerfile'
+      - 'requirements.txt'
+  
+  workflow_dispatch:
+    inputs:
+      push_to_ecr:
+        description: 'Push to ECR after build'
+        required: true
+        default: 'true'
+        type: boolean
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: cloudclearing-api
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  # ==========================================================================
+  # Job 1: Build Docker Image
+  # ==========================================================================
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
+            network=host
+      
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+      
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: |
+            cloudclearing-api:latest
+            cloudclearing-api:${{ github.sha }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+      
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+      
+      - name: Inspect image
+        run: |
+          echo "=== Docker Image Info ==="
+          docker images cloudclearing-api:latest
+          echo ""
+          echo "=== Image Size ==="
+          docker images cloudclearing-api:latest --format "{{.Size}}"
+          echo ""
+          echo "=== Image Layers ==="
+          docker history cloudclearing-api:latest --no-trunc
+      
+      - name: Check image size
+        run: |
+          SIZE=$(docker images cloudclearing-api:latest --format "{{.Size}}" | sed 's/MB//' | sed 's/GB/*1024/' | bc)
+          echo "Image size: ${SIZE}MB"
+          if (( $(echo "$SIZE > 500" | bc -l) )); then
+            echo "::warning::Image size exceeds 500MB target (${SIZE}MB)"
+          else
+            echo "::notice::Image size within target (<500MB): ${SIZE}MB"
+          fi
+      
+      - name: Test container startup
+        run: |
+          echo "=== Testing container startup ==="
+          docker run --rm cloudclearing-api:latest python -c "
+          import sys
+          print('Python version:', sys.version)
+          
+          # Test critical imports
+          try:
+              import earthengine as ee
+              print('✓ earthengine-api imported')
+          except ImportError as e:
+              print('✗ earthengine-api import failed:', e)
+              sys.exit(1)
+          
+          try:
+              import src.core.automated_monitor
+              print('✓ automated_monitor imported')
+          except ImportError as e:
+              print('✗ automated_monitor import failed:', e)
+              sys.exit(1)
+          
+          try:
+              import src.core.change_detector
+              print('✓ change_detector imported')
+          except ImportError as e:
+              print('✗ change_detector import failed:', e)
+              sys.exit(1)
+          
+          try:
+              import src.scrapers.scraper_orchestrator
+              print('✓ scraper_orchestrator imported')
+          except ImportError as e:
+              print('✗ scraper_orchestrator import failed:', e)
+              sys.exit(1)
+          
+          print('\\n✓ All critical modules loaded successfully')
+          "
+      
+      - name: Save Docker image artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker save cloudclearing-api:latest | gzip > /tmp/cloudclearing-api.tar.gz
+      
+      - name: Upload Docker image artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-image
+          path: /tmp/cloudclearing-api.tar.gz
+          retention-days: 1
+
+  # ==========================================================================
+  # Job 2: Push to Amazon ECR
+  # ==========================================================================
+  push-to-ecr:
+    name: Push to Amazon ECR
+    runs-on: ubuntu-latest
+    needs: build
+    if: |
+      github.event_name == 'push' && 
+      github.ref == 'refs/heads/main' || 
+      (github.event_name == 'workflow_dispatch' && inputs.push_to_ecr == 'true')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: docker-image
+          path: /tmp
+      
+      - name: Load Docker image
+        run: |
+          docker load < /tmp/cloudclearing-api.tar.gz
+      
+      - name: Tag and push image to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          echo "=== Tagging images for ECR ==="
+          docker tag cloudclearing-api:latest $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker tag cloudclearing-api:latest $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker tag cloudclearing-api:latest $ECR_REGISTRY/$ECR_REPOSITORY:v2.9.1
+          
+          echo "=== Pushing images to ECR ==="
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:v2.9.1
+          
+          echo "=== Push complete ==="
+          echo "Image URI: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
+      
+      - name: Create deployment summary
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          echo "## Docker Image Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Successfully pushed to Amazon ECR" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image URIs:**" >> $GITHUB_STEP_SUMMARY
+          echo "- \`$ECR_REGISTRY/$ECR_REPOSITORY:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`$ECR_REGISTRY/$ECR_REPOSITORY:v2.9.1\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Region:** $AWS_REGION" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Update ECS task definition with new image URI" >> $GITHUB_STEP_SUMMARY
+          echo "2. Deploy to staging environment for validation" >> $GITHUB_STEP_SUMMARY
+          echo "3. Monitor CloudWatch logs for errors" >> $GITHUB_STEP_SUMMARY
+
+  # ==========================================================================
+  # Job 3: Security Scan (Optional)
+  # ==========================================================================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: docker-image
+          path: /tmp
+      
+      - name: Load Docker image
+        run: |
+          docker load < /tmp/cloudclearing-api.tar.gz
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'cloudclearing-api:latest'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+      
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+      
+      - name: Trivy vulnerability report
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'cloudclearing-api:latest'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'

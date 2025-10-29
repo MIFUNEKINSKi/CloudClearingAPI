@@ -1,0 +1,118 @@
+# CloudClearingAPI .dockerignore
+# Optimizes build context by excluding unnecessary files
+# Version: 2.9.1 (CCAPI-28.0)
+
+# ============================================================================
+# Python
+# ============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env
+
+# ============================================================================
+# Application Data & Outputs
+# ============================================================================
+# Cache directories (will be mounted as volumes)
+cache/
+*.cache
+
+# Output directories (will be mounted as volumes)
+output/
+data/
+temp/
+tmp/
+
+# Logs (will be mounted as volumes)
+logs/
+*.log
+
+# Credentials (will be mounted as volumes)
+credentials/
+*.json
+!config/*.example.json
+
+# ============================================================================
+# Git & Version Control
+# ============================================================================
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# ============================================================================
+# IDE & Editor Files
+# ============================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.bak
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# ============================================================================
+# Documentation
+# ============================================================================
+*.md
+!README.md
+docs/
+*.pdf
+*.docx
+
+# ============================================================================
+# Testing
+# ============================================================================
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+*.cover
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ============================================================================
+# Docker
+# ============================================================================
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# ============================================================================
+# CI/CD
+# ============================================================================
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+Jenkinsfile
+
+# ============================================================================
+# Misc
+# ============================================================================
+*.sqlite
+*.db
+*.db-shm
+*.db-wal

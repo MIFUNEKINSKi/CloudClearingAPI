@@ -1,0 +1,164 @@
+# CloudClearingAPI Docker Compose Configuration
+# Version: 2.9.1 (CCAPI-28.0)
+# Purpose: Local development and testing environment
+
+version: '3.8'
+
+services:
+  # ============================================================================
+  # Main Monitoring Service
+  # ============================================================================
+  monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    image: cloudclearing-api:latest
+    container_name: cloudclearing-monitor
+    
+    # Environment variables
+    environment:
+      # Google Earth Engine
+      - EARTHENGINE_PROJECT=${EARTHENGINE_PROJECT:-your-gee-project-id}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gee-service-account.json
+      
+      # Application settings
+      - CONFIG_PATH=/app/config/config.yaml
+      - CACHE_DIR=/app/cache
+      - OUTPUT_DIR=/app/output
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      
+      # Optional: SMTP for email alerts
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      
+      # Optional: Slack/Discord webhooks
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
+      - SLACK_TOKEN=${SLACK_TOKEN:-}
+    
+    # Volume mounts
+    volumes:
+      # Persistent cache (GEE + OSM data)
+      - ./cache:/app/cache
+      
+      # Output directory (PDFs, JSON reports, satellite images)
+      - ./output:/app/output
+      
+      # Logs
+      - ./logs:/app/logs
+      
+      # Configuration
+      - ./config:/app/config:ro
+      
+      # GEE credentials (mount your service account JSON)
+      - ${GEE_CREDENTIALS_PATH:-./credentials}:/app/credentials:ro
+      
+      # Optional: Mount source code for development (comment out for production)
+      # - ./src:/app/src:ro
+      # - ./run_weekly_java_monitor.py:/app/run_weekly_java_monitor.py:ro
+    
+    # Resource limits (adjust based on your machine)
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+        reservations:
+          cpus: '2.0'
+          memory: 4G
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "python", "-c", "import earthengine as ee; import src.core.automated_monitor; print('OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Network mode
+    network_mode: bridge
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+    
+    # Command override (uncomment to customize)
+    # command: python run_weekly_java_monitor.py
+
+  # ============================================================================
+  # Optional: Database Service (PostgreSQL with PostGIS)
+  # ============================================================================
+  # Uncomment if you want to enable database persistence
+  # db:
+  #   image: postgis/postgis:15-3.3
+  #   container_name: cloudclearing-db
+  #   
+  #   environment:
+  #     - POSTGRES_DB=cloudclearing
+  #     - POSTGRES_USER=cloudclearing
+  #     - POSTGRES_PASSWORD=${DB_PASSWORD:-changeme}
+  #   
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   
+  #   ports:
+  #     - "5432:5432"
+  #   
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U cloudclearing"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   
+  #   restart: unless-stopped
+
+  # ============================================================================
+  # Optional: API Service (Future FastAPI endpoint)
+  # ============================================================================
+  # api:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   image: cloudclearing-api:latest
+  #   container_name: cloudclearing-api
+  #   
+  #   environment:
+  #     - EARTHENGINE_PROJECT=${EARTHENGINE_PROJECT}
+  #     - DATABASE_URL=postgresql://cloudclearing:${DB_PASSWORD}@db:5432/cloudclearing
+  #   
+  #   volumes:
+  #     - ./cache:/app/cache
+  #     - ./output:/app/output:ro
+  #     - ./logs:/app/logs
+  #   
+  #   ports:
+  #     - "8000:8000"
+  #   
+  #   command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+  #   
+  #   depends_on:
+  #     - db
+  #   
+  #   restart: unless-stopped
+
+# ============================================================================
+# Volumes (optional - uncomment if using database)
+# ============================================================================
+# volumes:
+#   postgres_data:
+#     driver: local
+
+# ============================================================================
+# Networks (optional - uncomment for custom networking)
+# ============================================================================
+# networks:
+#   default:
+#     name: cloudclearing-network
+#     driver: bridge
