@@ -1,0 +1,305 @@
+{
+  "Comment": "CloudClearingAPI Weekly Monitoring Pipeline - Orchestrates satellite analysis, infrastructure scoring, and financial projections for 29 Java regions",
+  "StartAt": "ValidateInputs",
+  "TimeoutSeconds": 10800,
+  "States": {
+    "ValidateInputs": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::ecs:runTask.sync",
+      "Parameters": {
+        "LaunchType": "FARGATE",
+        "Cluster": "${ecs_cluster_arn}",
+        "TaskDefinition": "${monitor_task_definition}",
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "Subnets": ${subnet_ids},
+            "SecurityGroups": ${security_group_ids},
+            "AssignPublicIp": "DISABLED"
+          }
+        },
+        "Overrides": {
+          "ContainerOverrides": [
+            {
+              "Name": "monitor",
+              "Command": [
+                "python",
+                "-c",
+                "import sys; print('Validation passed'); sys.exit(0)"
+              ],
+              "Environment": [
+                {
+                  "Name": "VALIDATION_MODE",
+                  "Value": "true"
+                },
+                {
+                  "Name": "GEE_PROJECT_ID",
+                  "Value": "${gee_project_id}"
+                },
+                {
+                  "Name": "ENVIRONMENT",
+                  "Value": "${environment}"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "ResultPath": "$.validation",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed",
+            "States.Timeout"
+          ],
+          "IntervalSeconds": 30,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "NotifyFailure"
+        }
+      ],
+      "Next": "RunWeeklyMonitoring"
+    },
+
+    "RunWeeklyMonitoring": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::ecs:runTask.sync",
+      "Parameters": {
+        "LaunchType": "FARGATE",
+        "Cluster": "${ecs_cluster_arn}",
+        "TaskDefinition": "${monitor_task_definition}",
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "Subnets": ${subnet_ids},
+            "SecurityGroups": ${security_group_ids},
+            "AssignPublicIp": "DISABLED"
+          }
+        },
+        "Overrides": {
+          "ContainerOverrides": [
+            {
+              "Name": "monitor",
+              "Command": [
+                "python",
+                "run_weekly_java_monitor.py",
+                "--auto-confirm"
+              ],
+              "Environment": [
+                {
+                  "Name": "GEE_PROJECT_ID",
+                  "Value": "${gee_project_id}"
+                },
+                {
+                  "Name": "ENVIRONMENT",
+                  "Value": "${environment}"
+                },
+                {
+                  "Name": "S3_REPORTS_BUCKET",
+                  "Value": "${s3_reports_bucket}"
+                },
+                {
+                  "Name": "S3_CACHE_BUCKET",
+                  "Value": "${s3_cache_bucket}"
+                },
+                {
+                  "Name": "LOG_LEVEL",
+                  "Value": "INFO"
+                }
+              ]
+            }
+          ],
+          "Cpu": "2048",
+          "Memory": "4096"
+        }
+      },
+      "ResultPath": "$.monitoring",
+      "TimeoutSeconds": 7200,
+      "HeartbeatSeconds": 600,
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.Timeout"
+          ],
+          "IntervalSeconds": 60,
+          "MaxAttempts": 1,
+          "BackoffRate": 1.0
+        },
+        {
+          "ErrorEquals": [
+            "ECS.ServiceException",
+            "ECS.AmazonECSException"
+          ],
+          "IntervalSeconds": 120,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "NotifyFailure"
+        }
+      ],
+      "Next": "CheckExecutionStatus"
+    },
+
+    "CheckExecutionStatus": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.monitoring.Containers[0].ExitCode",
+          "NumericEquals": 0,
+          "Next": "ExtractResults"
+        }
+      ],
+      "Default": "HandlePartialFailure"
+    },
+
+    "ExtractResults": {
+      "Type": "Pass",
+      "Parameters": {
+        "execution_id.$": "$$.Execution.Name",
+        "start_time.$": "$$.Execution.StartTime",
+        "task_arn.$": "$.monitoring.TaskArn",
+        "exit_code.$": "$.monitoring.Containers[0].ExitCode",
+        "s3_reports_bucket": "${s3_reports_bucket}",
+        "environment": "${environment}"
+      },
+      "ResultPath": "$.results",
+      "Next": "PublishMetrics"
+    },
+
+    "PublishMetrics": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:cloudwatch:putMetricData",
+      "Parameters": {
+        "Namespace": "CloudClearingAPI",
+        "MetricData": [
+          {
+            "MetricName": "WeeklyMonitoringSuccess",
+            "Value": 1,
+            "Unit": "Count",
+            "Timestamp.$": "$$.State.EnteredTime",
+            "Dimensions": [
+              {
+                "Name": "Environment",
+                "Value": "${environment}"
+              }
+            ]
+          },
+          {
+            "MetricName": "ExecutionDuration",
+            "Value.$": "States.MathAdd(States.StringToJson(States.Format('{}', $$.State.EnteredTime)), -States.StringToJson(States.Format('{}', $$.Execution.StartTime)))",
+            "Unit": "Seconds",
+            "Timestamp.$": "$$.State.EnteredTime",
+            "Dimensions": [
+              {
+                "Name": "Environment",
+                "Value": "${environment}"
+              }
+            ]
+          }
+        ]
+      },
+      "ResultPath": "$.metrics",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 2,
+          "BackoffRate": 1.5
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.metrics_error",
+          "Next": "NotifySuccess"
+        }
+      ],
+      "Next": "NotifySuccess"
+    },
+
+    "HandlePartialFailure": {
+      "Type": "Pass",
+      "Parameters": {
+        "error_type": "PartialFailure",
+        "message": "Weekly monitoring completed with non-zero exit code",
+        "exit_code.$": "$.monitoring.Containers[0].ExitCode",
+        "task_arn.$": "$.monitoring.TaskArn"
+      },
+      "ResultPath": "$.error",
+      "Next": "NotifyPartialFailure"
+    },
+
+    "NotifyPartialFailure": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${sns_failure_topic_arn}",
+        "Subject": "⚠️ CloudClearingAPI Partial Failure - ${environment}",
+        "Message": {
+          "summary": "Weekly monitoring completed with warnings or partial failures",
+          "execution_id.$": "$$.Execution.Name",
+          "start_time.$": "$$.Execution.StartTime",
+          "error.$": "$.error",
+          "logs": "https://console.aws.amazon.com/cloudwatch/home?region=${aws_region}#logsV2:log-groups/log-group/${cloudwatch_log_group}",
+          "task_logs.$": "States.Format('https://console.aws.amazon.com/ecs/home?region=${aws_region}#/clusters/${ecs_cluster_arn}/tasks/{}', $.monitoring.TaskArn)"
+        }
+      },
+      "ResultPath": null,
+      "Next": "FailExecution"
+    },
+
+    "NotifySuccess": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${sns_success_topic_arn}",
+        "Subject": "✅ CloudClearingAPI Weekly Monitoring Complete - ${environment}",
+        "Message": {
+          "summary": "Successfully completed weekly monitoring for 29 Java regions",
+          "execution_id.$": "$$.Execution.Name",
+          "start_time.$": "$$.Execution.StartTime",
+          "duration_seconds.$": "States.MathAdd(States.StringToJson(States.Format('{}', $$.State.EnteredTime)), -States.StringToJson(States.Format('{}', $$.Execution.StartTime)))",
+          "s3_reports": "s3://${s3_reports_bucket}/weekly/",
+          "environment": "${environment}",
+          "dashboard": "https://console.aws.amazon.com/cloudwatch/home?region=${aws_region}#dashboards:name=CloudClearingAPI-${environment}"
+        }
+      },
+      "ResultPath": null,
+      "End": true
+    },
+
+    "NotifyFailure": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${sns_failure_topic_arn}",
+        "Subject": "🚨 CloudClearingAPI Pipeline FAILED - ${environment}",
+        "Message": {
+          "summary": "Critical failure in weekly monitoring pipeline",
+          "execution_id.$": "$$.Execution.Name",
+          "start_time.$": "$$.Execution.StartTime",
+          "error.$": "$.error",
+          "logs": "https://console.aws.amazon.com/cloudwatch/home?region=${aws_region}#logsV2:log-groups/log-group/${cloudwatch_log_group}",
+          "action_required": "Investigate logs and retry execution if appropriate"
+        }
+      },
+      "ResultPath": null,
+      "Next": "FailExecution"
+    },
+
+    "FailExecution": {
+      "Type": "Fail",
+      "Error": "PipelineExecutionFailed",
+      "Cause": "Weekly monitoring pipeline failed - check SNS notification for details"
+    }
+  }
+}

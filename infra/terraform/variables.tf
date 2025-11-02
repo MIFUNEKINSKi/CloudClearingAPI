@@ -134,3 +134,43 @@ variable "logs_retention_days" {
   type        = number
   default     = 90
 }
+
+# ============================================================================
+# Step Functions / Orchestration
+# ============================================================================
+variable "step_functions_schedule" {
+  description = "EventBridge schedule expression for weekly monitoring"
+  type        = string
+  default     = "cron(0 6 ? * MON *)"  # Every Monday at 6am UTC
+}
+
+variable "default_regions_count" {
+  description = "Default number of regions to process in weekly monitoring"
+  type        = number
+  default     = 29
+}
+
+variable "enable_web_scraping" {
+  description = "Enable web scraping for land price data"
+  type        = bool
+  default     = true
+}
+
+variable "pipeline_success_email" {
+  description = "Email address for pipeline success notifications (empty to disable)"
+  type        = string
+  default     = ""
+}
+
+variable "pipeline_failure_email" {
+  description = "Email address for pipeline failure notifications (empty to disable)"
+  type        = string
+  default     = ""
+}
+
+variable "slack_webhook_url" {
+  description = "Slack webhook URL for pipeline notifications (empty to disable)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

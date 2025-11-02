@@ -1,8 +1,8 @@
 # CloudClearingAPI Documentation
 
-**Version:** 2.9.1 (GEE Caching + Async Processing + Critical Bugfixes)  
-**Last Updated:** October 28, 2025  
-**Project Status:** Production (29 regions, weekly monitoring, 82-97% performance improvement)
+**Version:** 2.9.1-tier3 (Step Functions + Docker + Terraform + GEE Caching + Async Processing)  
+**Last Updated:** November 2, 2025  
+**Project Status:** Production (29 regions, automated orchestration, containerized, cloud-ready)
 
 ---
 
@@ -30,6 +30,7 @@ Production validation, monitoring, and troubleshooting.
 
 - **[Docker Setup Guide](deployment/docker-setup.md)** - Complete containerization guide (CCAPI-28.0)
 - **[Terraform Infrastructure Guide](deployment/terraform-guide.md)** - AWS infrastructure as code (CCAPI-28.1)
+- **[Step Functions Orchestration Guide](deployment/step-functions-guide.md)** - Automated pipeline with AWS Step Functions (CCAPI-29.0)
 - **[Production Validation Results](deployment/production_validation.md)** - v2.8.2 validation (5 regions, 100% success)
 - **[Weekly Monitoring Guide](deployment/monitoring_guide.md)** - Running `run_weekly_java_monitor.py`
 - **[Troubleshooting Guide](deployment/troubleshooting.md)** - Common issues and solutions
@@ -49,6 +50,8 @@ Release notes, bug fixes, and feature additions.
 - **[Version History](changelog/VERSION_HISTORY.md)** - Complete release timeline (v2.0 → v2.9.1)
 - **[Bug Fix Log](changelog/BUG_FIXES.md)** - Critical bug resolutions with root cause analysis
 - **[Roadmap](changelog/ROADMAP.md)** - Planned features (v2.7-v2.9 tiers)
+- **[CCAPI-29.0: Step Functions Orchestration](changelog/CCAPI-29-0-Step-Functions-Orchestration.md)** - Automated pipeline execution (Tier 3 Phase 1)
+- **[CCAPI-28: DE Foundation Complete](changelog/CCAPI-28-DE-Foundation-Complete.md)** - Docker + Terraform (Tier 2 complete)
 - **[CCAPI-27.5: GEE Cache + Async Processing + Bugfixes](changelog/CCAPI-27.5-Production-Validation.md)** - v2.9.1 complete (Tasks 1-5 + 3 critical hotfixes)
 - **[CCAPI-27.5: GEE Cache Integration (Original Spec)](changelog/CCAPI-27.5-GEE-Cache-Integration.md)** - Satellite data caching design doc
 
@@ -56,10 +59,10 @@ Release notes, bug fixes, and feature additions.
 Strategic development plan and future features.
 
 - **[v2.9 → v3.0 Development Roadmap](roadmap/v2.9-to-v3.0.md)** - DE-focused approach (10-16 weeks)
-  - Tier 1: Enhanced testing (property-based, integration)
-  - Tier 2: Docker + Terraform + CI/CD
-  - Tier 3: Step Functions + dbt + Great Expectations  
-  - Tier 4: CloudWatch + MkDocs + demo video
+  - ✅ Tier 1: Enhanced testing (property-based, integration) - COMPLETE
+  - ✅ Tier 2: Docker + Terraform + CI/CD - COMPLETE
+  - 🔄 Tier 3: Step Functions + dbt + Great Expectations (CCAPI-29.0 ✅, CCAPI-29.1-29.2 in progress)
+  - 🔲 Tier 4: CloudWatch + MkDocs + demo video (2-3 weeks)
 
 ---
 
@@ -149,13 +152,15 @@ See [Configuration Guide](architecture/configuration.md) for complete reference.
 - **Average Score:** 45-75 (varies by region/week)
 
 ### Recent Milestones
-- ✅ **v2.8.2:** Market data restoration (4 root causes fixed, 100% success rate)
-- ✅ **CCAPI-27.1:** Full validation (12 regions, 100/100 improvement score)
-- ✅ **CCAPI-27.2:** Benchmark drift monitoring (608 lines, production-ready)
-- ✅ **CCAPI-27.3:** Property-based testing (9 tests, 416 examples, all passing)
+- ✅ **v2.9.1-tier2 (CCAPI-28):** Docker + Terraform (Tier 2 DE Foundation complete)
+  - **CCAPI-28.0:** Docker containerization (1.19GB image, 50% reduction, CI/CD pipeline)
+  - **CCAPI-28.1:** Terraform IaC (5 AWS modules, ~70 resources, $23-139/mo cost-optimized)
+- ✅ **v2.9.1 (CCAPI-27.5):** GEE Caching + Async Processing (82-97% faster, 19 tests passing)
 - ✅ **CCAPI-27.4:** Documentation refactor (modular structure, 76% size reduction)
-- ✅ **CCAPI-27.5 (Tasks 1-4):** GEE Caching + Async Processing (79% faster, 19 tests passing, full non-blocking pipeline)
-- 🔄 **CCAPI-27.5 (Task 5):** Production performance validation (29 regions, in progress)
+- ✅ **CCAPI-27.3:** Property-based testing (9 tests, 416 examples, all passing)
+- ✅ **CCAPI-27.2:** Benchmark drift monitoring (608 lines, production-ready)
+- ✅ **CCAPI-27.1:** Full validation (12 regions, 100/100 improvement score)
+- ✅ **v2.8.2:** Market data restoration (4 root causes fixed, 100% success rate)
 
 ---
 
@@ -197,4 +202,4 @@ Proprietary - CloudClearingAPI Team
 
 ---
 
-**Last Documentation Update:** October 27, 2025 (CCAPI-27.4 Modular Refactor)
+**Last Documentation Update:** October 29, 2025 (CCAPI-28 Tier 2 DE Foundation - Docker + Terraform)

@@ -170,3 +170,49 @@ module "monitoring" {
   
   depends_on = [module.compute]
 }
+
+# ============================================================================
+# Step Functions Module (Orchestration)
+# ============================================================================
+module "step_functions" {
+  source = "./modules/step-functions"
+  
+  project_name = var.project_name
+  environment  = var.environment
+  
+  # ECS Configuration
+  ecs_cluster_arn             = module.compute.ecs_cluster_arn
+  ecs_cluster_name            = module.compute.ecs_cluster_name
+  monitor_task_definition_arn = module.compute.monitor_task_definition_arn
+  ecs_task_role_arn           = module.security.ecs_task_role_arn
+  ecs_execution_role_arn      = module.security.ecs_task_execution_role_arn
+  private_subnet_ids          = module.network.private_subnet_ids
+  ecs_security_group_id       = module.network.ecs_security_group_id
+  
+  # S3 Configuration
+  s3_reports_bucket = module.data_lake.curated_bucket_name
+  s3_cache_bucket   = module.data_lake.staging_bucket_name
+  
+  # Scheduler Configuration
+  schedule_expression    = var.step_functions_schedule
+  default_regions_count  = var.default_regions_count
+  enable_web_scraping    = var.enable_web_scraping
+  
+  # Notifications
+  success_email     = var.pipeline_success_email
+  failure_email     = var.pipeline_failure_email
+  slack_webhook_url = var.slack_webhook_url
+  
+  # Security
+  kms_key_id = module.security.kms_key_id
+  
+  # Application
+  gee_project_id = var.earthengine_project
+  
+  # Logging
+  log_retention_days = var.logs_retention_days
+  
+  tags = local.common_tags
+  
+  depends_on = [module.compute, module.security, module.data_lake, module.network]
+}

@@ -97,6 +97,34 @@ output "dashboard_name" {
 }
 
 # ============================================================================
+# Step Functions Outputs
+# ============================================================================
+output "step_functions_state_machine_arn" {
+  description = "ARN of Step Functions state machine for weekly monitoring"
+  value       = module.step_functions.state_machine_arn
+}
+
+output "step_functions_state_machine_name" {
+  description = "Name of Step Functions state machine"
+  value       = module.step_functions.state_machine_name
+}
+
+output "eventbridge_schedule_rule" {
+  description = "Name of EventBridge rule for weekly execution"
+  value       = module.step_functions.eventbridge_rule_name
+}
+
+output "pipeline_success_topic_arn" {
+  description = "ARN of SNS topic for pipeline success notifications"
+  value       = module.step_functions.sns_success_topic_arn
+}
+
+output "pipeline_failure_topic_arn" {
+  description = "ARN of SNS topic for pipeline failure notifications"
+  value       = module.step_functions.sns_failure_topic_arn
+}
+
+# ============================================================================
 # Quick Start Commands
 # ============================================================================
 output "next_steps" {
