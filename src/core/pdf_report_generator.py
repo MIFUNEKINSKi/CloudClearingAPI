@@ -574,11 +574,14 @@ class PDFReportGenerator:
         
         # ✅ Add methodology explanation FIRST (before showing regions)
         story.append(Paragraph(
-            "<b>Investment Methodology:</b> Our analysis combines satellite-detected land use changes with "
-            "market intelligence and infrastructure data. Each region receives an <b>investment score (0-100)</b> based on: "
-            "<b>(1) Development Activity</b> - volume and pace of land use changes detected via satellite, "
+            "<b>Investment Methodology:</b> Our analysis combines satellite-detected land use changes "
+            "(Sentinel-2 optical + Sentinel-1 SAR radar fusion) with market intelligence, infrastructure data, "
+            "and development news analysis. SAR radar penetrates cloud cover for year-round monitoring. "
+            "Each region receives an <b>investment score (0-100)</b> based on: "
+            "<b>(1) Development Activity</b> - fused optical+SAR satellite change detection, "
             "<b>(2) Infrastructure Quality</b> - proximity to major roads, ports, airports, and active construction projects, "
-            "<b>(3) Market Dynamics</b> - property price trends and real estate market heat.",
+            "<b>(3) Market Dynamics</b> - property price trends and real estate market heat, "
+            "<b>(4) News Catalyst</b> - Indonesian infrastructure news multiplier (0.95x-1.20x) from Jakarta Post, Kompas, and Antara News.",
             self.styles['Normal']
         ))
         story.append(Paragraph(
@@ -951,7 +954,35 @@ class PDFReportGenerator:
                 score_components.append(f"Infrastructure: {investment_rec.get('infrastructure_score', 0):.0f}/100 quality rating")
             if changes > 0:
                 score_components.append(f"Development activity: {changes:,} satellite-detected changes")
-            
+
+            # SAR radar data
+            sar_data = investment_rec.get('sar_data')
+            if sar_data and sar_data.get('available'):
+                sar_source = sar_data.get('source', 'unknown')
+                sar_changes = sar_data.get('sar_changes', 0)
+                sar_construction = sar_data.get('sar_construction', 0)
+                confidence_boost = sar_data.get('confidence_boost', 0)
+                score_components.append(
+                    f"SAR radar: {sar_changes:,} radar changes ({sar_source} mode, "
+                    f"+{confidence_boost:.0%} confidence boost)"
+                )
+                if sar_construction > 0:
+                    score_components.append(
+                        f"SAR construction activity: {sar_construction:,} pixels, "
+                        f"VV: {sar_data.get('mean_vv_change_db', 0):+.2f}dB"
+                    )
+
+            # News catalyst
+            news_data = investment_rec.get('news_catalyst')
+            if news_data and news_data.get('articles_found', 0) > 0:
+                score_components.append(
+                    f"News catalyst: {news_data['multiplier']:.2f}x multiplier "
+                    f"({news_data['articles_found']} articles: "
+                    f"{news_data['positive_count']}+ / {news_data['negative_count']}-)"
+                )
+                if news_data.get('summary'):
+                    score_components.append(f"News: {news_data['summary'][:100]}")
+
             for component in score_components:
                 story.append(Paragraph(f"   • {component}", self.styles['Normal']))
             
@@ -1031,7 +1062,24 @@ class PDFReportGenerator:
                 # Historical validation
                 if availability.get('historical_validation', False):
                     confidence_factors.append("✅ Historical validation: Past predictions verified")
-                
+
+            # SAR radar data availability
+            sar_data = investment_rec.get('sar_data')
+            if sar_data and sar_data.get('available'):
+                confidence_factors.append(
+                    f"✅ SAR radar: Sentinel-1 active ({sar_data.get('source', 'N/A')} mode)"
+                )
+            else:
+                confidence_factors.append("⚠️ SAR radar: Not available for this analysis period")
+
+            # News catalyst
+            news_data = investment_rec.get('news_catalyst')
+            if news_data and news_data.get('articles_found', 0) > 0:
+                confidence_factors.append(
+                    f"✅ News catalyst: {news_data['articles_found']} articles analyzed "
+                    f"(multiplier: {news_data['multiplier']:.2f}x)"
+                )
+
             for conf_factor in confidence_factors:
                 story.append(Paragraph(f"   • {conf_factor}", self.styles['Normal']))
             

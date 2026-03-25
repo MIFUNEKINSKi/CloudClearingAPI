@@ -57,6 +57,14 @@ class CorrectedScoringResult:
     rvi_interpretation: Optional[str] = None  # RVI interpretation string
     rvi_breakdown: Optional[Dict[str, Any]] = None  # Detailed RVI calculation breakdown
 
+    # Part 5: SAR Fusion (v2.10) - Sentinel-1 radar + Sentinel-2 optical fusion
+    sar_fusion_source: Optional[str] = None       # 'optical+sar_fusion', 'sar_only', 'optical_only'
+    sar_confidence_boost: Optional[float] = None   # 0.0-0.10 confidence increase from dual-sensor
+
+    # Part 6: News Catalyst (v2.10) - Development news scoring multiplier
+    news_catalyst_multiplier: Optional[float] = None  # 0.95-1.20
+    news_articles_found: Optional[int] = None
+
 
 class CorrectedInvestmentScorer:
     """
@@ -87,26 +95,30 @@ class CorrectedInvestmentScorer:
         else:
             logger.info("✅ Initialized CORRECTED scoring system (satellite-centric) - trend-based multiplier")
     
-    def calculate_investment_score(self, 
+    def calculate_investment_score(self,
                                    region_name: str,
                                    satellite_changes: int,
                                    area_affected_m2: float,
                                    region_config: Dict[str, Any],
                                    coordinates: Dict[str, float],
                                    bbox: Dict[str, float],
-                                   actual_price_m2: Optional[float] = None) -> CorrectedScoringResult:
+                                   actual_price_m2: Optional[float] = None,
+                                   sar_confidence_boost: float = 0.0,
+                                   news_catalyst_multiplier: float = 1.0) -> CorrectedScoringResult:
         """
         Calculate investment score using the CORRECT three-part system.
-        
+
         Args:
             region_name: Name of region
-            satellite_changes: Total pixel changes detected (PRIMARY SIGNAL!)
+            satellite_changes: Total pixel changes detected (PRIMARY SIGNAL!) — fused optical+SAR if available
             area_affected_m2: Area of changes in square meters
             region_config: Region configuration
             coordinates: Center coordinates
             bbox: Bounding box
             actual_price_m2: Optional actual land price for RVI calculation (v2.6-alpha)
-            
+            sar_confidence_boost: Confidence increase from SAR dual-sensor fusion (0.0-0.10)
+            news_catalyst_multiplier: News-based scoring multiplier (0.95-1.20, default 1.0)
+
         Returns:
             Complete scoring result with proper satellite integration
         """
@@ -154,6 +166,8 @@ class CorrectedInvestmentScorer:
         
         # Confidence weighting (reduces score when data is missing)
         confidence = self._calculate_confidence(data_availability, market_data, infrastructure_data)
+        # SAR dual-sensor boost increases confidence (max +0.10)
+        confidence = min(1.0, confidence + sar_confidence_boost)
         
         # Non-linear confidence multiplier (v2.4.1 refinement)
         # Quadratic scaling below 85% for steeper penalties, linear above for diminishing returns
@@ -174,6 +188,8 @@ class CorrectedInvestmentScorer:
         confidence_multiplier = max(0.70, min(1.00, confidence_multiplier))
         
         final_score = after_market * confidence_multiplier
+        # Apply news catalyst multiplier (0.95x-1.20x based on development news)
+        final_score = final_score * news_catalyst_multiplier
         final_score = max(0, min(100, final_score))  # Clamp to 0-100
         
         logger.info(f"   ✨ Final Score: {final_score:.1f}/100 (confidence: {confidence:.0%})")
@@ -270,7 +286,10 @@ class CorrectedInvestmentScorer:
             rvi=rvi,  # NEW (v2.6-alpha)
             expected_price_m2=expected_price_m2,  # NEW (v2.6-alpha)
             rvi_interpretation=rvi_interpretation,  # NEW (v2.6-alpha)
-            rvi_breakdown=rvi_breakdown  # NEW (v2.6-alpha)
+            rvi_breakdown=rvi_breakdown,  # NEW (v2.6-alpha)
+            sar_fusion_source='optical+sar' if sar_confidence_boost > 0 else None,  # v2.10
+            sar_confidence_boost=sar_confidence_boost if sar_confidence_boost > 0 else None,  # v2.10
+            news_catalyst_multiplier=news_catalyst_multiplier if news_catalyst_multiplier != 1.0 else None,  # v2.10
         )
     
     def _calculate_development_score(self, satellite_changes: int) -> float:
