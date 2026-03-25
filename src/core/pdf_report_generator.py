@@ -228,7 +228,7 @@ class PDFReportGenerator:
             ['Critical Alerts:', str(summary.get('alert_summary', {}).get('critical', 0))],
             ['Investment Opportunities:', str(investment_summary.get('opportunity_breakdown', {}).get('total_opportunities', 0))]
         ]
-        
+
         metrics_table = Table(key_metrics, colWidths=[2.5*inch, 2*inch])
         metrics_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#E8F4FD')),
@@ -240,8 +240,49 @@ class PDFReportGenerator:
             ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#CCCCCC'))
         ]))
         story.append(metrics_table)
+        story.append(Spacer(1, 10))
+
+        # Data Sources & Scoring Methodology summary
+        story.append(Paragraph(
+            "<b>Scoring Methodology:</b> Final Score = Activity (0-40, fused Sentinel-2 optical + "
+            "Sentinel-1 SAR radar) x Infrastructure (0.8-1.3x) x Market (0.85-1.40x, RVI-aware) x "
+            "News Catalyst (0.95-1.20x) x Confidence (0.70-1.00). "
+            "SAR radar penetrates cloud cover for year-round analysis. "
+            "News catalyst adjusts scores based on Indonesian infrastructure media coverage.",
+            self.styles['Normal']
+        ))
+        story.append(Spacer(1, 8))
+
+        # Aggregate SAR and news stats from investment data
+        yogyakarta_analysis = data.get('investment_analysis', {}).get('yogyakarta_analysis', {})
+        buy_recs = yogyakarta_analysis.get('buy_recommendations', [])
+        all_recs = yogyakarta_analysis.get('all_regions', buy_recs)
+
+        sar_active_count = sum(
+            1 for r in all_recs
+            if r.get('sar_data') and r['sar_data'].get('available')
+        )
+        news_active_count = sum(
+            1 for r in all_recs
+            if r.get('news_catalyst') and r['news_catalyst'].get('articles_found', 0) > 0
+        )
+        total_regions = len(all_recs)
+
+        if total_regions > 0:
+            data_source_items = []
+            data_source_items.append(
+                f"SAR Radar: Active for {sar_active_count}/{total_regions} regions "
+                f"(Sentinel-1 dual-sensor fusion)"
+            )
+            data_source_items.append(
+                f"News Catalyst: {news_active_count}/{total_regions} regions with matched articles "
+                f"(Jakarta Post, Kompas, Antara News)"
+            )
+            for item in data_source_items:
+                story.append(Paragraph(f"   {item}", self.styles['Normal']))
+
         story.append(Spacer(1, 15))
-        
+
         return story
 
     def _build_monitoring_results(self, data: Dict[str, Any]) -> List:

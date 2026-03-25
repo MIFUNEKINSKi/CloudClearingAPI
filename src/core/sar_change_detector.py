@@ -135,7 +135,24 @@ class SARChangeDetector:
                        f"({result.sar_change_pixels:,} changes)")
         except Exception as e:
             logger.warning(f"Failed to save SAR cache for {result.region_name}: {e}")
-    
+
+    def cleanup_expired(self) -> int:
+        """Remove expired SAR cache files. Returns count of files removed."""
+        removed = 0
+        if not self.cache_dir.exists():
+            return removed
+        for cache_file in self.cache_dir.glob("*_sar.json"):
+            try:
+                file_age = datetime.now() - datetime.fromtimestamp(cache_file.stat().st_mtime)
+                if file_age > self.cache_ttl:
+                    cache_file.unlink(missing_ok=True)
+                    removed += 1
+            except Exception as e:
+                logger.warning(f"Failed to clean up {cache_file}: {e}")
+        if removed > 0:
+            logger.info(f"🧹 SAR cache cleanup: removed {removed} expired files")
+        return removed
+
     def detect_sar_changes(self,
                            bbox: Dict[str, Any],
                            region_name: str,

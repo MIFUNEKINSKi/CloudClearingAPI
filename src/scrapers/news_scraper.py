@@ -120,22 +120,36 @@ CITY_TO_REGIONS = {
 class NewsScraper:
     """
     Scrapes Indonesian infrastructure news and matches articles to regions.
-    
+
     Uses a 7-day cache to avoid redundant requests.
+    Adopts base_scraper patterns: User-Agent rotation, retry with backoff.
     """
-    
-    def __init__(self, cache_dir: str = "./cache/news", cache_ttl_days: int = 7):
+
+    # User-Agent rotation pool (matches base_scraper.py pattern)
+    USER_AGENTS = [
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+    ]
+
+    def __init__(self, cache_dir: str = "./cache/news", cache_ttl_days: int = 7,
+                 max_retries: int = 2, request_timeout: int = 15):
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.cache_ttl = timedelta(days=cache_ttl_days)
+        self.max_retries = max_retries
+        self.request_timeout = request_timeout
         self.session = requests.Session()
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9,id;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
         })
-        
-        logger.info(f"📰 News Scraper initialized (cache TTL: {cache_ttl_days}d)")
+
+        logger.info(f"📰 News Scraper initialized (cache TTL: {cache_ttl_days}d, retries: {max_retries})")
     
     # ─── CACHE ───────────────────────────────────────────────────
     
@@ -171,8 +185,33 @@ class NewsScraper:
         except Exception as e:
             logger.warning(f"News cache save failed for {source}: {e}")
     
+    # ─── HTTP HELPERS ─────────────────────────────────────────────
+
+    def _get_with_retry(self, url: str) -> Optional[requests.Response]:
+        """GET request with User-Agent rotation and exponential backoff retry."""
+        for attempt in range(self.max_retries + 1):
+            try:
+                self.session.headers['User-Agent'] = random.choice(self.USER_AGENTS)
+                resp = self.session.get(url, timeout=self.request_timeout)
+                if resp.status_code == 200:
+                    return resp
+                logger.warning(f"HTTP {resp.status_code} for {url} (attempt {attempt + 1})")
+            except requests.ConnectionError as e:
+                logger.warning(f"Connection error for {url} (attempt {attempt + 1}): {e}")
+            except requests.Timeout:
+                logger.warning(f"Timeout for {url} (attempt {attempt + 1})")
+            except requests.RequestException as e:
+                logger.warning(f"Request error for {url} (attempt {attempt + 1}): {e}")
+
+            if attempt < self.max_retries:
+                backoff = min(30, (2 ** attempt) + random.uniform(0.5, 1.5))
+                time.sleep(backoff)
+
+        logger.warning(f"All {self.max_retries + 1} attempts failed for {url}")
+        return None
+
     # ─── SCRAPING ────────────────────────────────────────────────
-    
+
     def scrape_all_sources(self) -> List[Dict[str, Any]]:
         """Scrape all news sources and return raw article dicts."""
         all_articles = []
@@ -206,33 +245,36 @@ class NewsScraper:
             "https://www.thejakartapost.com/business",
         ]
         
+        seen_urls = set()
         for url in urls:
             try:
-                resp = self.session.get(url, timeout=15)
-                if resp.status_code != 200:
-                    logger.warning(f"Jakarta Post returned {resp.status_code} for {url}")
+                resp = self._get_with_retry(url)
+                if not resp:
                     continue
-                
+
                 soup = BeautifulSoup(resp.text, 'html.parser')
-                
+
                 # Find article links — Jakarta Post uses various card patterns
                 for link in soup.find_all('a', href=True):
                     href = link.get('href', '')
                     title_text = link.get_text(strip=True)
-                    
+
                     # Only article links (contain /news/ or /indonesia/ or /business/)
                     if not title_text or len(title_text) < 20:
                         continue
                     if not any(seg in href for seg in ['/news/', '/indonesia/', '/business/']):
                         continue
-                    
+
+                    full_url = href if href.startswith('http') else f"https://www.thejakartapost.com{href}"
+                    if full_url in seen_urls:
+                        continue
+                    seen_urls.add(full_url)
+
                     # Check if title matches any infrastructure keyword
                     matched = self._match_keywords(title_text)
                     if not matched:
                         continue
-                    
-                    full_url = href if href.startswith('http') else f"https://www.thejakartapost.com{href}"
-                    
+
                     articles.append({
                         'title': title_text[:200],
                         'source': 'jakarta_post',
@@ -241,13 +283,13 @@ class NewsScraper:
                         'snippet': title_text[:200],
                         'matched_keywords': matched,
                     })
-                
+
                 logger.info(f"📰 Jakarta Post ({url.split('/')[-1]}): {len(articles)} infrastructure articles")
                 time.sleep(random.uniform(0.5, 1.5))
-                
+
             except Exception as e:
                 logger.warning(f"Jakarta Post scrape error ({url}): {e}")
-        
+
         return articles[:30]  # Cap at 30 articles
     
     def _scrape_kompas(self) -> List[Dict]:
@@ -258,27 +300,31 @@ class NewsScraper:
             "https://money.kompas.com/",
         ]
         
+        seen_urls = set()
         for url in urls:
             try:
-                resp = self.session.get(url, timeout=15)
-                if resp.status_code != 200:
+                resp = self._get_with_retry(url)
+                if not resp:
                     continue
-                
+
                 soup = BeautifulSoup(resp.text, 'html.parser')
-                
+
                 for link in soup.find_all('a', href=True):
                     href = link.get('href', '')
                     title_text = link.get_text(strip=True)
-                    
+
                     if not title_text or len(title_text) < 15:
                         continue
                     if 'kompas.com/read' not in href:
                         continue
-                    
+                    if href in seen_urls:
+                        continue
+                    seen_urls.add(href)
+
                     matched = self._match_keywords(title_text)
                     if not matched:
                         continue
-                    
+
                     articles.append({
                         'title': title_text[:200],
                         'source': 'kompas',
@@ -287,13 +333,13 @@ class NewsScraper:
                         'snippet': title_text[:200],
                         'matched_keywords': matched,
                     })
-                
+
                 logger.info(f"📰 Kompas ({url.split('/')[-2]}): found matches")
                 time.sleep(random.uniform(0.5, 1.5))
-                
+
             except Exception as e:
                 logger.warning(f"Kompas scrape error: {e}")
-        
+
         return articles[:30]
     
     def _scrape_antara(self) -> List[Dict]:
@@ -304,27 +350,31 @@ class NewsScraper:
             "https://en.antaranews.com/business",
         ]
         
+        seen_urls = set()
         for url in urls:
             try:
-                resp = self.session.get(url, timeout=15)
-                if resp.status_code != 200:
+                resp = self._get_with_retry(url)
+                if not resp:
                     continue
-                
+
                 soup = BeautifulSoup(resp.text, 'html.parser')
-                
+
                 for link in soup.find_all('a', href=True):
                     href = link.get('href', '')
                     title_text = link.get_text(strip=True)
-                    
+
                     if not title_text or len(title_text) < 20:
                         continue
                     if 'antaranews.com/news' not in href:
                         continue
-                    
+                    if href in seen_urls:
+                        continue
+                    seen_urls.add(href)
+
                     matched = self._match_keywords(title_text)
                     if not matched:
                         continue
-                    
+
                     articles.append({
                         'title': title_text[:200],
                         'source': 'antara',
@@ -333,13 +383,13 @@ class NewsScraper:
                         'snippet': title_text[:200],
                         'matched_keywords': matched,
                     })
-                
+
                 logger.info(f"📰 Antara ({url.split('/')[-1]}): found matches")
                 time.sleep(random.uniform(0.5, 1.5))
-                
+
             except Exception as e:
                 logger.warning(f"Antara scrape error: {e}")
-        
+
         return articles[:30]
     
     # ─── MATCHING ────────────────────────────────────────────────
