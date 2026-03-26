@@ -633,6 +633,15 @@ class PDFReportGenerator:
             self.styles['Normal']
         ))
         story.append(Paragraph(
+            "<b>Calibration Disclaimer:</b> Scoring thresholds (e.g., satellite change-count brackets, "
+            "infrastructure multiplier tiers) are heuristic estimates that have <b>not been backtested</b> "
+            "against realized investment outcomes. Scores are best used as <b>relative rankings</b> "
+            "(Region A vs Region B), not absolute return predictions. "
+            "Key risks not yet modeled: land title/ownership disputes, flood and earthquake exposure, "
+            "IDR/USD currency volatility, and local zoning changes.",
+            self.styles['Normal']
+        ))
+        story.append(Paragraph(
             "<b>Imagery Notes:</b> Satellite imagery shows before/after comparisons where available. "
             "NDVI (vegetation index) maps highlight <b style='color:red'>vegetation loss (red)</b> indicating land clearing "
             "for potential construction sites, and <b style='color:green'>vegetation gain (green)</b> showing revegetation.",
@@ -1628,6 +1637,32 @@ class PDFReportGenerator:
             
             story.append(Spacer(1, 5))
         
+        # Risk Assessment
+        story.append(Paragraph(
+            "<b>Risk Assessment:</b>",
+            self.styles['Normal']
+        ))
+
+        risk_icon = lambda level: '🔴' if level == 'High' else ('🟡' if level == 'Medium' else ('🟢' if level == 'Low' else '⚪'))
+        risks = [
+            ('Liquidity', financial_data.get('liquidity_risk', 'Unknown'), 'Ease of resale in local market'),
+            ('Speculation', financial_data.get('speculation_risk', 'Unknown'), 'Overheating / bubble risk'),
+            ('Infrastructure', financial_data.get('infrastructure_risk', 'Unknown'), 'Dependency on planned development'),
+            ('Legal/Title', financial_data.get('legal_risk', 'Unknown'), 'Ownership disputes, adat/BPN conflicts'),
+            ('Natural Disaster', financial_data.get('natural_disaster_risk', 'Unknown'), 'Flood, earthquake, volcanic'),
+            ('Currency', financial_data.get('currency_risk', 'Medium'), 'IDR/USD volatility for foreign investors'),
+            ('Zoning', financial_data.get('zoning_risk', 'Unknown'), 'Regulatory / land-use change risk'),
+        ]
+
+        for name, level, desc in risks:
+            icon = risk_icon(level)
+            story.append(Paragraph(
+                f"   {icon} <b>{name}:</b> {level} — <i>{desc}</i>",
+                self.styles['Normal']
+            ))
+
+        story.append(Spacer(1, 5))
+
         # Add disclaimer for financial projections
         story.append(Spacer(1, 5))
         story.append(Paragraph(

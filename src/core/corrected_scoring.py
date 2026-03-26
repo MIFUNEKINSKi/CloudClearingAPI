@@ -296,7 +296,14 @@ class CorrectedInvestmentScorer:
         """
         Calculate development score from satellite change count.
         This is the PRIMARY signal - the foundation of the entire score!
-        
+
+        CALIBRATION NOTE: These thresholds are heuristic estimates based on
+        observed pixel-change ranges across Indonesian regions. They have NOT
+        been backtested against actual investment outcomes. Treat the resulting
+        scores as relative rankings (Region A vs Region B), not absolute
+        predictions of return. Threshold refinement requires ground-truth
+        validation against realized land-value changes.
+
         Score ranges:
         - 40 points: >50,000 changes (massive development)
         - 35 points: 20,000-50,000 (very high activity)

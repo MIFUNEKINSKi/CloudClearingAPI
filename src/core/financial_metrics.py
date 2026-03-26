@@ -56,6 +56,10 @@ class FinancialProjection:
     liquidity_risk: str  # Low/Medium/High
     speculation_risk: str  # Low/Medium/High
     infrastructure_risk: str  # Low/Medium/High
+    legal_risk: str = 'Unknown'  # Land title/ownership dispute risk
+    natural_disaster_risk: str = 'Unknown'  # Flood/earthquake/volcanic exposure
+    currency_risk: str = 'Medium'  # IDR/USD volatility (always present for foreign investors)
+    zoning_risk: str = 'Unknown'  # Risk of unfavorable zoning changes
     
     # Regional Context (NEW - v2.6-alpha)
     regional_tier: Optional[str] = None  # tier_1_metros, tier_2_secondary, tier_3_emerging, tier_4_frontier
@@ -274,6 +278,9 @@ class FinancialMetricsEngine:
         liquidity_risk = self._assess_liquidity_risk(region_name, market_data)
         speculation_risk = self._assess_speculation_risk(market_data, appreciation_rate)
         infrastructure_risk = self._assess_infrastructure_risk(infrastructure_data)
+        legal_risk = self._assess_legal_risk(region_name)
+        natural_disaster_risk = self._assess_natural_disaster_risk(region_name)
+        zoning_risk = self._assess_zoning_risk(region_name, market_data)
         
         # Step 10: Calculate projection confidence
         confidence = self._calculate_projection_confidence(
@@ -298,6 +305,10 @@ class FinancialMetricsEngine:
             liquidity_risk=liquidity_risk,
             speculation_risk=speculation_risk,
             infrastructure_risk=infrastructure_risk,
+            legal_risk=legal_risk,
+            natural_disaster_risk=natural_disaster_risk,
+            currency_risk='Medium',  # Always present for foreign investors in IDR
+            zoning_risk=zoning_risk,
             bear_appreciation_rate=bear_rate,
             bull_appreciation_rate=bull_rate,
             bear_roi_3yr=bear_roi_3yr,
@@ -651,6 +662,52 @@ class FinancialMetricsEngine:
         else:
             return 'High'
     
+    def _assess_legal_risk(self, region_name: str) -> str:
+        """Assess land title/ownership dispute risk based on region tier.
+
+        Rural and frontier regions in Indonesia carry higher legal risk due to
+        overlapping adat (customary) and BPN (national land agency) claims.
+        """
+        tier_info = self._get_tier_info(region_name)
+        tier = tier_info.get('tier', 'tier_3_emerging')
+
+        if tier == 'tier_1_metros':
+            return 'Low'  # Metro areas have better-established title records
+        elif tier == 'tier_2_secondary':
+            return 'Medium'
+        else:
+            return 'High'  # Emerging/frontier regions — overlapping claims common
+
+    def _assess_natural_disaster_risk(self, region_name: str) -> str:
+        """Assess flood, earthquake, and volcanic exposure.
+
+        Indonesia sits on the Pacific Ring of Fire. All regions carry seismic
+        risk; coastal and low-lying areas add flood/tsunami risk. This is a
+        coarse heuristic — proper assessment requires BNPB hazard maps.
+        """
+        name_lower = region_name.lower()
+
+        # Coastal/lowland indicators
+        coastal_keywords = ['pantai', 'coastal', 'pesisir', 'pelabuhan', 'port', 'waterfront']
+        volcanic_keywords = ['merapi', 'bromo', 'agung', 'sinabung', 'kelud', 'gunung']
+
+        if any(kw in name_lower for kw in volcanic_keywords):
+            return 'High'
+        if any(kw in name_lower for kw in coastal_keywords):
+            return 'High'
+        # Default: Medium (all of Indonesia has seismic risk)
+        return 'Medium'
+
+    def _assess_zoning_risk(self, region_name: str, market_data: Dict[str, Any]) -> str:
+        """Assess risk of unfavorable zoning or land-use regulation changes.
+
+        Rapidly developing areas often face retroactive zoning restrictions.
+        """
+        market_heat = market_data.get('market_heat', 'unknown')
+        if market_heat in ('hot', 'warming'):
+            return 'Medium'  # Fast growth attracts regulatory attention
+        return 'Low'
+
     def _calculate_projection_confidence(self,
                                         market_data: Dict[str, Any],
                                         infrastructure_data: Dict[str, Any],
@@ -976,6 +1033,10 @@ RISK ASSESSMENT:
   Liquidity Risk:       {projection.liquidity_risk}
   Speculation Risk:     {projection.speculation_risk}
   Infrastructure Risk:  {projection.infrastructure_risk}
+  Legal/Title Risk:     {projection.legal_risk}
+  Natural Disaster Risk:{projection.natural_disaster_risk}
+  Currency Risk:        {projection.currency_risk}
+  Zoning Risk:          {projection.zoning_risk}
   
 Projection Confidence:  {projection.projection_confidence:.0%}
 Data Sources:           {data_sources_str}
