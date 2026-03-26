@@ -61,11 +61,13 @@ class DynamicScoringIntegration:
         self.infrastructure_engine = EnhancedInfrastructureAnalyzer()
         
         # Dynamic scoring weights (can be adjusted based on market conditions)
+        # v2.10: Added news_catalyst weight, redistributed from market_data and infrastructure
         self.scoring_weights = {
-            'market_data': 0.4,          # 40% weight on market dynamics
-            'infrastructure': 0.35,      # 35% weight on infrastructure
+            'market_data': 0.35,          # 35% weight on market dynamics (was 40%)
+            'infrastructure': 0.30,      # 30% weight on infrastructure (was 35%)
             'accessibility': 0.15,       # 15% weight on accessibility
-            'construction_momentum': 0.1  # 10% weight on future development
+            'construction_momentum': 0.10, # 10% weight on future development
+            'news_catalyst': 0.10         # 10% weight on development news (NEW v2.10)
         }
     
     def calculate_dynamic_score(self, region_name: str, region_config: Dict[str, Any]) -> DynamicScoringResult:

@@ -228,7 +228,7 @@ class PDFReportGenerator:
             ['Critical Alerts:', str(summary.get('alert_summary', {}).get('critical', 0))],
             ['Investment Opportunities:', str(investment_summary.get('opportunity_breakdown', {}).get('total_opportunities', 0))]
         ]
-        
+
         metrics_table = Table(key_metrics, colWidths=[2.5*inch, 2*inch])
         metrics_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#E8F4FD')),
@@ -240,8 +240,49 @@ class PDFReportGenerator:
             ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#CCCCCC'))
         ]))
         story.append(metrics_table)
+        story.append(Spacer(1, 10))
+
+        # Data Sources & Scoring Methodology summary
+        story.append(Paragraph(
+            "<b>Scoring Methodology:</b> Final Score = Activity (0-40, fused Sentinel-2 optical + "
+            "Sentinel-1 SAR radar) x Infrastructure (0.8-1.3x) x Market (0.85-1.40x, RVI-aware) x "
+            "News Catalyst (0.95-1.20x) x Confidence (0.70-1.00). "
+            "SAR radar penetrates cloud cover for year-round analysis. "
+            "News catalyst adjusts scores based on Indonesian infrastructure media coverage.",
+            self.styles['Normal']
+        ))
+        story.append(Spacer(1, 8))
+
+        # Aggregate SAR and news stats from investment data
+        yogyakarta_analysis = data.get('investment_analysis', {}).get('yogyakarta_analysis', {})
+        buy_recs = yogyakarta_analysis.get('buy_recommendations', [])
+        all_recs = yogyakarta_analysis.get('all_regions', buy_recs)
+
+        sar_active_count = sum(
+            1 for r in all_recs
+            if r.get('sar_data') and r['sar_data'].get('available')
+        )
+        news_active_count = sum(
+            1 for r in all_recs
+            if r.get('news_catalyst') and r['news_catalyst'].get('articles_found', 0) > 0
+        )
+        total_regions = len(all_recs)
+
+        if total_regions > 0:
+            data_source_items = []
+            data_source_items.append(
+                f"SAR Radar: Active for {sar_active_count}/{total_regions} regions "
+                f"(Sentinel-1 dual-sensor fusion)"
+            )
+            data_source_items.append(
+                f"News Catalyst: {news_active_count}/{total_regions} regions with matched articles "
+                f"(Jakarta Post, Kompas, Antara News)"
+            )
+            for item in data_source_items:
+                story.append(Paragraph(f"   {item}", self.styles['Normal']))
+
         story.append(Spacer(1, 15))
-        
+
         return story
 
     def _build_monitoring_results(self, data: Dict[str, Any]) -> List:
@@ -574,11 +615,14 @@ class PDFReportGenerator:
         
         # ✅ Add methodology explanation FIRST (before showing regions)
         story.append(Paragraph(
-            "<b>Investment Methodology:</b> Our analysis combines satellite-detected land use changes with "
-            "market intelligence and infrastructure data. Each region receives an <b>investment score (0-100)</b> based on: "
-            "<b>(1) Development Activity</b> - volume and pace of land use changes detected via satellite, "
+            "<b>Investment Methodology:</b> Our analysis combines satellite-detected land use changes "
+            "(Sentinel-2 optical + Sentinel-1 SAR radar fusion) with market intelligence, infrastructure data, "
+            "and development news analysis. SAR radar penetrates cloud cover for year-round monitoring. "
+            "Each region receives an <b>investment score (0-100)</b> based on: "
+            "<b>(1) Development Activity</b> - fused optical+SAR satellite change detection, "
             "<b>(2) Infrastructure Quality</b> - proximity to major roads, ports, airports, and active construction projects, "
-            "<b>(3) Market Dynamics</b> - property price trends and real estate market heat.",
+            "<b>(3) Market Dynamics</b> - property price trends and real estate market heat, "
+            "<b>(4) News Catalyst</b> - Indonesian infrastructure news multiplier (0.95x-1.20x) from Jakarta Post, Kompas, and Antara News.",
             self.styles['Normal']
         ))
         story.append(Paragraph(
@@ -586,6 +630,15 @@ class PDFReportGenerator:
             "Higher confidence means we have real-time market data, detailed infrastructure analysis, and high-quality satellite imagery. "
             "Lower confidence means we're relying primarily on satellite-detected changes with limited market/infrastructure data. "
             "Typical confidence is 40-60% during early analysis phases.",
+            self.styles['Normal']
+        ))
+        story.append(Paragraph(
+            "<b>Calibration Disclaimer:</b> Scoring thresholds (e.g., satellite change-count brackets, "
+            "infrastructure multiplier tiers) are heuristic estimates that have <b>not been backtested</b> "
+            "against realized investment outcomes. Scores are best used as <b>relative rankings</b> "
+            "(Region A vs Region B), not absolute return predictions. "
+            "Key risks not yet modeled: land title/ownership disputes, flood and earthquake exposure, "
+            "IDR/USD currency volatility, and local zoning changes.",
             self.styles['Normal']
         ))
         story.append(Paragraph(
@@ -951,7 +1004,35 @@ class PDFReportGenerator:
                 score_components.append(f"Infrastructure: {investment_rec.get('infrastructure_score', 0):.0f}/100 quality rating")
             if changes > 0:
                 score_components.append(f"Development activity: {changes:,} satellite-detected changes")
-            
+
+            # SAR radar data
+            sar_data = investment_rec.get('sar_data')
+            if sar_data and sar_data.get('available'):
+                sar_source = sar_data.get('source', 'unknown')
+                sar_changes = sar_data.get('sar_changes', 0)
+                sar_construction = sar_data.get('sar_construction', 0)
+                confidence_boost = sar_data.get('confidence_boost', 0)
+                score_components.append(
+                    f"SAR radar: {sar_changes:,} radar changes ({sar_source} mode, "
+                    f"+{confidence_boost:.0%} confidence boost)"
+                )
+                if sar_construction > 0:
+                    score_components.append(
+                        f"SAR construction activity: {sar_construction:,} pixels, "
+                        f"VV: {sar_data.get('mean_vv_change_db', 0):+.2f}dB"
+                    )
+
+            # News catalyst
+            news_data = investment_rec.get('news_catalyst')
+            if news_data and news_data.get('articles_found', 0) > 0:
+                score_components.append(
+                    f"News catalyst: {news_data['multiplier']:.2f}x multiplier "
+                    f"({news_data['articles_found']} articles: "
+                    f"{news_data['positive_count']}+ / {news_data['negative_count']}-)"
+                )
+                if news_data.get('summary'):
+                    score_components.append(f"News: {news_data['summary'][:100]}")
+
             for component in score_components:
                 story.append(Paragraph(f"   • {component}", self.styles['Normal']))
             
@@ -1031,7 +1112,24 @@ class PDFReportGenerator:
                 # Historical validation
                 if availability.get('historical_validation', False):
                     confidence_factors.append("✅ Historical validation: Past predictions verified")
-                
+
+            # SAR radar data availability
+            sar_data = investment_rec.get('sar_data')
+            if sar_data and sar_data.get('available'):
+                confidence_factors.append(
+                    f"✅ SAR radar: Sentinel-1 active ({sar_data.get('source', 'N/A')} mode)"
+                )
+            else:
+                confidence_factors.append("⚠️ SAR radar: Not available for this analysis period")
+
+            # News catalyst
+            news_data = investment_rec.get('news_catalyst')
+            if news_data and news_data.get('articles_found', 0) > 0:
+                confidence_factors.append(
+                    f"✅ News catalyst: {news_data['articles_found']} articles analyzed "
+                    f"(multiplier: {news_data['multiplier']:.2f}x)"
+                )
+
             for conf_factor in confidence_factors:
                 story.append(Paragraph(f"   • {conf_factor}", self.styles['Normal']))
             
@@ -1352,6 +1450,35 @@ class PDFReportGenerator:
                 self.styles['Normal']
             ))
         
+        # DATA QUALITY WARNING — prominent banner for benchmark/fallback sources
+        if primary_source in ('regional_benchmark', 'fallback'):
+            warning_color = '#CC6600' if primary_source == 'regional_benchmark' else '#CC0000'
+            warning_label = 'BENCHMARK DATA' if primary_source == 'regional_benchmark' else 'FALLBACK ESTIMATES'
+            story.append(Spacer(1, 4))
+            story.append(Paragraph(
+                f'<font color="{warning_color}"><b>DATA QUALITY WARNING — {warning_label}</b></font>',
+                self.styles['Normal']
+            ))
+            if primary_source == 'regional_benchmark':
+                story.append(Paragraph(
+                    f'<font color="{warning_color}">'
+                    '   Live market data was unavailable. Financial projections use historical regional '
+                    'averages which may not reflect current conditions. Treat ROI and appreciation '
+                    'estimates as directional only — verify with local market data before investing.'
+                    '</font>',
+                    self.styles['Normal']
+                ))
+            else:
+                story.append(Paragraph(
+                    f'<font color="{warning_color}">'
+                    '   No market data source could be reached. All financial figures are rough statistical '
+                    'estimates with LOW reliability. Do NOT use these projections for investment decisions '
+                    'without independent market validation.'
+                    '</font>',
+                    self.styles['Normal']
+                ))
+            story.append(Spacer(1, 4))
+
         # Confidence score with interpretation
         if confidence_score > 0:
             confidence_label = (
@@ -1408,18 +1535,45 @@ class PDFReportGenerator:
         
         story.append(Spacer(1, 5))
         
-        # ROI Projections
+        # ROI Projections with Scenario Analysis
         story.append(Paragraph(
             "<b>Return on Investment:</b>",
             self.styles['Normal']
         ))
         story.append(Paragraph(
-            f"   • 3-Year ROI: <b>{roi_3yr:.1%}</b>",
+            f"   • 3-Year ROI (Base Case): <b>{roi_3yr:.1%}</b>",
             self.styles['Normal']
         ))
+
+        # Scenario analysis — bear / bull
+        bear_roi = financial_data.get('bear_roi_3yr')
+        bull_roi = financial_data.get('bull_roi_3yr')
+        bear_appr = financial_data.get('bear_appreciation_rate')
+        bull_appr = financial_data.get('bull_appreciation_rate')
+        bear_exit = financial_data.get('bear_exit_value')
+        bull_exit = financial_data.get('bull_exit_value')
+
+        if bear_roi is not None and bull_roi is not None:
+            story.append(Paragraph(
+                f'   • <font color="#CC0000">Bear Case (3yr): <b>{bear_roi:.1%} ROI</b></font> — '
+                f'infrastructure stalls, market cools ({bear_appr:.1%}/yr appreciation)',
+                self.styles['Normal']
+            ))
+            story.append(Paragraph(
+                f'   • <font color="#006600">Bull Case (3yr): <b>{bull_roi:.1%} ROI</b></font> — '
+                f'strong catalysts accelerate growth ({bull_appr:.1%}/yr appreciation)',
+                self.styles['Normal']
+            ))
+            if bear_exit is not None and bull_exit is not None:
+                story.append(Paragraph(
+                    f"   • Exit Value Range: <b>Rp {bear_exit:,.0f}</b> (bear) — "
+                    f"<b>Rp {bull_exit:,.0f}</b> (bull)",
+                    self.styles['Normal']
+                ))
+
         if roi_5yr > 0:
             story.append(Paragraph(
-                f"   • 5-Year ROI: <b>{roi_5yr:.1%}</b>",
+                f"   • 5-Year ROI (Base Case): <b>{roi_5yr:.1%}</b>",
                 self.styles['Normal']
             ))
         if break_even_years > 0:
@@ -1483,6 +1637,32 @@ class PDFReportGenerator:
             
             story.append(Spacer(1, 5))
         
+        # Risk Assessment
+        story.append(Paragraph(
+            "<b>Risk Assessment:</b>",
+            self.styles['Normal']
+        ))
+
+        risk_icon = lambda level: '🔴' if level == 'High' else ('🟡' if level == 'Medium' else ('🟢' if level == 'Low' else '⚪'))
+        risks = [
+            ('Liquidity', financial_data.get('liquidity_risk', 'Unknown'), 'Ease of resale in local market'),
+            ('Speculation', financial_data.get('speculation_risk', 'Unknown'), 'Overheating / bubble risk'),
+            ('Infrastructure', financial_data.get('infrastructure_risk', 'Unknown'), 'Dependency on planned development'),
+            ('Legal/Title', financial_data.get('legal_risk', 'Unknown'), 'Ownership disputes, adat/BPN conflicts'),
+            ('Natural Disaster', financial_data.get('natural_disaster_risk', 'Unknown'), 'Flood, earthquake, volcanic'),
+            ('Currency', financial_data.get('currency_risk', 'Medium'), 'IDR/USD volatility for foreign investors'),
+            ('Zoning', financial_data.get('zoning_risk', 'Unknown'), 'Regulatory / land-use change risk'),
+        ]
+
+        for name, level, desc in risks:
+            icon = risk_icon(level)
+            story.append(Paragraph(
+                f"   {icon} <b>{name}:</b> {level} — <i>{desc}</i>",
+                self.styles['Normal']
+            ))
+
+        story.append(Spacer(1, 5))
+
         # Add disclaimer for financial projections
         story.append(Spacer(1, 5))
         story.append(Paragraph(

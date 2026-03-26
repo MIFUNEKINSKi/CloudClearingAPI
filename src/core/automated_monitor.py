@@ -30,6 +30,21 @@ try:
 except ImportError:
     FINANCIAL_ENGINE_AVAILABLE = False
 
+# Import SAR (Sentinel-1 radar) change detector for cloud-penetrating analysis
+try:
+    from .sar_change_detector import SARChangeDetector
+    SAR_AVAILABLE = True
+except ImportError:
+    SAR_AVAILABLE = False
+
+# Import news catalyst + scraper for development news scoring
+try:
+    from .news_catalyst import NewsCatalyst
+    from ..scrapers.news_scraper import NewsScraper
+    NEWS_AVAILABLE = True
+except ImportError:
+    NEWS_AVAILABLE = False
+
 # Try to import RegionManager with fallback
 try:
     from ..regions import RegionManager
@@ -88,7 +103,28 @@ class AutomatedMonitor:
             financial_engine=None  # Will be set below if available
         )
         self.image_saver = SatelliteImageSaver()  # 📸 Image saving for PDF integration
-        
+
+        # Initialize SAR (Sentinel-1 radar) change detector
+        self.sar_detector = None
+        if SAR_AVAILABLE:
+            try:
+                self.sar_detector = SARChangeDetector()
+                logger.info("✅ SAR Change Detector initialized (Sentinel-1 radar fusion enabled)")
+            except Exception as e:
+                logger.warning(f"⚠️ SAR Change Detector unavailable: {e}")
+
+        # Initialize news catalyst + scraper
+        self.news_scraper = None
+        self.news_catalyst = None
+        self._cached_news_articles = None  # Cache scraped articles across regions
+        if NEWS_AVAILABLE:
+            try:
+                self.news_scraper = NewsScraper()
+                self.news_catalyst = NewsCatalyst()
+                logger.info("✅ News Catalyst + Scraper initialized")
+            except Exception as e:
+                logger.warning(f"⚠️ News modules unavailable: {e}")
+
         # Initialize financial metrics engine (v2.7 CCAPI-27.0: with budget config)
         self.financial_engine = None
         if FINANCIAL_ENGINE_AVAILABLE:
@@ -211,7 +247,10 @@ class AutomatedMonitor:
             Dict containing monitoring results and alerts
         """
         logger.info("🤖 Starting automated weekly monitoring")
-        
+
+        # Reset cached news articles for this run
+        self._cached_news_articles = None
+
         # Calculate initial time periods (each region will handle its own fallback)
         end_date, start_date = self._get_optimal_date_range(0)
         
@@ -447,6 +486,24 @@ class AutomatedMonitor:
                     'saved_images': saved_images,  # Local file paths for PDF integration
                     'date_range_used': description  # Track which fallback was used
                 }
+
+                # SAR (Sentinel-1 radar) change detection — complements optical
+                if self.sar_detector:
+                    try:
+                        sar_result = self.sar_detector.detect_sar_changes(
+                            bbox=region_bbox,
+                            region_name=region_name,
+                            period_a_start=start_date.strftime('%Y-%m-%d'),
+                            period_a_end=end_date.strftime('%Y-%m-%d'),
+                            period_b_start=end_date.strftime('%Y-%m-%d'),
+                            period_b_end=datetime.now().strftime('%Y-%m-%d')
+                        )
+                        region_result['sar_result'] = sar_result
+                        if sar_result.success:
+                            logger.info(f"   🛰️ SAR: {sar_result.sar_change_pixels:,} radar changes detected for {region_name}")
+                    except Exception as e:
+                        logger.warning(f"   ⚠️ SAR detection failed for {region_name}: {e}")
+                        region_result['sar_result'] = None
                 
                 if attempt_num > 0:
                     logger.info(f"   ✅ {region_name}: Successfully analyzed using {description}")
@@ -996,11 +1053,42 @@ class AutomatedMonitor:
                         
                         try:
                             # Get satellite data from change detection
-                            satellite_changes = region_data.get('change_count', 0)
+                            optical_changes = region_data.get('change_count', 0)
                             area_affected_m2 = region_data.get('total_area', 0)
                             coordinates = region_config['center']
                             bbox = region_config['bbox']
-                            
+
+                            # Fuse optical + SAR if available
+                            satellite_changes = optical_changes
+                            fusion_result = None
+                            sar_result = region_data.get('sar_result')
+                            if self.sar_detector and sar_result:
+                                try:
+                                    fusion_result = self.sar_detector.fuse_optical_and_sar(
+                                        optical_changes=optical_changes,
+                                        sar_result=sar_result
+                                    )
+                                    satellite_changes = fusion_result['fused_changes']
+                                    logger.info(f"   🔗 Sensor fusion: {optical_changes:,} optical + {sar_result.sar_change_pixels:,} SAR → {satellite_changes:,} fused")
+                                except Exception as e:
+                                    logger.warning(f"   ⚠️ SAR fusion failed for {region_name}: {e}")
+
+                            # News catalyst scoring
+                            news_catalyst_result = None
+                            if self.news_scraper and self.news_catalyst:
+                                try:
+                                    # Cache articles across regions (scrape once per monitoring run)
+                                    if self._cached_news_articles is None:
+                                        self._cached_news_articles = self.news_scraper.scrape_all_sources()
+                                    matched_articles = self.news_scraper.match_articles_to_region(
+                                        self._cached_news_articles, region_name
+                                    )
+                                    news_catalyst_result = self.news_catalyst.calculate_catalyst(region_name, matched_articles)
+                                    if news_catalyst_result.articles_found > 0:
+                                        logger.info(f"   📰 News catalyst: {news_catalyst_result.multiplier:.2f}x ({news_catalyst_result.articles_found} articles)")
+                                except Exception as e:
+                                    logger.warning(f"   ⚠️ News catalyst failed for {region_name}: {e}")
+
                             # Calculate CORRECTED score (satellite is PRIMARY!)
                             corrected_result = self.corrected_scorer.calculate_investment_score(
                                 region_name=region_name,
@@ -1008,7 +1096,9 @@ class AutomatedMonitor:
                                 area_affected_m2=area_affected_m2,
                                 region_config=region_config,
                                 coordinates=coordinates,
-                                bbox=bbox
+                                bbox=bbox,
+                                sar_confidence_boost=fusion_result['confidence_boost'] if fusion_result else 0.0,
+                                news_catalyst_multiplier=news_catalyst_result.multiplier if news_catalyst_result else 1.0
                             )
                             signal.alarm(0)  # Cancel the alarm
                         except TimeoutError as te:
@@ -1109,7 +1199,30 @@ class AutomatedMonitor:
                             },
                             'analysis_type': 'corrected_satellite_centric',  # Mark as corrected!
                             'financial_projection': financial_projection,  # NEW: Financial metrics
-                            'rvi_data': rvi_data  # NEW (v2.6-alpha): Relative Value Index
+                            'rvi_data': rvi_data,  # NEW (v2.6-alpha): Relative Value Index
+                            # SAR radar fusion data (v2.10)
+                            'sar_data': {
+                                'available': fusion_result is not None,
+                                'source': fusion_result['source'] if fusion_result else 'optical_only',
+                                'sar_changes': fusion_result['sar_changes'] if fusion_result else 0,
+                                'sar_construction': fusion_result['sar_construction'] if fusion_result else 0,
+                                'sar_clearing': fusion_result['sar_clearing'] if fusion_result else 0,
+                                'confidence_boost': fusion_result['confidence_boost'] if fusion_result else 0,
+                                'mean_vv_change_db': fusion_result['mean_vv_change_db'] if fusion_result else 0,
+                                'mean_vh_change_db': fusion_result['mean_vh_change_db'] if fusion_result else 0,
+                                'optical_changes': optical_changes,
+                                'fused_changes': satellite_changes,
+                            } if fusion_result else None,
+                            # News catalyst data (v2.10)
+                            'news_catalyst': {
+                                'multiplier': news_catalyst_result.multiplier,
+                                'articles_found': news_catalyst_result.articles_found,
+                                'positive_count': news_catalyst_result.positive_count,
+                                'negative_count': news_catalyst_result.negative_count,
+                                'top_keywords': news_catalyst_result.top_keywords,
+                                'top_article_title': news_catalyst_result.top_article_title,
+                                'summary': news_catalyst_result.summary,
+                            } if news_catalyst_result else None,
                         }
                         
                         dynamic_scored_regions.append(dynamic_score)

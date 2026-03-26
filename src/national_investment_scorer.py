@@ -29,6 +29,30 @@ try:
 except ImportError:
     SentinelProcessor = None
 
+# SAR (Sentinel-1 radar) change detector
+try:
+    from .core.sar_change_detector import SARChangeDetector
+    SAR_AVAILABLE = True
+except ImportError:
+    try:
+        from .sar_change_detector import SARChangeDetector
+        SAR_AVAILABLE = True
+    except ImportError:
+        SAR_AVAILABLE = False
+
+# News catalyst + scraper
+try:
+    from .core.news_catalyst import NewsCatalyst
+    from .scrapers.news_scraper import NewsScraper
+    NEWS_AVAILABLE = True
+except ImportError:
+    try:
+        from .news_catalyst import NewsCatalyst
+        from ..scrapers.news_scraper import NewsScraper
+        NEWS_AVAILABLE = True
+    except ImportError:
+        NEWS_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -54,7 +78,13 @@ class NationalInvestmentScorer:
         self.infra_analyzer = InfrastructureAnalyzer() if InfrastructureAnalyzer else None
         self.price_intel = PriceIntelligence() if PriceIntelligence else None
         self.sentinel = SentinelProcessor() if SentinelProcessor else None
-        
+
+        # SAR radar + news catalyst
+        self.sar_detector = SARChangeDetector() if SAR_AVAILABLE else None
+        self.news_scraper = NewsScraper() if NEWS_AVAILABLE else None
+        self.news_catalyst = NewsCatalyst() if NEWS_AVAILABLE else None
+        self._cached_news_articles = None
+
         # Scoring weights for investment analysis
         self.weights = {
             'satellite_changes': 0.25,      # Change detection patterns
@@ -71,13 +101,48 @@ class NationalInvestmentScorer:
         
         # Get satellite change data
         change_data = self._analyze_satellite_changes(corridor)
-        
+
+        # SAR radar fusion
+        if self.sar_detector:
+            try:
+                west, south, east, north = corridor.bbox
+                bbox_dict = {'west': west, 'south': south, 'east': east, 'north': north}
+                end_date = datetime.now()
+                baseline_start = (end_date - timedelta(days=180)).strftime('%Y-%m-%d')
+                baseline_end = (end_date - timedelta(days=90)).strftime('%Y-%m-%d')
+                recent_start = baseline_end
+                recent_end = end_date.strftime('%Y-%m-%d')
+
+                sar_result = self.sar_detector.detect_sar_changes(
+                    bbox=bbox_dict, region_name=corridor.name,
+                    period_a_start=baseline_start, period_a_end=baseline_end,
+                    period_b_start=recent_start, period_b_end=recent_end
+                )
+                optical_changes = change_data.get('total_changes', 0)
+                fusion = self.sar_detector.fuse_optical_and_sar(optical_changes, sar_result)
+                change_data['fused_changes'] = fusion['fused_changes']
+                change_data['sar_data'] = fusion
+                logger.info(f"   SAR fusion: {optical_changes} optical + {sar_result.sar_change_pixels} SAR -> {fusion['fused_changes']} fused")
+            except Exception as e:
+                logger.warning(f"   SAR failed for {corridor.name}: {e}")
+
+        # News catalyst
+        news_catalyst_result = None
+        if self.news_scraper and self.news_catalyst:
+            try:
+                if self._cached_news_articles is None:
+                    self._cached_news_articles = self.news_scraper.scrape_all_sources()
+                matched = self.news_scraper.match_articles_to_region(self._cached_news_articles, corridor.name)
+                news_catalyst_result = self.news_catalyst.calculate_catalyst(corridor.name, matched)
+            except Exception as e:
+                logger.warning(f"   News catalyst failed for {corridor.name}: {e}")
+
         # Get infrastructure analysis
         infra_data = self._analyze_infrastructure_context(corridor)
-        
+
         # Get market intelligence
         market_data = self._analyze_market_context(corridor)
-        
+
         # Calculate component scores
         satellite_score = self._score_satellite_changes(change_data)
         infra_score = self._score_infrastructure(infra_data)
@@ -93,6 +158,11 @@ class NationalInvestmentScorer:
             self.weights['strategic_position'] * strategic_score +
             self.weights['risk_adjustment'] * risk_score
         )
+
+        # Apply news catalyst multiplier (0.95x-1.20x)
+        if news_catalyst_result:
+            overall_score *= news_catalyst_result.multiplier
+            overall_score = min(100, max(0, overall_score))
         
         # Generate investment analysis
         breakdown = {
@@ -124,36 +194,64 @@ class NationalInvestmentScorer:
         )
     
     def _analyze_satellite_changes(self, corridor: StrategicCorridor) -> Dict[str, Any]:
-        """Analyze satellite-detected changes in the corridor"""
+        """Analyze satellite-detected changes in the corridor using GEE.
+
+        Returns actual satellite data or an explicit NO_DATA failure — never fabricates data.
+        """
+        west, south, east, north = corridor.bbox
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=730)
+
+        # Try actual GEE change detection if available
         try:
-            # Use existing change detection system
-            west, south, east, north = corridor.bbox
-            
-            # Get recent change patterns (last 2 years)
-            end_date = datetime.now()
-            start_date = end_date - timedelta(days=730)
-            
-            # Simulate change analysis (in real implementation, use actual satellite data)
-            change_patterns = {
-                'total_changes': np.random.randint(50, 500),
-                'development_changes': np.random.randint(10, 100),
-                'infrastructure_changes': np.random.randint(5, 50),
-                'vegetation_loss': np.random.randint(20, 200),
-                'change_velocity': np.random.uniform(0.1, 2.0),  # changes per month
-                'area_affected_ha': np.random.randint(100, 5000),
-                'change_types': {
-                    'roads': np.random.randint(5, 30),
-                    'buildings': np.random.randint(10, 80),
-                    'cleared_land': np.random.randint(20, 150),
-                    'industrial': np.random.randint(2, 20)
-                }
-            }
-            
-            return change_patterns
-            
+            from src.core.change_detector import ChangeDetector
+            detector = ChangeDetector()
+            result = detector.detect_changes(
+                bbox=[west, south, east, north],
+                start_date=start_date.strftime('%Y-%m-%d'),
+                end_date=end_date.strftime('%Y-%m-%d')
+            )
+            if result and result.get('total_changes', 0) > 0:
+                result['data_quality'] = 'SATELLITE_VERIFIED'
+                return result
         except Exception as e:
-            logger.warning(f"Could not analyze satellite changes for {corridor.name}: {e}")
-            return {'total_changes': 0, 'error': str(e)}
+            logger.warning(f"GEE change detection unavailable for {corridor.name}: {e}")
+
+        # Try SAR-based detection as fallback
+        if SAR_AVAILABLE:
+            try:
+                sar_detector = SARChangeDetector()
+                sar_result = sar_detector.detect_sar_changes(
+                    bbox=[west, south, east, north],
+                    start_date=start_date.strftime('%Y-%m-%d'),
+                    end_date=end_date.strftime('%Y-%m-%d')
+                )
+                if sar_result and sar_result.get('total_sar_changes', 0) > 0:
+                    return {
+                        'total_changes': sar_result.get('total_sar_changes', 0),
+                        'change_types': sar_result.get('change_breakdown', {}),
+                        'data_quality': 'SAR_ONLY',
+                        'source': 'Sentinel-1 SAR'
+                    }
+            except Exception as e:
+                logger.warning(f"SAR detection unavailable for {corridor.name}: {e}")
+
+        # NO DATA — fail loudly instead of fabricating
+        logger.error(
+            f"SATELLITE DATA UNAVAILABLE for {corridor.name}. "
+            f"No GEE or SAR data could be retrieved. Scoring will proceed with zero satellite input."
+        )
+        return {
+            'total_changes': 0,
+            'development_changes': 0,
+            'infrastructure_changes': 0,
+            'vegetation_loss': 0,
+            'change_velocity': 0,
+            'area_affected_ha': 0,
+            'change_types': {},
+            'data_quality': 'NO_DATA',
+            'error': 'Satellite data unavailable — no GEE or SAR data retrieved'
+        }
     
     def _analyze_infrastructure_context(self, corridor: StrategicCorridor) -> Dict[str, Any]:
         """Analyze infrastructure context for the corridor"""
@@ -167,12 +265,14 @@ class NationalInvestmentScorer:
                     center_lat, center_lon
                 )
             else:
-                # Fallback infrastructure scoring
+                # No infrastructure analyzer — return neutral defaults, not fake data
+                logger.warning(f"Infrastructure analyzer unavailable for {corridor.name}, using neutral defaults")
                 infra_context = {
-                    'infrastructure_score': 60 + np.random.randint(-20, 30),
-                    'airports_nearby': np.random.randint(0, 3),
-                    'ports_nearby': np.random.randint(0, 2),
-                    'highways_nearby': np.random.randint(1, 5)
+                    'infrastructure_score': 50,
+                    'airports_nearby': 0,
+                    'ports_nearby': 0,
+                    'highways_nearby': 0,
+                    'data_quality': 'NO_DATA'
                 }
             
             # Add corridor-specific infrastructure scoring
@@ -194,11 +294,13 @@ class NationalInvestmentScorer:
                 region_key = f"{corridor.island}_{corridor.focus}"
                 market_context = self.price_intel.analyze_market_opportunity(region_key)
             else:
-                # Fallback market scoring
+                # No price intelligence — return neutral defaults, not fake data
+                logger.warning(f"Price intelligence unavailable for {corridor.name}, using neutral defaults")
                 market_context = {
-                    'market_score': 50 + np.random.randint(-15, 25),
-                    'price_growth_rate': np.random.uniform(0.05, 0.25),
-                    'market_activity': np.random.uniform(0.3, 0.9)
+                    'market_score': 50,
+                    'price_growth_rate': 0,
+                    'market_activity': 0,
+                    'data_quality': 'NO_DATA'
                 }
             
             # Add corridor-specific market data
@@ -217,7 +319,7 @@ class NationalInvestmentScorer:
         if 'error' in change_data:
             return 50  # Default score if no data
         
-        total_changes = change_data.get('total_changes', 0)
+        total_changes = change_data.get('fused_changes', change_data.get('total_changes', 0))
         development_changes = change_data.get('development_changes', 0)
         change_velocity = change_data.get('change_velocity', 0)
         

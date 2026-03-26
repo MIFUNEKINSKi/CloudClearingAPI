@@ -1,7 +1,7 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.6-beta (RVI Integration Complete) + Critical Bug Fixes (Oct 26, 2025)  
-**Status:** ✅ Phase 2B Complete (6/6) | 🔧 Critical Bugs Fixed | 🎉 v2.7.0 CCAPI-27.0 **PRODUCTION READY** (15/15 tests passing)
+**Version:** 2.10 (SAR Radar Fusion + News Catalyst Integration)
+**Status:** ✅ Production Ready | Sentinel-1 SAR + Sentinel-2 Optical Fusion | News-Driven Catalyst Scoring
 
 ### What is CloudClearingAPI?
 
@@ -235,7 +235,14 @@ Our scoring system is designed to answer two fundamental questions every investo
 
 The final score is a blend of these elements, ensuring that we recommend not just *busy* areas, but *valuable* ones.
 
-**Final Score** = (Activity Score) × (Infrastructure Multiplier) × (Market Multiplier) × (Confidence Score)
+**Final Score** = (Activity Score) × (Infrastructure Multiplier) × (Market Multiplier) × (News Catalyst) × (Confidence Score)
+
+Where:
+- **Activity Score (0-40)**: Fused Sentinel-2 optical + Sentinel-1 SAR radar change detection
+- **Infrastructure Multiplier (0.8x-1.3x)**: OSM-based infrastructure quality
+- **Market Multiplier (0.85x-1.40x)**: RVI-aware land valuation from live scrapers
+- **News Catalyst (0.95x-1.20x)**: Indonesian infrastructure news sentiment (Jakarta Post, Kompas, Antara)
+- **Confidence Score (0.70-1.00)**: Data completeness + SAR dual-sensor boost (+10%)
 
 ---
 
@@ -243,14 +250,20 @@ The final score is a blend of these elements, ensuring that we recommend not jus
 
 ### Part 1: The Activity Score (0-40 Points) - *Finding the Action*
 
-This is the foundation of our analysis and is derived **entirely from satellite imagery**. It's our 'eye in the sky' that tells us where physical change is happening on the ground. We compare images from the last 7 days to the previous 7 days to find new development.
+This is the foundation of our analysis, derived from **dual-sensor satellite fusion**:
 
-* **What We Look For:**
-    * **Vegetation Loss (High Weight):** Forests or fields being cleared, a strong signal of future construction.
-    * **New Construction (Highest Weight):** New buildings and urban areas appearing.
-    * **Land Preparation (Medium Weight):** Bare earth being exposed for site preparation.
+* **Sentinel-2 Optical** (primary): High-resolution 10m imagery detecting vegetation loss, construction, and land clearing
+* **Sentinel-1 SAR Radar** (complement): Cloud-penetrating radar detecting surface roughness changes, construction activity, and land clearing even through Indonesia's frequent cloud cover
 
-A region with significant, recent construction activity will receive the highest base scores.
+**Sensor Fusion Strategy:**
+* Both sensors available: 60% optical + 40% SAR weighted combination (+10% confidence boost)
+* Optical only: Standard analysis (traditional behavior)
+* SAR only: Radar fallback when clouds block optical (key benefit for tropical regions)
+
+* **What We Detect:**
+    * **Vegetation Loss (High Weight):** VH backscatter decrease (SAR) + NDVI change (optical)
+    * **New Construction (Highest Weight):** VV increase + VH decrease pattern (SAR) + spectral change (optical)
+    * **Land Preparation (Medium Weight):** Surface roughness changes (SAR) + bare soil index (optical)
 
 ### Part 2: Financial & Contextual Multipliers - *Is It a Good Deal?*
 
@@ -285,12 +298,29 @@ This live data feeds our **Market Multiplier**, which rewards regions with stron
 | **0-2%** | Stagnant | **0.95x** | Slow growth, limited momentum. |
 | **< 0%** | Declining | **0.85x** | Market is contracting. |
 
+#### 📰 **The News Catalyst Multiplier (0.95x - 1.20x)**
+This multiplier captures real-world development momentum from Indonesian media coverage. We scrape infrastructure news from three sources:
+
+1. **Jakarta Post** (English) - Business and infrastructure articles
+2. **Kompas** (Indonesian) - Property and economy sections
+3. **Antara News** (English) - Official wire service, economy/business
+
+Articles are matched to regions by city name, then scored by keyword relevance (toll roads, SEZs, airports, etc.) and sentiment (positive/negative). The 7-day cached results produce a multiplier:
+
+| News Signal | Articles | Multiplier | Interpretation |
+| :--- | :--- | :--- | :--- |
+| **Major Hub** | 6+ positive | **1.15x-1.20x** | Active development zone with strong media coverage |
+| **Active Zone** | 3-5 positive | **1.10x** | Multiple development projects announced |
+| **Early Signals** | 1-2 positive | **1.05x** | Some development news detected |
+| **Neutral** | 0 articles | **1.00x** | No significant development news |
+| **Cautionary** | Negative dominant | **0.95x** | Cancellations, disputes, or delays reported |
+
 ### Part 3: The Reality Check (Confidence Score)
 
 This score ensures our system is honest about the quality of its own data. A low confidence score will reduce the final investment score, preventing us from making a strong recommendation based on incomplete information.
 
 * **How it's calculated:** It's a weighted average of our confidence in each data source:
-    * **Satellite Data (50% weight):** Higher confidence with recent, cloud-free images.
+    * **Satellite Data (50% weight):** Higher confidence with recent, cloud-free images. **+10% boost when SAR dual-sensor fusion is active.**
     * **Infrastructure Data (30% weight):** Highest with live OSM data, lower with regional fallbacks.
     * **Market Data (20% weight):** Highest with live-scraped prices, lowest with static benchmarks.
 
@@ -319,20 +349,28 @@ The system works as a data processing pipeline, taking raw data sources and refi
 
 ```
 Data Inputs
-├── Sentinel-2 Satellite Imagery (Google Earth Engine)
+├── Sentinel-2 Optical Imagery (Google Earth Engine)
+├── Sentinel-1 SAR Radar (Google Earth Engine) ← NEW v2.10
 ├── OpenStreetMap Infrastructure Data
-└── Indonesian Real Estate Websites (Lamudi, Rumah.com)
+├── Indonesian Real Estate Websites (Lamudi, Rumah.com, 99.co)
+└── Indonesian News Media (Jakarta Post, Kompas, Antara) ← NEW v2.10
      ↓
 Core Analysis Engines
+├── SAR Change Detector (sar_change_detector.py) ← NEW v2.10
+│   └── Sentinel-1 VV/VH backscatter analysis + cloud-penetrating fallback
+├── Optical-SAR Fusion (60/40 weighted combination)
+│   └── Fused satellite changes → Base Score (0-40)
+├── News Catalyst Engine (news_catalyst.py) ← NEW v2.10
+│   └── Development news → Multiplier (0.95x-1.20x)
 ├── Activity Scoring Engine (corrected_scoring.py)
-│   └── Converts satellite changes → Base Score (0-40)
+│   └── Fused changes × Infrastructure × Market × News × Confidence
 └── Financial Projection Engine (financial_metrics.py)
     └── Estimates ROI, land values, development costs
      ↓
 Aggregated Intelligence
 ├── Final Investment Score (0-100)
 ├── Financial Projections (ROI, land values)
-├── Confidence Rating (40-95%)
+├── Confidence Rating (40-95%) + SAR dual-sensor boost
 └── BUY/WATCH/PASS Recommendation
      ↓
 Final Output
@@ -389,11 +427,14 @@ CloudClearingAPI/
 ├── src/
 │   ├── core/
 │   │   ├── corrected_scoring.py       # Investment scoring engine
+│   │   ├── sar_change_detector.py     # Sentinel-1 SAR radar detection (NEW v2.10)
+│   │   ├── news_catalyst.py           # News-based catalyst scoring (NEW v2.10)
 │   │   ├── financial_metrics.py       # ROI & land value projections
-│   │   ├── change_detector.py         # Satellite change detection
+│   │   ├── change_detector.py         # Sentinel-2 optical change detection
 │   │   ├── infrastructure_analyzer.py # Infrastructure analysis
 │   │   └── pdf_report_generator.py    # Report generation
 │   ├── scrapers/
+│   │   ├── news_scraper.py            # Indonesian news scraper (NEW v2.10)
 │   │   ├── lamudi_scraper.py          # Lamudi.co.id scraper
 │   │   ├── rumah_scraper.py           # Rumah.com scraper
 │   │   └── scraper_orchestrator.py    # Scraping coordination
@@ -497,12 +538,18 @@ Financial Projection:
 ├─ Projected ROI: 34.4% (3-year)
 ├─ Recommended Plot: 2,000 m²
 ├─ Total Investment: Rp 11,385,000,000
-└─ Data Sources: Lamudi (live), OSM, Sentinel-2
+└─ Data Sources: Lamudi (live), OSM, Sentinel-2 + Sentinel-1 SAR
 
-Activity Detected:
-├─ Land Clearing: 1,234 changes (12.4 hectares)
-├─ Active Construction: 18% of area
-└─ Development Type: Infrastructure-led urban expansion
+Satellite Analysis (Fused Optical + SAR):
+├─ Optical: 1,234 changes | SAR: 987 radar changes
+├─ Fused: 1,135 changes (60/40 weighted, +10% confidence)
+├─ SAR Construction: 342 pixels (VV +1.8dB)
+└─ Fusion Mode: optical+sar_fusion
+
+News Catalyst: 1.10x multiplier
+├─ Articles Found: 4 (3 positive, 1 neutral)
+├─ Top Keywords: toll road, airport, highway
+└─ Summary: Active development zone covering toll road, airport
 
 Infrastructure:
 ├─ Major Highway: 2.3 km away
@@ -510,7 +557,8 @@ Infrastructure:
 └─ Railway Access: Yes (3 stations within 15 km)
 
 Rationale: Strong development activity near new airport with excellent
-infrastructure access. Market showing 12% annual appreciation.
+infrastructure access. SAR confirms construction through cloud cover.
+News catalyst boosts score with 4 positive infrastructure articles.
 ```
 
 ---
@@ -640,4 +688,5 @@ Project: [CloudClearingAPI](https://github.com/MIFUNEKINSKi/CloudClearingAPI)
 
 - **Google Earth Engine** - Satellite imagery platform
 - **OpenStreetMap** - Infrastructure data contributors
-- **Sentinel-2 (ESA/Copernicus)** - Free satellite imagery program
+- **Sentinel-2 (ESA/Copernicus)** - Free optical satellite imagery program
+- **Sentinel-1 (ESA/Copernicus)** - Free SAR radar satellite imagery program
