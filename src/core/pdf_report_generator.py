@@ -1441,6 +1441,35 @@ class PDFReportGenerator:
                 self.styles['Normal']
             ))
         
+        # DATA QUALITY WARNING — prominent banner for benchmark/fallback sources
+        if primary_source in ('regional_benchmark', 'fallback'):
+            warning_color = '#CC6600' if primary_source == 'regional_benchmark' else '#CC0000'
+            warning_label = 'BENCHMARK DATA' if primary_source == 'regional_benchmark' else 'FALLBACK ESTIMATES'
+            story.append(Spacer(1, 4))
+            story.append(Paragraph(
+                f'<font color="{warning_color}"><b>DATA QUALITY WARNING — {warning_label}</b></font>',
+                self.styles['Normal']
+            ))
+            if primary_source == 'regional_benchmark':
+                story.append(Paragraph(
+                    f'<font color="{warning_color}">'
+                    '   Live market data was unavailable. Financial projections use historical regional '
+                    'averages which may not reflect current conditions. Treat ROI and appreciation '
+                    'estimates as directional only — verify with local market data before investing.'
+                    '</font>',
+                    self.styles['Normal']
+                ))
+            else:
+                story.append(Paragraph(
+                    f'<font color="{warning_color}">'
+                    '   No market data source could be reached. All financial figures are rough statistical '
+                    'estimates with LOW reliability. Do NOT use these projections for investment decisions '
+                    'without independent market validation.'
+                    '</font>',
+                    self.styles['Normal']
+                ))
+            story.append(Spacer(1, 4))
+
         # Confidence score with interpretation
         if confidence_score > 0:
             confidence_label = (
@@ -1497,18 +1526,45 @@ class PDFReportGenerator:
         
         story.append(Spacer(1, 5))
         
-        # ROI Projections
+        # ROI Projections with Scenario Analysis
         story.append(Paragraph(
             "<b>Return on Investment:</b>",
             self.styles['Normal']
         ))
         story.append(Paragraph(
-            f"   • 3-Year ROI: <b>{roi_3yr:.1%}</b>",
+            f"   • 3-Year ROI (Base Case): <b>{roi_3yr:.1%}</b>",
             self.styles['Normal']
         ))
+
+        # Scenario analysis — bear / bull
+        bear_roi = financial_data.get('bear_roi_3yr')
+        bull_roi = financial_data.get('bull_roi_3yr')
+        bear_appr = financial_data.get('bear_appreciation_rate')
+        bull_appr = financial_data.get('bull_appreciation_rate')
+        bear_exit = financial_data.get('bear_exit_value')
+        bull_exit = financial_data.get('bull_exit_value')
+
+        if bear_roi is not None and bull_roi is not None:
+            story.append(Paragraph(
+                f'   • <font color="#CC0000">Bear Case (3yr): <b>{bear_roi:.1%} ROI</b></font> — '
+                f'infrastructure stalls, market cools ({bear_appr:.1%}/yr appreciation)',
+                self.styles['Normal']
+            ))
+            story.append(Paragraph(
+                f'   • <font color="#006600">Bull Case (3yr): <b>{bull_roi:.1%} ROI</b></font> — '
+                f'strong catalysts accelerate growth ({bull_appr:.1%}/yr appreciation)',
+                self.styles['Normal']
+            ))
+            if bear_exit is not None and bull_exit is not None:
+                story.append(Paragraph(
+                    f"   • Exit Value Range: <b>Rp {bear_exit:,.0f}</b> (bear) — "
+                    f"<b>Rp {bull_exit:,.0f}</b> (bull)",
+                    self.styles['Normal']
+                ))
+
         if roi_5yr > 0:
             story.append(Paragraph(
-                f"   • 5-Year ROI: <b>{roi_5yr:.1%}</b>",
+                f"   • 5-Year ROI (Base Case): <b>{roi_5yr:.1%}</b>",
                 self.styles['Normal']
             ))
         if break_even_years > 0:

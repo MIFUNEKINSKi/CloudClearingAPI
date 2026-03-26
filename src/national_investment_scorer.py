@@ -194,36 +194,64 @@ class NationalInvestmentScorer:
         )
     
     def _analyze_satellite_changes(self, corridor: StrategicCorridor) -> Dict[str, Any]:
-        """Analyze satellite-detected changes in the corridor"""
+        """Analyze satellite-detected changes in the corridor using GEE.
+
+        Returns actual satellite data or an explicit NO_DATA failure — never fabricates data.
+        """
+        west, south, east, north = corridor.bbox
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=730)
+
+        # Try actual GEE change detection if available
         try:
-            # Use existing change detection system
-            west, south, east, north = corridor.bbox
-            
-            # Get recent change patterns (last 2 years)
-            end_date = datetime.now()
-            start_date = end_date - timedelta(days=730)
-            
-            # Simulate change analysis (in real implementation, use actual satellite data)
-            change_patterns = {
-                'total_changes': np.random.randint(50, 500),
-                'development_changes': np.random.randint(10, 100),
-                'infrastructure_changes': np.random.randint(5, 50),
-                'vegetation_loss': np.random.randint(20, 200),
-                'change_velocity': np.random.uniform(0.1, 2.0),  # changes per month
-                'area_affected_ha': np.random.randint(100, 5000),
-                'change_types': {
-                    'roads': np.random.randint(5, 30),
-                    'buildings': np.random.randint(10, 80),
-                    'cleared_land': np.random.randint(20, 150),
-                    'industrial': np.random.randint(2, 20)
-                }
-            }
-            
-            return change_patterns
-            
+            from src.core.change_detector import ChangeDetector
+            detector = ChangeDetector()
+            result = detector.detect_changes(
+                bbox=[west, south, east, north],
+                start_date=start_date.strftime('%Y-%m-%d'),
+                end_date=end_date.strftime('%Y-%m-%d')
+            )
+            if result and result.get('total_changes', 0) > 0:
+                result['data_quality'] = 'SATELLITE_VERIFIED'
+                return result
         except Exception as e:
-            logger.warning(f"Could not analyze satellite changes for {corridor.name}: {e}")
-            return {'total_changes': 0, 'error': str(e)}
+            logger.warning(f"GEE change detection unavailable for {corridor.name}: {e}")
+
+        # Try SAR-based detection as fallback
+        if SAR_AVAILABLE:
+            try:
+                sar_detector = SARChangeDetector()
+                sar_result = sar_detector.detect_sar_changes(
+                    bbox=[west, south, east, north],
+                    start_date=start_date.strftime('%Y-%m-%d'),
+                    end_date=end_date.strftime('%Y-%m-%d')
+                )
+                if sar_result and sar_result.get('total_sar_changes', 0) > 0:
+                    return {
+                        'total_changes': sar_result.get('total_sar_changes', 0),
+                        'change_types': sar_result.get('change_breakdown', {}),
+                        'data_quality': 'SAR_ONLY',
+                        'source': 'Sentinel-1 SAR'
+                    }
+            except Exception as e:
+                logger.warning(f"SAR detection unavailable for {corridor.name}: {e}")
+
+        # NO DATA — fail loudly instead of fabricating
+        logger.error(
+            f"SATELLITE DATA UNAVAILABLE for {corridor.name}. "
+            f"No GEE or SAR data could be retrieved. Scoring will proceed with zero satellite input."
+        )
+        return {
+            'total_changes': 0,
+            'development_changes': 0,
+            'infrastructure_changes': 0,
+            'vegetation_loss': 0,
+            'change_velocity': 0,
+            'area_affected_ha': 0,
+            'change_types': {},
+            'data_quality': 'NO_DATA',
+            'error': 'Satellite data unavailable — no GEE or SAR data retrieved'
+        }
     
     def _analyze_infrastructure_context(self, corridor: StrategicCorridor) -> Dict[str, Any]:
         """Analyze infrastructure context for the corridor"""
@@ -237,12 +265,14 @@ class NationalInvestmentScorer:
                     center_lat, center_lon
                 )
             else:
-                # Fallback infrastructure scoring
+                # No infrastructure analyzer — return neutral defaults, not fake data
+                logger.warning(f"Infrastructure analyzer unavailable for {corridor.name}, using neutral defaults")
                 infra_context = {
-                    'infrastructure_score': 60 + np.random.randint(-20, 30),
-                    'airports_nearby': np.random.randint(0, 3),
-                    'ports_nearby': np.random.randint(0, 2),
-                    'highways_nearby': np.random.randint(1, 5)
+                    'infrastructure_score': 50,
+                    'airports_nearby': 0,
+                    'ports_nearby': 0,
+                    'highways_nearby': 0,
+                    'data_quality': 'NO_DATA'
                 }
             
             # Add corridor-specific infrastructure scoring
@@ -264,11 +294,13 @@ class NationalInvestmentScorer:
                 region_key = f"{corridor.island}_{corridor.focus}"
                 market_context = self.price_intel.analyze_market_opportunity(region_key)
             else:
-                # Fallback market scoring
+                # No price intelligence — return neutral defaults, not fake data
+                logger.warning(f"Price intelligence unavailable for {corridor.name}, using neutral defaults")
                 market_context = {
-                    'market_score': 50 + np.random.randint(-15, 25),
-                    'price_growth_rate': np.random.uniform(0.05, 0.25),
-                    'market_activity': np.random.uniform(0.3, 0.9)
+                    'market_score': 50,
+                    'price_growth_rate': 0,
+                    'market_activity': 0,
+                    'data_quality': 'NO_DATA'
                 }
             
             # Add corridor-specific market data

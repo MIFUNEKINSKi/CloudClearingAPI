@@ -62,6 +62,14 @@ class FinancialProjection:
     tier_benchmark_price: Optional[float] = None  # Expected price for tier
     peer_regions: Optional[List[str]] = None  # Other regions in same tier
     
+    # Scenario Analysis (bear / base / bull)
+    bear_appreciation_rate: Optional[float] = None  # Worst-case annual appreciation
+    bull_appreciation_rate: Optional[float] = None  # Best-case annual appreciation
+    bear_roi_3yr: Optional[float] = None  # Worst-case 3yr ROI
+    bull_roi_3yr: Optional[float] = None  # Best-case 3yr ROI
+    bear_exit_value: Optional[float] = None  # Worst-case exit value
+    bull_exit_value: Optional[float] = None  # Best-case exit value
+
     # Confidence
     projection_confidence: float = 0.0  # 0-1
     data_sources: Optional[List[str]] = None
@@ -215,20 +223,33 @@ class FinancialMetricsEngine:
             dev_cost_index, satellite_data
         )
         
-        # Step 4: Project future value
-        appreciation_rate = self._estimate_appreciation_rate(
+        # Step 4: Project future value (bear / base / bull scenarios)
+        appreciation_rates = self._estimate_appreciation_rate(
             region_name, market_data, scoring_result
         )
-        
+        appreciation_rate = appreciation_rates['base']
+        bear_rate = appreciation_rates['bear']
+        bull_rate = appreciation_rates['bull']
+
         future_value_3yr = current_value * math.pow(1 + appreciation_rate, 3)
         future_value_5yr = current_value * math.pow(1 + appreciation_rate, 5)
-        
-        # Step 5: Calculate ROI
+
+        # Bear / bull 3-year exit values
+        bear_future_3yr = current_value * math.pow(1 + bear_rate, 3)
+        bull_future_3yr = current_value * math.pow(1 + bull_rate, 3)
+
+        # Step 5: Calculate ROI (all three scenarios)
         roi_3yr = self._calculate_roi(
             current_value, dev_costs['total_per_m2'], future_value_3yr
         )
         roi_5yr = self._calculate_roi(
             current_value, dev_costs['total_per_m2'], future_value_5yr
+        )
+        bear_roi_3yr = self._calculate_roi(
+            current_value, dev_costs['total_per_m2'], bear_future_3yr
+        )
+        bull_roi_3yr = self._calculate_roi(
+            current_value, dev_costs['total_per_m2'], bull_future_3yr
         )
         
         # Step 6: Determine recommended investment size (v2.7 CCAPI-27.0: Budget-Driven)
@@ -277,6 +298,12 @@ class FinancialMetricsEngine:
             liquidity_risk=liquidity_risk,
             speculation_risk=speculation_risk,
             infrastructure_risk=infrastructure_risk,
+            bear_appreciation_rate=bear_rate,
+            bull_appreciation_rate=bull_rate,
+            bear_roi_3yr=bear_roi_3yr,
+            bull_roi_3yr=bull_roi_3yr,
+            bear_exit_value=bear_future_3yr * plot_size,
+            bull_exit_value=bull_future_3yr * plot_size,
             regional_tier=tier_info['tier'],
             tier_benchmark_price=tier_info['tier_benchmark_price'],
             peer_regions=tier_info['peer_regions'],
@@ -452,42 +479,50 @@ class FinancialMetricsEngine:
     def _estimate_appreciation_rate(self,
                                     region_name: str,
                                     market_data: Dict[str, Any],
-                                    scoring_result: Any) -> float:
+                                    scoring_result: Any) -> Dict[str, float]:
         """
-        Estimate annual appreciation rate based on:
-        - Regional historical appreciation
-        - Current market trend
-        - Investment score (development momentum)
+        Estimate annual appreciation rates for bear / base / bull scenarios.
+
+        Returns dict with keys: 'base', 'bear', 'bull'
+        - Bear: infrastructure stalls, market cools — appreciation halved, floored at 0%
+        - Base: blended historical + current trend + momentum boost
+        - Bull: strong catalysts accelerate growth — appreciation × 1.4, capped at 35%
         """
         # Get regional baseline
         benchmark = self._find_nearest_benchmark(region_name)
         base_appreciation = benchmark['historical_appreciation']
-        
+
         # Adjust for current market trend
         price_trend = market_data.get('price_trend_30d', 0) / 100  # Convert to decimal
-        
+
         # Weight: 60% historical, 40% current trend
         blended_appreciation = (base_appreciation * 0.6) + (price_trend * 0.4)
-        
+
         # Boost for high development momentum (high satellite activity = appreciation catalyst)
         investment_score = getattr(scoring_result, 'final_investment_score', 50)
-        
+
         if investment_score >= 70:
             momentum_boost = 0.03  # +3% for strong momentum
         elif investment_score >= 60:
             momentum_boost = 0.02  # +2%
         else:
             momentum_boost = 0
-        
-        final_appreciation = blended_appreciation + momentum_boost
-        
-        # Cap at reasonable limits (5-30% annual)
-        final_appreciation = max(0.05, min(0.30, final_appreciation))
-        
-        logger.debug(f"Appreciation rate: {final_appreciation:.1%} "
-                    f"(base: {base_appreciation:.1%}, trend: {price_trend:.1%}, boost: {momentum_boost:.1%})")
-        
-        return final_appreciation
+
+        base_rate = blended_appreciation + momentum_boost
+
+        # Cap base at reasonable limits (5-30% annual)
+        base_rate = max(0.05, min(0.30, base_rate))
+
+        # Bear scenario: appreciation halved, floor at 0% (stagnation, not collapse)
+        bear_rate = max(0.0, base_rate * 0.5)
+
+        # Bull scenario: strong tailwinds, cap at 35%
+        bull_rate = min(0.35, base_rate * 1.4)
+
+        logger.debug(f"Appreciation rates — bear: {bear_rate:.1%}, base: {base_rate:.1%}, bull: {bull_rate:.1%} "
+                    f"(historical: {base_appreciation:.1%}, trend: {price_trend:.1%}, boost: {momentum_boost:.1%})")
+
+        return {'base': base_rate, 'bear': bear_rate, 'bull': bull_rate}
     
     def _calculate_roi(self,
                       current_value: float,
@@ -919,10 +954,15 @@ DEVELOPMENT COSTS:
   Cost Index:           {projection.development_cost_index:.0f}/100 ({projection.terrain_difficulty})
   Estimated Cost:       {projection.estimated_dev_cost_per_m2:,.0f} IDR/m²
 
-ROI PROJECTIONS:
+ROI PROJECTIONS (Base Case):
   3-Year ROI:           {projection.projected_roi_3yr:.1%}
   5-Year ROI:           {projection.projected_roi_5yr:.1%}
   Break-Even:           {projection.break_even_years:.1f} years
+
+SCENARIO ANALYSIS (3-Year):
+  Bear Case:            {(projection.bear_roi_3yr or 0):.1%} ROI @ {(projection.bear_appreciation_rate or 0):.1%}/yr
+  Base Case:            {projection.projected_roi_3yr:.1%} ROI @ {projection.appreciation_rate_annual:.1%}/yr
+  Bull Case:            {(projection.bull_roi_3yr or 0):.1%} ROI @ {(projection.bull_appreciation_rate or 0):.1%}/yr
 
 INVESTMENT SIZING:
   Recommended Plot:     {projection.recommended_plot_size_m2:,.0f} m²
