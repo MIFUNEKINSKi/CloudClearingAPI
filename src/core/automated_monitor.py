@@ -1129,11 +1129,11 @@ class AutomatedMonitor:
                         import signal
                         
                         def timeout_handler(signum, frame):
-                            raise TimeoutError("Corrected scoring exceeded 45 second timeout")
-                        
+                            raise TimeoutError("Corrected scoring exceeded timeout")
+
                         signal.signal(signal.SIGALRM, timeout_handler)
-                        signal.alarm(45)  # 45 second timeout for scoring
-                        
+                        signal.alarm(180)  # 180s timeout for full scoring pipeline (OSM + financial + RVI)
+
                         try:
                             # Get satellite data from change detection
                             optical_changes = region_data.get('change_count', 0)
@@ -1183,11 +1183,11 @@ class AutomatedMonitor:
                                 sar_confidence_boost=fusion_result['confidence_boost'] if fusion_result else 0.0,
                                 news_catalyst_multiplier=news_catalyst_result.multiplier if news_catalyst_result else 1.0
                             )
-                            signal.alarm(0)  # Cancel the alarm
+                            # (alarm cancelled after financial + RVI block below)
                         except TimeoutError as te:
-                            signal.alarm(0)  # Cancel the alarm
+                            signal.alarm(0)  # Cancel on timeout
                             raise Exception(f"Corrected scoring timeout: {te}")
-                        
+
                         # --- NEW: Calculate Financial Projection ---
                         financial_projection = None
                         if self.financial_engine:
@@ -1258,6 +1258,8 @@ class AutomatedMonitor:
                                 logger.warning(f"   ⚠️ RVI calculation failed for {region_name}: {e}")
                         # -------------------------------------------
                         
+                        signal.alarm(0)  # Cancel the timeout — scoring + financial + RVI complete
+
                         # Convert to format compatible with reporting system
                         dynamic_score = {
                             'region_name': region_name,

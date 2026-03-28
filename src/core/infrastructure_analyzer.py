@@ -298,7 +298,7 @@ class InfrastructureAnalyzer:
         """Query OpenStreetMap for road infrastructure with retry logic and failover"""
         
         overpass_query = f"""
-        [out:json][timeout:45];
+        [out:json][timeout:20];
         (
           way["highway"~"^(motorway|trunk|primary|secondary)$"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
           way["highway"~"^(motorway|trunk|primary)_construction$"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
@@ -312,7 +312,7 @@ class InfrastructureAnalyzer:
         """Query OpenStreetMap for airports with retry logic and failover"""
         
         overpass_query = f"""
-        [out:json][timeout:45];
+        [out:json][timeout:20];
         (
           way["aeroway"="aerodrome"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
           node["aeroway"="aerodrome"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
@@ -327,7 +327,7 @@ class InfrastructureAnalyzer:
         """Query OpenStreetMap for railway infrastructure with retry logic and failover"""
         
         overpass_query = f"""
-        [out:json][timeout:45];
+        [out:json][timeout:20];
         (
           way["railway"="rail"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
           way["railway"="light_rail"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
@@ -343,30 +343,30 @@ class InfrastructureAnalyzer:
         """
         🆕 IMPROVED: Query Overpass API with exponential backoff retry and failover
         
-        Retry strategy:
-        - Attempt 1: Primary server, 45s timeout
-        - Attempt 2: Primary server, 60s timeout, 2s delay
-        - Attempt 3: Fallback server 1, 60s timeout, 4s delay
-        - Attempt 4: Fallback server 2, 60s timeout, 8s delay
+        Retry strategy (tightened to avoid blocking the scoring pipeline):
+        - Attempt 1: Primary server, 20s timeout
+        - Attempt 2: Primary server, 30s timeout, 1s delay
+        - Attempt 3: Fallback server, 30s timeout, 2s delay
+        Total worst-case per feature: ~85s (well within scoring alarm)
         """
         import time
-        
-        # Build list of (url, timeout) pairs to try
+
+        # Build list of (url, timeout) pairs to try — tightened timeouts
         attempts = [
-            (self.osm_base_url, 45),
-            (self.osm_base_url, 60),
+            (self.osm_base_url, 20),
+            (self.osm_base_url, 30),
         ]
-        # Add fallback servers
-        for fallback_url in self.osm_fallback_urls:
-            attempts.append((fallback_url, 60))
+        # Add first fallback server only (limit total retry time)
+        if self.osm_fallback_urls:
+            attempts.append((self.osm_fallback_urls[0], 30))
         
         last_error = None
         
         for attempt_num, (api_url, timeout) in enumerate(attempts, 1):
             try:
-                # Apply exponential backoff delay (skip on first attempt)
+                # Apply short backoff delay (skip on first attempt)
                 if attempt_num > 1:
-                    delay = 2 ** (attempt_num - 2)  # 2s, 4s, 8s...
+                    delay = attempt_num - 1  # 1s, 2s (linear, not exponential)
                     logger.info(f"  Retry {attempt_num}/{len(attempts)} for {feature_type} after {delay}s delay...")
                     time.sleep(delay)
                 
