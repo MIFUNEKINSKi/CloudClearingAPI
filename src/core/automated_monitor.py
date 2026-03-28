@@ -1200,6 +1200,10 @@ class AutomatedMonitor:
                             'analysis_type': 'corrected_satellite_centric',  # Mark as corrected!
                             'financial_projection': financial_projection,  # NEW: Financial metrics
                             'rvi_data': rvi_data,  # NEW (v2.6-alpha): Relative Value Index
+                            # Sensitivity analysis — borderline detection
+                            'sensitivity_flag': corrected_result.sensitivity_flag,
+                            'sensitivity_detail': corrected_result.sensitivity_detail,
+                            'score_headroom': corrected_result.score_headroom,
                             # SAR radar fusion data (v2.10)
                             'sar_data': {
                                 'available': fusion_result is not None,
@@ -1562,7 +1566,10 @@ class AutomatedMonitor:
                 'satellite_changes': region_score.get('satellite_changes', 0),
                 'data_sources': region_score.get('data_sources', {}),
                 'analysis_type': region_score.get('analysis_type', 'dynamic'),
-                'financial_projection': region_score.get('financial_projection')  # ✅ FIX: Include financial projection
+                'financial_projection': region_score.get('financial_projection'),  # ✅ FIX: Include financial projection
+                'sensitivity_flag': region_score.get('sensitivity_flag'),
+                'sensitivity_detail': region_score.get('sensitivity_detail'),
+                'score_headroom': region_score.get('score_headroom'),
             }
             
             # ✅ CORRECTED THRESHOLDS (based on proper 0-60 score range)
