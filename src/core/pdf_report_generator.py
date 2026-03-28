@@ -1035,7 +1035,52 @@ class PDFReportGenerator:
 
             for component in score_components:
                 story.append(Paragraph(f"   • {component}", self.styles['Normal']))
-            
+
+            # Planned Infrastructure Catalysts — surface actual projects from news
+            news_data = investment_rec.get('news_catalyst')
+            if news_data and news_data.get('articles_found', 0) > 0:
+                top_keywords = news_data.get('top_keywords', [])
+                top_article = news_data.get('top_article_title', '')
+
+                # Only show section if there are infrastructure-related keywords
+                infra_kws = [kw for kw in top_keywords if kw.lower() in (
+                    'toll road', 'jalan tol', 'highway', 'airport', 'bandara', 'port',
+                    'pelabuhan', 'railway', 'kereta api', 'sez', 'special economic zone',
+                    'kawasan ekonomi khusus', 'industrial park', 'kawasan industri',
+                    'groundbreaking', 'proyek strategis nasional', 'psn',
+                    'high-speed rail', 'kereta cepat', 'new city', 'kota baru',
+                    'expressway', 'mrt', 'lrt',
+                )]
+
+                if infra_kws or top_article:
+                    story.append(Paragraph(
+                        "<b>Planned Infrastructure Catalysts:</b>",
+                        self.styles['Normal']
+                    ))
+                    if infra_kws:
+                        story.append(Paragraph(
+                            f"   • Detected projects: <b>{', '.join(infra_kws)}</b>",
+                            self.styles['Normal']
+                        ))
+                    if top_article:
+                        story.append(Paragraph(
+                            f"   • Top article: <i>\"{top_article}\"</i>",
+                            self.styles['Normal']
+                        ))
+                    pos_count = news_data.get('positive_count', 0)
+                    neg_count = news_data.get('negative_count', 0)
+                    if neg_count > 0:
+                        story.append(Paragraph(
+                            f"   • ⚠ {neg_count} negative article(s) found "
+                            f"(cancellations, delays, disputes) — review before investing",
+                            self.styles['Normal']
+                        ))
+                    elif pos_count >= 3:
+                        story.append(Paragraph(
+                            f"   • {pos_count} positive articles — active development corridor",
+                            self.styles['Normal']
+                        ))
+
             # ✅ NEW: Show detailed infrastructure breakdown
             if infra_details:
                 story.append(Paragraph(
@@ -1145,8 +1190,19 @@ class PDFReportGenerator:
                 f"   <i>{conf_summary}</i>",
                 self.styles['Normal']
             ))
+            # Sensitivity flag — borderline detection
+            sensitivity_flag = investment_rec.get('sensitivity_flag')
+            sensitivity_detail = investment_rec.get('sensitivity_detail')
+            if sensitivity_flag:
+                flag_color = '#D4380D' if 'PASS' in sensitivity_flag else '#D48806'
+                story.append(Paragraph(
+                    f"<b style='color:{flag_color}'>⚠ {sensitivity_flag}:</b> "
+                    f"<i>{sensitivity_detail}. A 10% data change could flip this recommendation.</i>",
+                    self.styles['Normal']
+                ))
+
             story.append(Spacer(1, 5))
-            
+
             # 💰 NEW: Draw financial projection section if available
             financial_projection = investment_rec.get('financial_projection')
             if financial_projection:
@@ -1637,6 +1693,33 @@ class PDFReportGenerator:
             
             story.append(Spacer(1, 5))
         
+        # USD-Adjusted Returns for Foreign Investors
+        usd_roi_3yr = financial_data.get('usd_roi_3yr')
+        usd_roi_5yr = financial_data.get('usd_roi_5yr')
+        usd_exit_3yr = financial_data.get('usd_exit_value_3yr')
+        idr_depr = financial_data.get('idr_depreciation_rate_annual', 0.035)
+        if usd_roi_3yr is not None:
+            story.append(Paragraph(
+                f"<b>USD-Adjusted Returns</b> (assuming {idr_depr:.1%}/yr IDR depreciation):",
+                self.styles['Normal']
+            ))
+            story.append(Paragraph(
+                f"   • 3-Year ROI (USD): <b>{usd_roi_3yr:.1%}</b> | "
+                f"5-Year ROI (USD): <b>{(usd_roi_5yr or 0):.1%}</b>",
+                self.styles['Normal']
+            ))
+            if usd_exit_3yr and usd_exit_3yr > 0:
+                story.append(Paragraph(
+                    f"   • Projected Exit Value (USD, 3yr): <b>${usd_exit_3yr:,.0f}</b>",
+                    self.styles['Normal']
+                ))
+            story.append(Paragraph(
+                f"   <i>Note: IDR has averaged ~3-4% annual depreciation vs USD (2015-2025). "
+                f"Actual currency movements will affect real returns.</i>",
+                self.styles['Footer']
+            ))
+            story.append(Spacer(1, 5))
+
         # Risk Assessment
         story.append(Paragraph(
             "<b>Risk Assessment:</b>",
@@ -1662,6 +1745,22 @@ class PDFReportGenerator:
             ))
 
         story.append(Spacer(1, 5))
+
+        # Liquidity warning for illiquid regions
+        liquidity_warning = financial_data.get('liquidity_warning')
+        est_txns = financial_data.get('estimated_monthly_transactions')
+        if liquidity_warning:
+            story.append(Paragraph(
+                f"<b style='color:#D4380D'>🔴 {liquidity_warning}</b>",
+                self.styles['Normal']
+            ))
+            story.append(Spacer(1, 5))
+        elif est_txns is not None:
+            story.append(Paragraph(
+                f"   Est. monthly transactions: ~{est_txns}",
+                self.styles['Normal']
+            ))
+            story.append(Spacer(1, 5))
 
         # Add disclaimer for financial projections
         story.append(Spacer(1, 5))

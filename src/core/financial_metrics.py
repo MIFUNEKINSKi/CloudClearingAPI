@@ -74,6 +74,16 @@ class FinancialProjection:
     bear_exit_value: Optional[float] = None  # Worst-case exit value
     bull_exit_value: Optional[float] = None  # Best-case exit value
 
+    # Currency-Adjusted Returns (USD) — assumes IDR depreciation for foreign investors
+    idr_depreciation_rate_annual: float = 0.035  # 3.5% avg annual IDR/USD depreciation
+    usd_roi_3yr: Optional[float] = None  # 3yr ROI in USD terms
+    usd_roi_5yr: Optional[float] = None  # 5yr ROI in USD terms
+    usd_exit_value_3yr: Optional[float] = None  # Exit value converted at projected rate
+
+    # Liquidity Assessment
+    estimated_monthly_transactions: Optional[int] = None  # Est. transactions/month in region
+    liquidity_warning: Optional[str] = None  # Prominent warning for illiquid regions
+
     # Confidence
     projection_confidence: float = 0.0  # 0-1
     data_sources: Optional[List[str]] = None
@@ -286,7 +296,25 @@ class FinancialMetricsEngine:
         confidence = self._calculate_projection_confidence(
             market_data, infrastructure_data, satellite_data
         )
-        
+
+        # Step 11: Currency-adjusted USD returns
+        # IDR has depreciated ~3.5%/yr vs USD on average (2015-2025)
+        idr_depr = 0.035
+        # Real return = nominal IDR return minus currency loss
+        # After 3yr: IDR buys (1-depr)^3 of original USD → ~89.5%
+        usd_factor_3yr = (1 - idr_depr) ** 3  # ~0.895
+        usd_factor_5yr = (1 - idr_depr) ** 5  # ~0.837
+        usd_roi_3yr = (1 + roi_3yr) * usd_factor_3yr - 1
+        usd_roi_5yr = (1 + roi_5yr) * usd_factor_5yr - 1
+        # Approximate exchange rate for display (1 USD ≈ 15,800 IDR as of 2025)
+        idr_per_usd = 15800
+        usd_exit_3yr = exit_value_3yr * usd_factor_3yr / idr_per_usd
+
+        # Step 12: Liquidity assessment
+        est_monthly_txns, liquidity_warn = self._assess_liquidity_depth(
+            region_name, tier_info
+        )
+
         return FinancialProjection(
             region_name=region_name,
             current_land_value_per_m2=current_value,
@@ -318,6 +346,12 @@ class FinancialMetricsEngine:
             regional_tier=tier_info['tier'],
             tier_benchmark_price=tier_info['tier_benchmark_price'],
             peer_regions=tier_info['peer_regions'],
+            idr_depreciation_rate_annual=idr_depr,
+            usd_roi_3yr=usd_roi_3yr,
+            usd_roi_5yr=usd_roi_5yr,
+            usd_exit_value_3yr=usd_exit_3yr,
+            estimated_monthly_transactions=est_monthly_txns,
+            liquidity_warning=liquidity_warn,
             projection_confidence=confidence,
             data_sources=self._get_data_sources(market_data, infrastructure_data)
         )
@@ -698,6 +732,38 @@ class FinancialMetricsEngine:
         # Default: Medium (all of Indonesia has seismic risk)
         return 'Medium'
 
+    def _assess_liquidity_depth(self, region_name: str,
+                                tier_info: Dict[str, Any]) -> tuple:
+        """Estimate monthly transaction volume and generate liquidity warning.
+
+        Indonesian land markets vary enormously by tier:
+        - Tier 1 metros: hundreds of transactions/month, easy exit
+        - Tier 2 secondary: ~50-100/month, moderate exit difficulty
+        - Tier 3 emerging: ~10-30/month, challenging exit
+        - Tier 4 frontier: <10/month, very difficult to exit
+
+        Returns:
+            (estimated_monthly_transactions, liquidity_warning or None)
+        """
+        tier = tier_info.get('tier', 'tier_3_emerging')
+
+        estimates = {
+            'tier_1_metros': (200, None),
+            'tier_2_secondary': (75, None),
+            'tier_3_emerging': (20,
+                'LIQUIDITY WARNING: Tier 3 emerging region — estimated <30 land '
+                'transactions/month. Exiting this investment may take 3-6 months. '
+                'Factor exit difficulty into your holding period.'),
+            'tier_4_frontier': (5,
+                'LIQUIDITY WARNING: Tier 4 frontier region — estimated <10 land '
+                'transactions/month. Finding a buyer may take 6-12+ months. '
+                'This is essentially an illiquid investment — only commit '
+                'capital you can afford to lock up for 3-5+ years.'),
+        }
+
+        txns, warning = estimates.get(tier, (20, None))
+        return txns, warning
+
     def _assess_zoning_risk(self, region_name: str, market_data: Dict[str, Any]) -> str:
         """Assess risk of unfavorable zoning or land-use regulation changes.
 
@@ -1029,6 +1095,15 @@ INVESTMENT SIZING:
   Total Investment:     {(projection.total_acquisition_cost + projection.total_development_cost):,.0f} IDR
   Net Profit (3yr):     {(projection.projected_exit_value - projection.total_acquisition_cost - projection.total_development_cost):,.0f} IDR
 
+USD-ADJUSTED RETURNS (assuming {projection.idr_depreciation_rate_annual:.1%}/yr IDR depreciation):
+  3-Year ROI (USD):     {(projection.usd_roi_3yr or 0):.1%}
+  5-Year ROI (USD):     {(projection.usd_roi_5yr or 0):.1%}
+  Exit Value (USD, 3yr):${(projection.usd_exit_value_3yr or 0):,.0f}
+
+LIQUIDITY:
+  Est. Monthly Txns:    {projection.estimated_monthly_transactions or 'Unknown'}
+  {projection.liquidity_warning or 'No liquidity concerns'}
+
 RISK ASSESSMENT:
   Liquidity Risk:       {projection.liquidity_risk}
   Speculation Risk:     {projection.speculation_risk}
@@ -1037,7 +1112,7 @@ RISK ASSESSMENT:
   Natural Disaster Risk:{projection.natural_disaster_risk}
   Currency Risk:        {projection.currency_risk}
   Zoning Risk:          {projection.zoning_risk}
-  
+
 Projection Confidence:  {projection.projection_confidence:.0%}
 Data Sources:           {data_sources_str}
 """

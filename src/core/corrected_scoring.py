@@ -65,6 +65,11 @@ class CorrectedScoringResult:
     news_catalyst_multiplier: Optional[float] = None  # 0.95-1.20
     news_articles_found: Optional[int] = None
 
+    # Part 7: Sensitivity Analysis - how close is the score to flipping recommendation?
+    sensitivity_flag: Optional[str] = None  # 'BORDERLINE_BUY', 'BORDERLINE_WATCH', 'BORDERLINE_PASS', None
+    sensitivity_detail: Optional[str] = None  # Human-readable explanation
+    score_headroom: Optional[float] = None  # Points above/below nearest threshold (negative = below)
+
 
 class CorrectedInvestmentScorer:
     """
@@ -199,7 +204,14 @@ class CorrectedInvestmentScorer:
         recommendation, rationale = self._generate_recommendation(
             final_score, confidence, satellite_changes, infrastructure_data, market_data
         )
-        
+
+        # Sensitivity analysis — flag borderline regions
+        sensitivity_flag, sensitivity_detail, score_headroom = self._analyze_sensitivity(
+            final_score, confidence, recommendation
+        )
+        if sensitivity_flag:
+            logger.info(f"   ⚠️ SENSITIVITY: {sensitivity_flag} — {sensitivity_detail}")
+
         # Build data sources report
         data_sources = {
             'satellite': 'google_earth_engine',
@@ -290,6 +302,9 @@ class CorrectedInvestmentScorer:
             sar_fusion_source='optical+sar' if sar_confidence_boost > 0 else None,  # v2.10
             sar_confidence_boost=sar_confidence_boost if sar_confidence_boost > 0 else None,  # v2.10
             news_catalyst_multiplier=news_catalyst_multiplier if news_catalyst_multiplier != 1.0 else None,  # v2.10
+            sensitivity_flag=sensitivity_flag,
+            sensitivity_detail=sensitivity_detail,
+            score_headroom=score_headroom,
         )
     
     def _calculate_development_score(self, satellite_changes: int) -> float:
@@ -649,6 +664,76 @@ class CorrectedInvestmentScorer:
                             f"Score: {final_score:.1f}/100")
         
         return recommendation, rationale
+
+    def _analyze_sensitivity(self, final_score: float, confidence: float,
+                             recommendation: str) -> tuple:
+        """
+        Determine if a region is borderline — a 10% data change could flip
+        the recommendation category.
+
+        Thresholds:
+        - BUY:   score ≥40, confidence ≥0.60
+        - WATCH: score ≥25, confidence ≥0.40
+        - PASS:  below WATCH thresholds
+
+        A region is "borderline" if its score is within ±5 points of the
+        nearest category boundary, OR if its confidence is within 10pp of
+        the gate.
+
+        Returns:
+            (sensitivity_flag, sensitivity_detail, score_headroom)
+        """
+        SCORE_MARGIN = 5.0   # points
+        CONF_MARGIN = 0.10   # 10 percentage-points
+
+        flag = None
+        detail_parts = []
+
+        if recommendation == 'BUY':
+            # How close to dropping to WATCH?
+            score_buffer = final_score - 40.0
+            conf_buffer = confidence - 0.60
+            if score_buffer < SCORE_MARGIN:
+                detail_parts.append(f"score only {score_buffer:+.1f}pts above BUY threshold (40)")
+            if conf_buffer < CONF_MARGIN:
+                detail_parts.append(f"confidence only {conf_buffer:+.0%} above BUY gate (60%)")
+            if detail_parts:
+                flag = 'BORDERLINE_BUY'
+            headroom = score_buffer
+
+        elif recommendation == 'WATCH':
+            # How close to upgrading to BUY or dropping to PASS?
+            to_buy = 40.0 - final_score
+            to_pass = final_score - 25.0
+            conf_to_buy = 0.60 - confidence
+            conf_to_pass = confidence - 0.40
+
+            if to_buy < SCORE_MARGIN:
+                detail_parts.append(f"only {to_buy:.1f}pts below BUY threshold (40)")
+            if to_pass < SCORE_MARGIN:
+                detail_parts.append(f"only {to_pass:.1f}pts above PASS threshold (25)")
+            if conf_to_buy < CONF_MARGIN:
+                detail_parts.append(f"confidence {conf_to_buy:.0%} short of BUY gate (60%)")
+            if conf_to_pass < CONF_MARGIN:
+                detail_parts.append(f"confidence only {conf_to_pass:.0%} above PASS gate (40%)")
+            if detail_parts:
+                flag = 'BORDERLINE_WATCH'
+            headroom = min(to_pass, to_buy)  # distance to nearest edge
+
+        else:  # PASS
+            # How close to upgrading to WATCH?
+            score_gap = 25.0 - final_score
+            conf_gap = 0.40 - confidence
+            if score_gap < SCORE_MARGIN and score_gap > 0:
+                detail_parts.append(f"only {score_gap:.1f}pts below WATCH threshold (25)")
+            if conf_gap < CONF_MARGIN and conf_gap > 0:
+                detail_parts.append(f"confidence only {conf_gap:.0%} below WATCH gate (40%)")
+            if detail_parts:
+                flag = 'BORDERLINE_PASS'
+            headroom = -score_gap  # negative = below threshold
+
+        detail = '; '.join(detail_parts) if detail_parts else None
+        return flag, detail, headroom
 
 
 def migrate_to_corrected_scoring():
