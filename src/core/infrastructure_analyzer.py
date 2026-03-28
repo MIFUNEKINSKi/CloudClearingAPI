@@ -183,11 +183,30 @@ class InfrastructureAnalyzer:
             expanded_bbox = self._expand_bbox(bbox, expansion_km=50)
             
             logger.info(f"📡 Querying OSM infrastructure for {region_name}...")
-            
+
             # Query OpenStreetMap for infrastructure with retry logic
-            roads_data = self._query_osm_roads(expanded_bbox)
-            airports_data = self._query_osm_airports(expanded_bbox)
-            railways_data = self._query_osm_railways(expanded_bbox)
+            # Use concurrent.futures to run all 3 queries in parallel with a hard 30s ceiling
+            from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+            with ThreadPoolExecutor(max_workers=3) as executor:
+                roads_future = executor.submit(self._query_osm_roads, expanded_bbox)
+                airports_future = executor.submit(self._query_osm_airports, expanded_bbox)
+                railways_future = executor.submit(self._query_osm_railways, expanded_bbox)
+
+                try:
+                    roads_data = roads_future.result(timeout=30)
+                except Exception:
+                    roads_data = []
+                    logger.warning(f"  ⚠️ Roads query failed/timed out for {region_name}")
+                try:
+                    airports_data = airports_future.result(timeout=30)
+                except Exception:
+                    airports_data = []
+                    logger.warning(f"  ⚠️ Airports query failed/timed out for {region_name}")
+                try:
+                    railways_data = railways_future.result(timeout=30)
+                except Exception:
+                    railways_data = []
+                    logger.warning(f"  ⚠️ Railways query failed/timed out for {region_name}")
             
             # Check if we got ANY data
             has_any_data = bool(roads_data or airports_data or railways_data)
@@ -298,7 +317,7 @@ class InfrastructureAnalyzer:
         """Query OpenStreetMap for road infrastructure with retry logic and failover"""
         
         overpass_query = f"""
-        [out:json][timeout:20];
+        [out:json][timeout:10];
         (
           way["highway"~"^(motorway|trunk|primary|secondary)$"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
           way["highway"~"^(motorway|trunk|primary)_construction$"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
@@ -312,7 +331,7 @@ class InfrastructureAnalyzer:
         """Query OpenStreetMap for airports with retry logic and failover"""
         
         overpass_query = f"""
-        [out:json][timeout:20];
+        [out:json][timeout:10];
         (
           way["aeroway"="aerodrome"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
           node["aeroway"="aerodrome"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
@@ -327,7 +346,7 @@ class InfrastructureAnalyzer:
         """Query OpenStreetMap for railway infrastructure with retry logic and failover"""
         
         overpass_query = f"""
-        [out:json][timeout:20];
+        [out:json][timeout:10];
         (
           way["railway"="rail"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
           way["railway"="light_rail"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
@@ -341,24 +360,21 @@ class InfrastructureAnalyzer:
     def _query_overpass_with_retry(self, query: str, feature_type: str, 
                                    max_retries: int = 3) -> List[Dict]:
         """
-        🆕 IMPROVED: Query Overpass API with exponential backoff retry and failover
-        
-        Retry strategy (tightened to avoid blocking the scoring pipeline):
-        - Attempt 1: Primary server, 20s timeout
-        - Attempt 2: Primary server, 30s timeout, 1s delay
-        - Attempt 3: Fallback server, 30s timeout, 2s delay
-        Total worst-case per feature: ~85s (well within scoring alarm)
+        🆕 IMPROVED: Query Overpass API with aggressive timeouts
+
+        Retry strategy (fail-fast, we have regional fallbacks):
+        - Attempt 1: Primary server, 10s timeout
+        - Attempt 2: Primary server, 15s timeout, 1s delay
+        Total worst-case per feature: ~26s. All 3 features run in parallel.
         """
         import time
 
-        # Build list of (url, timeout) pairs to try — tightened timeouts
+        # Build list of (url, timeout) pairs to try — aggressive timeouts
+        # We have regional fallbacks, so failing fast is better than blocking the pipeline
         attempts = [
-            (self.osm_base_url, 20),
-            (self.osm_base_url, 30),
+            (self.osm_base_url, 10),
+            (self.osm_base_url, 15),
         ]
-        # Add first fallback server only (limit total retry time)
-        if self.osm_fallback_urls:
-            attempts.append((self.osm_fallback_urls[0], 30))
         
         last_error = None
         
