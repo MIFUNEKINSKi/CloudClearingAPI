@@ -54,11 +54,14 @@ credentials.json
 service-account-key.json
 
 # Data and Output (can be large)
-data/raw/
-data/processed/
-output/monitoring/*.json
-output/weekly_reports/*.json
-output/weekly_reports/*.pdf
+data/
+cache/
+output/monitoring/
+output/reports/
+output/satellite_images/
+output/imagery_viewer/
+output/scraper_cache/
+output/weekly_reports/
 temp/
 
 # Test outputs

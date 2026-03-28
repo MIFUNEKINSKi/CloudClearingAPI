@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 """
-Weekly Java-Wide Monitor
+Weekly Java-Wide Monitor - Async Parallel Processing
 Monitors all 29 regions across Java island for development changes
 
-This expands from 10 Yogyakarta regions to comprehensive Java coverage:
-- 14 Priority 1 regions (infrastructure, major urban, industrial)
-- 10 Priority 2 regions (secondary cities, ports, tourism)
-- 5 Priority 3 regions (tertiary markets, coastal development)
+Features:
+- Async parallel processing (5 regions at a time to respect GEE rate limits)
+- GEE + OSM caching for performance
+- Progress tracking with real-time updates
+- Graceful error handling per region
 
-Expected Runtime: ~60-90 minutes for all 29 regions
+Expected Runtime: ~30-35 minutes for all 29 regions (with warm cache)
 """
 
 import sys
 import logging
+import asyncio
 from datetime import datetime
 from pathlib import Path
+from typing import List, Dict, Any
 
 # Setup comprehensive logging
 log_dir = Path("logs")
@@ -31,8 +34,117 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+
+async def process_region_batch(
+    monitor,
+    regions: List[str],
+    week_a_start: str,
+    week_b_start: str,
+    batch_num: int,
+    total_batches: int
+) -> List[Dict[str, Any]]:
+    """
+    Process a batch of regions in parallel.
+    
+    Args:
+        monitor: AutomatedMonitor instance
+        regions: List of region names to process
+        week_a_start: Start date for week A
+        week_b_start: Start date for week B
+        batch_num: Current batch number (1-indexed)
+        total_batches: Total number of batches
+    
+    Returns:
+        List of analysis results (successful regions only)
+    """
+    print(f"\n📦 Batch {batch_num}/{total_batches}: Processing {len(regions)} regions in parallel...")
+    
+    # Create async tasks for each region
+    tasks = []
+    for region_name in regions:
+        task = monitor._analyze_region(region_name, week_a_start, week_b_start)
+        tasks.append(task)
+    
+    # Execute all tasks in parallel and gather results
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    # Process results and handle errors
+    successful_results = []
+    for region_name, result in zip(regions, results):
+        if isinstance(result, Exception):
+            logger.error(f"   ❌ {region_name}: {str(result)}")
+        elif result is None:
+            logger.warning(f"   ⚠️  {region_name}: No data available")
+        else:
+            # Result is a dict - check if cached
+            cache_status = "🔵 CACHED" if result.get('_cached') else "🟢 FRESH"  # type: ignore
+            logger.info(f"   ✅ {region_name}: {result['change_count']:,} changes ({cache_status})")  # type: ignore
+            result['analysis_type'] = 'yogyakarta_region'  # type: ignore
+            successful_results.append(result)
+    
+    return successful_results
+
+
+async def run_parallel_monitoring(
+    monitor,
+    regions: List[str],
+    week_a_start: str,
+    week_b_start: str,
+    batch_size: int = 5
+) -> List[Dict[str, Any]]:
+    """
+    Process all regions in parallel batches.
+    
+    Args:
+        monitor: AutomatedMonitor instance
+        regions: List of all region names
+        week_a_start: Start date for week A
+        week_b_start: Start date for week B
+        batch_size: Number of regions to process in parallel (default 5 for GEE rate limits)
+    
+    Returns:
+        List of all successful analysis results
+    """
+    all_results = []
+    total_regions = len(regions)
+    
+    # Split regions into batches
+    batches = [regions[i:i + batch_size] for i in range(0, total_regions, batch_size)]
+    total_batches = len(batches)
+    
+    logger.info(f"🚀 Parallel processing: {total_regions} regions in {total_batches} batches of {batch_size}")
+    
+    # Process each batch
+    batch_start_time = datetime.now()
+    for batch_num, batch in enumerate(batches, 1):
+        batch_results = await process_region_batch(
+            monitor, batch, week_a_start, week_b_start, batch_num, total_batches
+        )
+        all_results.extend(batch_results)
+        
+        # Show progress
+        completed = len(all_results)
+        progress_pct = (completed / total_regions) * 100
+        elapsed = (datetime.now() - batch_start_time).total_seconds() / 60
+        
+        # Estimate remaining time
+        if completed > 0:
+            avg_time_per_region = elapsed / completed
+            remaining_regions = total_regions - completed
+            eta_minutes = avg_time_per_region * remaining_regions
+            
+            print(f"\n📊 Progress: {completed}/{total_regions} regions ({progress_pct:.1f}%)")
+            print(f"   ⏱️  Elapsed: {elapsed:.1f} min | ETA: {eta_minutes:.1f} min remaining")
+        
+        # Small delay between batches to be respectful to APIs
+        if batch_num < total_batches:
+            await asyncio.sleep(2)
+    
+    return all_results
+
+
 async def main():
-    """Run weekly monitoring for ALL Java regions"""
+    """Run weekly monitoring for ALL Java regions with parallel processing"""
     
     print("\n" + "="*100)
     print("🇮🇩 JAVA-WIDE WEEKLY MONITORING")
@@ -67,12 +179,17 @@ async def main():
     print("   • Regional Hubs: 10 regions")
     print()
     
-    # Estimate processing time
-    avg_time_per_region = 3  # minutes (with fallback attempts)
-    estimated_minutes = len(java_regions) * avg_time_per_region
+    # Estimate processing time with parallel processing
+    # With 5 parallel regions per batch: ~6 batches for 29 regions
+    # Each batch: ~3-4 minutes (with GEE cache, faster after first run)
+    avg_time_per_batch = 3.5  # minutes
+    num_batches = (len(java_regions) + 4) // 5  # Ceiling division
+    estimated_minutes = num_batches * avg_time_per_batch
     estimated_hours = estimated_minutes / 60
     
-    print(f"⏱️  **ESTIMATED TIME**: {estimated_minutes} minutes (~{estimated_hours:.1f} hours)")
+    print(f"⏱️  **ESTIMATED TIME**: {estimated_minutes:.0f} minutes (~{estimated_hours:.1f} hours)")
+    print(f"    With parallel processing: {len(java_regions)} regions in {num_batches} batches of 5")
+    print(f"    (First run: ~30-35 min | Cached runs: ~15-20 min)")
     print(f"📅 **START TIME**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print()
     print("=" * 100)
@@ -123,15 +240,88 @@ async def main():
     monitor.region_manager.get_region_bbox = enhanced_get_bbox
     logger.info("✅ Enhanced region manager with Indonesia expansion support")
     
-    # Run the monitoring
+    # Run the monitoring with parallel processing
     start_time = datetime.now()
     
     try:
-        print(f"\n📡 Processing {len(java_regions)} regions...")
-        print("   (Progress updates will appear as each region completes)")
+        print(f"\n📡 Processing {len(java_regions)} regions in parallel batches...")
+        print("   (Progress updates will appear as each batch completes)")
         print()
         
-        results = await monitor.run_weekly_monitoring()
+        # Calculate date ranges using monitor's method
+        end_date, start_date = monitor._get_optimal_date_range(0)
+        
+        week_a_start = start_date.strftime('%Y-%m-%d')
+        week_b_start = end_date.strftime('%Y-%m-%d')
+        
+        logger.info(f"📅 Week A: {week_a_start}")
+        logger.info(f"📅 Week B: {week_b_start}")
+        
+        # Run parallel batch processing
+        results_list = await run_parallel_monitoring(
+            monitor=monitor,
+            regions=[region.name for region in java_regions],
+            week_a_start=week_a_start,
+            week_b_start=week_b_start,
+            batch_size=5  # Process 5 regions at a time
+        )
+        
+        # Aggregate results (same format as run_weekly_monitoring)
+        total_changes = sum(r.get('change_count', 0) for r in results_list)
+        total_area_m2 = sum(r.get('total_area_m2', 0) for r in results_list)
+        
+        # Collect alerts
+        all_alerts = []
+        for result in results_list:
+            if result.get('alerts'):
+                all_alerts.extend(result['alerts'])
+        
+        # Assemble monitoring results object for investment analysis
+        monitoring_results = {
+            'timestamp': end_date.isoformat(),
+            'regions_analyzed': results_list,
+            'total_changes': total_changes,
+            'total_area_m2': total_area_m2,
+            'alerts': all_alerts,
+            'period': f"{week_a_start} to {week_b_start}"
+        }
+        
+        # Generate summary statistics for PDF compatibility
+        alert_summary = {
+            'critical': len([a for a in all_alerts if a.get('severity') == 'CRITICAL']),
+            'major': len([a for a in all_alerts if a.get('severity') == 'MAJOR']),
+            'total': len(all_alerts)
+        }
+        
+        # Get top 3 most active regions
+        sorted_regions = sorted(results_list, key=lambda x: x.get('change_count', 0), reverse=True)
+        most_active = [
+            {
+                'name': r['region_name'],
+                'changes': r.get('change_count', 0),
+                'area_hectares': r.get('total_area_m2', 0) / 10000
+            }
+            for r in sorted_regions[:3]
+        ]
+        
+        monitoring_results['summary'] = {
+            'status': 'completed',
+            'regions_monitored': len(results_list),
+            'total_changes': total_changes,
+            'total_area_hectares': total_area_m2 / 10000,
+            'average_changes_per_region': total_changes / len(results_list) if results_list else 0,
+            'alert_summary': alert_summary,
+            'most_active_regions': most_active
+        }
+        
+        # Generate investment analysis
+        print()
+        print("💰 Generating investment analysis...")
+        investment_analysis = monitor._generate_investment_analysis(monitoring_results)
+        
+        # Add investment analysis to final results
+        results = monitoring_results
+        results['investment_analysis'] = investment_analysis
         
         # ✅ CCAPI-27.2: Track benchmark drift after monitoring completes
         print()
@@ -145,14 +335,8 @@ async def main():
                 enable_alerts=True
             )
             
-            # Track drift using investment analysis data (includes financial projections)
-            investment_analysis = results.get('investment_analysis', {}).get('yogyakarta_analysis', {})
-            all_recommendations = (
-                investment_analysis.get('buy_recommendations', []) +
-                investment_analysis.get('watch_list', []) +
-                investment_analysis.get('pass_list', [])
-            )
-            drift_summary = drift_monitor.track_drift(all_recommendations)
+            # Track drift using region analysis data (includes financial projections)
+            drift_summary = drift_monitor.track_drift(results_list)
             
             # Add drift summary to results
             results['drift_monitoring'] = drift_summary
@@ -176,6 +360,44 @@ async def main():
         
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds() / 60
+        
+        # 💾 Save monitoring results to JSON
+        print()
+        print("💾 Saving monitoring results...")
+        from pathlib import Path
+        import json
+        
+        output_dir = Path("output/monitoring")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        json_filename = output_dir / f"weekly_monitoring_{timestamp}.json"
+        
+        # Custom JSON encoder for dataclasses
+        def dataclass_serializer(obj):
+            """Custom JSON serializer for dataclasses"""
+            from dataclasses import is_dataclass, asdict
+            if is_dataclass(obj):
+                return asdict(obj)
+            raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+        
+        with open(json_filename, 'w') as f:
+            json.dump(results, f, indent=2, default=dataclass_serializer)
+        
+        logger.info(f"📁 Monitoring results saved to: {json_filename}")
+        print(f"   ✅ JSON saved: {json_filename}")
+        
+        # 📄 Generate PDF executive summary
+        print()
+        print("📄 Generating PDF executive summary...")
+        try:
+            from src.core.pdf_report_generator import generate_pdf_from_json
+            pdf_path = generate_pdf_from_json(str(json_filename))
+            logger.info(f"📄 Executive summary PDF generated: {pdf_path}")
+            print(f"   ✅ PDF generated: {pdf_path}")
+        except Exception as e:
+            logger.warning(f"Failed to generate PDF report: {e}")
+            print(f"   ⚠️  PDF generation failed: {e}")
         
         print()
         print("=" * 100)
