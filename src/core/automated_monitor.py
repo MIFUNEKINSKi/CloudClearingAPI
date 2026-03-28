@@ -455,7 +455,11 @@ class AutomatedMonitor:
                         logger.warning(f"   ⚠️ {region_name}: {description} unavailable, will try next fallback")
                         continue
                     else:
-                        logger.error(f"   ❌ {region_name}: All {len(date_attempts)} date range attempts failed!")
+                        logger.warning(f"   ⚠️ {region_name}: All {len(date_attempts)} optical date ranges failed — attempting SAR-only fallback")
+                        sar_only_result = self._attempt_sar_only_fallback(region_name, region_bbox)
+                        if sar_only_result is not None:
+                            return sar_only_result
+                        logger.error(f"   ❌ {region_name}: All {len(date_attempts)} date range attempts AND SAR fallback failed!")
                         return None
                 
                 # If we got here without error, we have good data!
@@ -521,8 +525,12 @@ class AutomatedMonitor:
                         logger.warning(f"   ⚠️ {region_name}: {description} unavailable, will try next fallback")
                         continue
                     else:
-                        # All dynamic attempts failed
-                        logger.error(f"   ❌ {region_name}: All {len(date_attempts)} date range attempts failed!")
+                        # All optical attempts failed — try SAR-only
+                        logger.warning(f"   ⚠️ {region_name}: All {len(date_attempts)} optical date ranges failed — attempting SAR-only fallback")
+                        sar_only_result = self._attempt_sar_only_fallback(region_name, region_bbox)
+                        if sar_only_result is not None:
+                            return sar_only_result
+                        logger.error(f"   ❌ {region_name}: All {len(date_attempts)} date range attempts AND SAR fallback failed!")
                         return None
                 else:
                     # Some other error, don't retry
@@ -531,6 +539,81 @@ class AutomatedMonitor:
         
         # If we got here, all attempts failed
         logger.error(f"❌ {region_name}: Failed to analyze after {len(date_attempts)} attempts. Last error: {last_error}")
+        return None
+
+    def _attempt_sar_only_fallback(self, region_name: str, region_bbox: Dict) -> Optional[Dict]:
+        """
+        When all optical (Sentinel-2) date ranges fail, attempt SAR-only
+        analysis using Sentinel-1 radar which penetrates cloud cover.
+
+        SAR data is available year-round regardless of weather, so this
+        should succeed even when optical is completely unavailable.
+
+        Returns a region_result dict compatible with the optical path,
+        or None if SAR also fails.
+        """
+        if not self.sar_detector:
+            logger.warning(f"   ⚠️ {region_name}: SAR detector not available, cannot fallback")
+            return None
+
+        logger.info(f"   🛰️ {region_name}: Attempting SAR-only analysis (Sentinel-1 radar)...")
+
+        # Try multiple date ranges for SAR too (though SAR is much more available)
+        from datetime import timedelta
+        now = datetime.now()
+        sar_attempts = [
+            (now - timedelta(days=14), now - timedelta(days=7), now),        # 1-2 weeks ago
+            (now - timedelta(days=28), now - timedelta(days=14), now),       # 2-4 weeks ago
+            (now - timedelta(days=60), now - timedelta(days=30), now),       # 1-2 months ago
+        ]
+
+        for period_a_start, period_a_end, period_b_end in sar_attempts:
+            try:
+                sar_result = self.sar_detector.detect_sar_changes(
+                    bbox=region_bbox,
+                    region_name=region_name,
+                    period_a_start=period_a_start.strftime('%Y-%m-%d'),
+                    period_a_end=period_a_end.strftime('%Y-%m-%d'),
+                    period_b_start=period_a_end.strftime('%Y-%m-%d'),
+                    period_b_end=period_b_end.strftime('%Y-%m-%d')
+                )
+
+                if sar_result and sar_result.success and sar_result.sar_change_pixels > 0:
+                    logger.info(f"   ✅ {region_name}: SAR-only fallback succeeded! "
+                               f"{sar_result.sar_change_pixels:,} radar changes detected")
+
+                    # Build a region_result that mimics optical output
+                    # Use SAR change pixels as the primary change count
+                    region_result = {
+                        'region_name': region_name,
+                        'bbox': region_bbox,
+                        'change_count': sar_result.sar_change_pixels,
+                        'total_area_m2': sar_result.sar_change_pixels * 100,  # ~100m² per pixel at 10m resolution
+                        'change_types': {
+                            'construction': sar_result.construction_pixels,
+                            'clearing': sar_result.clearing_pixels,
+                            'sar_total': sar_result.sar_change_pixels,
+                        },
+                        'week_a': period_a_start.strftime('%Y-%m-%d'),
+                        'week_b': period_b_end.strftime('%Y-%m-%d'),
+                        'analysis_timestamp': datetime.now().isoformat(),
+                        'satellite_images': {},  # No optical imagery available
+                        'saved_images': {},
+                        'date_range_used': f'SAR-only fallback ({period_a_start.strftime("%Y-%m-%d")} to {period_b_end.strftime("%Y-%m-%d")})',
+                        'sar_result': sar_result,
+                        'data_source': 'sar_only',  # Flag that this is SAR-only
+                    }
+                    return region_result
+
+                logger.info(f"   ⚠️ {region_name}: SAR attempt "
+                           f"{period_a_start.strftime('%Y-%m-%d')}-{period_b_end.strftime('%Y-%m-%d')} "
+                           f"returned no changes, trying next period")
+
+            except Exception as e:
+                logger.warning(f"   ⚠️ {region_name}: SAR attempt failed: {e}")
+                continue
+
+        logger.warning(f"   ❌ {region_name}: SAR-only fallback also failed after {len(sar_attempts)} attempts")
         return None
 
     async def _analyze_strategic_corridor(self, corridor, week_a: str, week_b: str) -> Optional[Dict[str, Any]]:
