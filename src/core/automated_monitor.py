@@ -45,6 +45,13 @@ try:
 except ImportError:
     NEWS_AVAILABLE = False
 
+# Import momentum analyzer for historical rate-of-change scoring
+try:
+    from .momentum_analyzer import MomentumAnalyzer
+    MOMENTUM_AVAILABLE = True
+except ImportError:
+    MOMENTUM_AVAILABLE = False
+
 # Try to import RegionManager with fallback
 try:
     from ..regions import RegionManager
@@ -124,6 +131,15 @@ class AutomatedMonitor:
                 logger.info("✅ News Catalyst + Scraper initialized")
             except Exception as e:
                 logger.warning(f"⚠️ News modules unavailable: {e}")
+
+        # Initialize momentum analyzer (historical rate-of-change)
+        self.momentum_analyzer = None
+        if MOMENTUM_AVAILABLE:
+            try:
+                self.momentum_analyzer = MomentumAnalyzer()
+                logger.info("✅ Momentum Analyzer initialized (historical acceleration scoring)")
+            except Exception as e:
+                logger.warning(f"⚠️ Momentum Analyzer unavailable: {e}")
 
         # Initialize financial metrics engine (v2.7 CCAPI-27.0: with budget config)
         self.financial_engine = None
@@ -406,9 +422,10 @@ class AutomatedMonitor:
         }
         
         # Define date ranges to try for this specific region (in order of preference)
-        # Dynamic fallback: progressively tries older weeks (up to 20 attempts)
+        # Reduced from 20 to 5 attempts since SAR fallback handles cloud-covered periods
+        # (Saves ~60s per region when optical is unavailable during rainy season)
         now = datetime.now()
-        max_attempts = 20
+        max_attempts = 5
         date_attempts = []
         
         for attempt_num in range(max_attempts):
@@ -1258,7 +1275,22 @@ class AutomatedMonitor:
                                 logger.warning(f"   ⚠️ RVI calculation failed for {region_name}: {e}")
                         # -------------------------------------------
                         
-                        signal.alarm(0)  # Cancel the timeout — scoring + financial + RVI complete
+                        # Calculate development momentum (historical acceleration)
+                        momentum_data = None
+                        if self.momentum_analyzer:
+                            try:
+                                momentum_data = self.momentum_analyzer.calculate_momentum(region_name)
+                                if momentum_data and momentum_data.get('trend') not in ('insufficient_data', 'new_region'):
+                                    # Apply momentum multiplier to the final score
+                                    momentum_mult = momentum_data['multiplier']
+                                    corrected_result.final_investment_score = min(100,
+                                        corrected_result.final_investment_score * momentum_mult)
+                                    logger.info(f"   📈 Momentum: {momentum_data['momentum_ratio']:.2f}x → "
+                                              f"{momentum_mult:.2f}x multiplier ({momentum_data['trend']})")
+                            except Exception as e:
+                                logger.warning(f"   ⚠️ Momentum analysis failed for {region_name}: {e}")
+
+                        signal.alarm(0)  # Cancel the timeout — scoring + financial + RVI + momentum complete
 
                         # Convert to format compatible with reporting system
                         dynamic_score = {
@@ -1312,6 +1344,17 @@ class AutomatedMonitor:
                                 'top_article_title': news_catalyst_result.top_article_title,
                                 'summary': news_catalyst_result.summary,
                             } if news_catalyst_result else None,
+                            # Development momentum (historical acceleration) (v2.11)
+                            'momentum': {
+                                'multiplier': momentum_data['multiplier'],
+                                'momentum_ratio': momentum_data['momentum_ratio'],
+                                'trend': momentum_data['trend'],
+                                'description': momentum_data['description'],
+                                'recent_velocity': momentum_data['recent_velocity'],
+                                'baseline_velocity': momentum_data['baseline_velocity'],
+                                'data_points_recent': momentum_data.get('data_points_recent', 0),
+                                'data_points_baseline': momentum_data.get('data_points_baseline', 0),
+                            } if momentum_data and momentum_data.get('trend') not in ('insufficient_data', 'new_region') else None,
                         }
                         
                         dynamic_scored_regions.append(dynamic_score)

@@ -1033,6 +1033,19 @@ class PDFReportGenerator:
                 if news_data.get('summary'):
                     score_components.append(f"News: {news_data['summary'][:100]}")
 
+            # Development momentum (historical acceleration)
+            momentum_data = investment_rec.get('momentum')
+            if momentum_data:
+                trend_emoji = {
+                    'surging': '🚀', 'accelerating': '📈', 'growing': '↗️',
+                    'steady': '➡️', 'slowing': '📉', 'stalling': '⬇️'
+                }.get(momentum_data['trend'], '📊')
+                score_components.append(
+                    f"Momentum: {momentum_data['multiplier']:.2f}x "
+                    f"({trend_emoji} {momentum_data['trend']} — "
+                    f"{momentum_data['momentum_ratio']:.1f}x recent vs baseline)"
+                )
+
             for component in score_components:
                 story.append(Paragraph(f"   • {component}", self.styles['Normal']))
 
@@ -1174,6 +1187,19 @@ class PDFReportGenerator:
                     f"✅ News catalyst: {news_data['articles_found']} articles analyzed "
                     f"(multiplier: {news_data['multiplier']:.2f}x)"
                 )
+
+            # Development momentum (historical acceleration)
+            momentum_data = investment_rec.get('momentum')
+            if momentum_data:
+                confidence_factors.append(
+                    f"✅ Historical momentum: {momentum_data['trend']} "
+                    f"({momentum_data['data_points_recent']}w recent / "
+                    f"{momentum_data['data_points_baseline']}w baseline)"
+                    if momentum_data.get('data_points_recent', 0) > 0
+                    else "⚠️ Historical momentum: Insufficient run history"
+                )
+            else:
+                confidence_factors.append("⚠️ Historical momentum: Not available")
 
             for conf_factor in confidence_factors:
                 story.append(Paragraph(f"   • {conf_factor}", self.styles['Normal']))
