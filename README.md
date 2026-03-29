@@ -1,330 +1,187 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.10 (SAR Radar Fusion + News Catalyst Integration)
-**Status:** ✅ Production Ready | Sentinel-1 SAR + Sentinel-2 Optical Fusion | News-Driven Catalyst Scoring
+**Version:** 2.11 (Scraper Integration + Price History + Auto-Email)
+**Status:** ✅ Production Ready | 29 Java Regions | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
 
-Investing in land development is challenging. Information is scattered, opportunities are hard to spot, and it's difficult to know if development activity translates into a profitable venture.
+CloudClearingAPI is an **automated land investment analyst for Indonesia**. It spots developing areas early — before the boom — by combining satellite imagery, live market prices, infrastructure data, and development news into a single investment score.
 
-CloudClearingAPI solves this by acting as an **automated investment analyst**. It scans regions across Indonesia, transforming satellite imagery and market data into clear, actionable investment intelligence.
+The core idea: satellite change detection (SAR radar + optical) identifies *where* construction and land clearing is happening. Market scrapers, infrastructure analysis, and news articles provide context on *whether that activity is a good investment*. Over time, historical comparisons reveal *which areas are accelerating*.
 
 **This system empowers you to:**
-* **📍 Pinpoint Development Hotspots:** Automatically detect where land is being cleared and construction is happening *right now*.
-* **💰 Evaluate Financial Viability:** Go beyond just activity to see **projected ROI**, **estimated land values**, and **development costs** based on live market data.
-* **🏗️ Assess Real-World Viability:** Understand if a region has the roads, ports, and other critical infrastructure needed to support growth.
-* **📊 Make Data-Driven Decisions:** Receive a single, comprehensive investment score (0-100) and a detailed PDF report that summarizes everything you need to know.
+* **Spot Development Early:** Detect land clearing and construction via dual-sensor satellite analysis (optical + cloud-penetrating SAR radar)
+* **Evaluate Financial Viability:** Live market prices from Lamudi.co.id feed RVI (Relative Value Index) calculations and price trend analysis
+* **Assess Infrastructure:** Real-time OpenStreetMap queries score roads, airports, railways, and construction projects
+* **Track Momentum:** Historical score comparisons and price archives reveal accelerating regions
+* **Receive Automated Reports:** Weekly PDF executive summary with BUY/WATCH/PASS ratings, emailed automatically after each run
 
 ---
 
-## 🆕 What's New in v2.6-beta (RVI Integration Complete)
+## Changelog
 
-**Phase 2B: RVI Integration into Market Multiplier ✅ COMPLETE (6/6 phases - 100%)**
+### v2.11 (March 2026) — SAR Fusion + News Catalyst + Price Momentum
 
-CloudClearingAPI v2.6-beta integrates Relative Value Index (RVI) into the core scoring algorithm, replacing trend-based market multipliers with **valuation-aware** intelligence:
+- **Sentinel-1 SAR radar fusion** — cloud-penetrating radar complements optical imagery; 60/40 weighted fusion with +10% confidence boost
+- **News catalyst scoring** — scrapes Jakarta Post, Kompas, Antara News; word-boundary matching to 29 regions; clickable article links in PDF
+- **Live market scrapers repaired** — Lamudi returns 20+ real listings/region; 99.co rewritten for `__NEXT_DATA__` JSON parsing
+- **JSONL price history archive** — each scrape appends timestamped snapshot; enables 14-60 day price trend calculation
+- **Momentum analyzer** — compares 4-week recent velocity vs 8-16 week baseline from historical monitoring JSONs
+- **Auto-email after every run** — Gmail SMTP with PDF attachment, not just cron-triggered
+- **RVI fix** — `calculate_relative_value_index` now correctly calls `FinancialMetricsEngine`
+- **OSM parallelized** — roads, airports, railways queried concurrently with 30s hard timeout
 
-### ✅ Phase 2B Completed Features (October 26, 2025)
+<details>
+<summary>Previous releases (v2.0–v2.6)</summary>
 
-#### 🎯 **RVI-Aware Market Multiplier** (Phase 2B.1)
-- **Replaces trend-based multipliers** with RVI thresholds
-- **Multiplier logic**:
-  - RVI < 0.7: **1.40x** (significantly undervalued - strong buy)
-  - RVI 0.7-0.9: **1.25x** (undervalued - buy opportunity)
-  - RVI 0.9-1.1: **1.0x** (fair value - neutral)
-  - RVI 1.1-1.3: **0.90x** (overvalued - caution)
-  - RVI ≥ 1.3: **0.85x** (significantly overvalued - speculation risk)
-- **Momentum adjustment**: ±10% based on price trends (not primary driver)
-- **Fallback**: Uses trend-based multiplier if RVI unavailable (backward compatible)
-- **Impact**: Market multiplier now responds to actual valuation signals, not just momentum
-- **Tests**: 11/11 passing ✅
+**v2.6-beta** — RVI-aware market multiplier, airport premium override (+25% for YIA/BWX/KJT), Tier 1+ ultra-premium sub-classification, tier-specific infrastructure tolerances. 35/35 tests, 39 production regions validated.
 
-#### ✈️ **Airport Premium Override** (Phase 2B.2)
-- **+25% benchmark premium** for regions with airports opened within 5 years
-- **RECENT_AIRPORTS database**:
-  1. **Yogyakarta International Airport (YIA)** - Opened Aug 2020, 30km radius
-  2. **Banyuwangi Airport (BWX)** - Expansion Jun 2021, 25km radius
-  3. **Kertajati International Airport (KJT)** - Opened May 2018, 35km radius
-- **Expected Price adjustment**: `Peer Avg × Infrastructure × Momentum × Airport Premium (1.25)`
-- **Impact**: Yogyakarta Sleman RVI corrects from 0.76 (undervalued artifact) to 0.95-1.0 (fair value)
-- **Tests**: 8/8 passing ✅
+**v2.6-alpha** — Regional tier classification (4 tiers, 29 regions), Relative Value Index (RVI), multi-source scraping fallback (Lamudi → 99.co → cache → benchmarks), request hardening with exponential backoff, comprehensive documentation suite.
 
-#### 🏆 **Tier 1+ Ultra-Premium Sub-Classification** (Phase 2B.3)
-- **9.5M IDR/m² benchmark** for ultra-premium Tier 1 regions (+18.75% vs standard 8M)
-- **TIER_1_PLUS_REGIONS** (8 zones):
-  - Tangerang BSD Corridor (master-planned city)
-  - Jakarta South Suburbs (Senopati, Cipete lifestyle corridor)
-  - Jakarta Central SCBD (international business district)
-  - Jakarta South Pondok Indah (established luxury)
-  - Jakarta South Kemang (expat/lifestyle district)
-  - Bekasi Summarecon (premium zone)
-  - Cikarang Delta Silicon (industrial park)
-- **Impact**: BSD Corridor RVI corrects from 0.91 (overvalued) to 1.05-1.15 (fair value)
-- **Tests**: 7/7 passing ✅
+**v2.5** — Google Earth Engine satellite change detection, OSM infrastructure scoring, PDF executive summary reports, weekly automated monitoring for 29 Java regions.
 
-#### 📊 **Tier-Specific Infrastructure Ranges** (Phase 2B.4)
-- **TIER_INFRA_TOLERANCE** reflects infrastructure variability by development stage:
-  - **Tier 1 (±15%)**: Predictable metro infrastructure (narrow tolerance)
-  - **Tier 2 (±20%)**: Moderate secondary city variability (standard tolerance)
-  - **Tier 3 (±25%)**: Higher emerging zone variability (wider tolerance)
-  - **Tier 4 (±30%)**: Highest frontier uncertainty (widest tolerance)
-- **Impact**: Pacitan (Tier 4) RVI corrects from 0.93 (overvalued artifact) to 0.85-0.90 (fair value for frontier with decent infrastructure)
-- **Rationale**: Frontier regions with good infrastructure deserve premium, not penalty
-- **Tests**: 9/9 passing ✅
+**v2.0** — Initial release with Sentinel-2 optical analysis and basic scoring.
 
-#### 🧪 **Integration Testing & Validation** (Phase 2B.5)
-- **12 regions tested** across all 4 tiers with v2.5 vs v2.6-beta comparison
-- **Results**:
-  - **Average improvement**: 88.8/100 (1.2 points below ≥90 target, acceptable)
-  - **RVI sensibility**: **75.0% (9/12)** ✅ **GATE PASSED** (≥75% required)
-  - **Tier 2 perfect score**: 100/100, 100% sensibility (no regressions)
-  - **Tier 4 perfect sensibility**: 100% (Phase 2B.4 success)
-- **Unit tests**: **35/35 passing (100%)** ✅
-- **Gap analysis**: 1.2-point gap due to simplified test not calling real `CorrectedInvestmentScorer`, but unit tests confirm production code works correctly
-- **Documentation**: `VALIDATION_REPORT_V26_BETA.md` created
-
-#### 📚 **Documentation & Production Validation** (Phase 2B.6) ✅ **COMPLETE**
-- **TECHNICAL_SCORING_DOCUMENTATION.md**: Updated to v2.6-beta with Phase 2B.5-2B.6 sections + v2.7 roadmap
-- **README.md**: Updated to v2.6-beta with production validation status
-- **CHANGELOG.md**: Comprehensive changelog created (v2.6-beta through v2.0)
-- **Production validation**: ✅ **COMPLETE** 
-  - **39 regions analyzed** (29 planned + 10 Yogyakarta sub-regions)
-  - **Runtime**: 72 minutes (09:42-10:54 AM, October 26, 2025)
-  - **Status**: ✅ Completed successfully (Exit Code 0)
-  - **Changes detected**: 830,004 satellite changes across 126,833.65 hectares
-  - **RVI-aware multiplier**: ✅ Confirmed active in production logs
-  - **Alerts**: 68 critical alerts generated
-  - **Output**: PDF report (1.5 MB) + JSON data (975,748 lines) + 195 satellite images saved
-  - **Key regions validated**: BSD Corridor (Tier 1+), Yogyakarta Airport (premium), all tiers operational
-  - **Errors**: 0 runtime errors or exceptions
-- **Version strings**: Deferred to v2.7 (not critical for deployment)
-
-### 🎯 Phase 2B Achievement Summary
-
-**Phase 2B Complete: 6/6 phases (100%)**
-- ✅ Phase 2B.1: RVI-Aware Market Multiplier (11 tests)
-- ✅ Phase 2B.2: Airport Premium Override (8 tests)
-- ✅ Phase 2B.3: Tier 1+ Sub-Classification (7 tests)
-- ✅ Phase 2B.4: Tier-Specific Infrastructure Ranges (9 tests)
-- ✅ Phase 2B.5: Integration Testing & Validation (88.8/100, 75.0% sensibility)
-- ✅ Phase 2B.6: Documentation & Production Validation (39 regions, 0 errors)
-
-**Total Phase 2B Validation**: 35 unit tests + 1 integration test + 39 production regions = **75 validation points**
-
-**Key Deliverables**:
-- RVI-aware market multiplier replaces trend-based system (validated in production)
-- Airport premium correctly values connectivity catalysts
-- Tier 1+ ultra-premium classification prevents BSD/SCBD false "overvalued" flags
-- Tier-specific infrastructure tolerances prevent frontier region penalties
-- Integration validation: 88.8/100 improvement, 75.0% RVI sensibility ✅
-- Production validation: 39 regions, 830K changes, 0 errors ✅
-- All unit tests passing (35/35 = 100%)
-
-**Version**: v2.6-beta  
-**Release Status**: ✅ **Production Validated - Ready for Deployment**  
-**Production Evidence**: `output/reports/executive_summary_20251026_105438.pdf` | `output/monitoring/weekly_monitoring_20251026_105437.json`
+</details>
 
 ---
 
-## 🏗️ Phase 2A Completed Features (Foundation)
-
-**Phase 2A: Context-Aware Market Intelligence ✅ COMPLETE (11/11 phases - 100%)**
-
-CloudClearingAPI v2.6-alpha introduced sophisticated market intelligence capabilities that distinguish between **cheap** and **undervalued** regions:
-
-### ✅ Completed Features
-
-#### 🎯 **Regional Tier Classification** (Phase 2A.1)
-- **4-tier hierarchy** across 29 Java regions:
-  - **Tier 1 (Metros)**: 9 regions - Jakarta, Surabaya, Bandung metros
-  - **Tier 2 (Secondary)**: 7 regions - Semarang, Yogyakarta, Malang clusters
-  - **Tier 3 (Emerging)**: 10 regions - Infrastructure corridors, growth zones
-  - **Tier 4 (Frontier)**: 3 regions - Coastal development frontiers
-- **Context-aware benchmarks**: Each tier has appropriate price expectations
-  - Tier 1: Rp 8M/m² | Tier 2: Rp 5M/m² | Tier 3: Rp 3M/m² | Tier 4: Rp 1.5M/m²
-
-#### 📊 **Relative Value Index (RVI)** (Phase 2A.3-2A.4)
-- **Valuation intelligence** that accounts for regional context
-- **RVI Formula**: `Actual Price / Expected Price`
-  - Expected Price = Tier Benchmark × Infrastructure Premium × Momentum Premium
-- **Key Insight**: A Tier 3 region at Rp 2.5M/m² (RVI 0.83) may be undervalued, while a Tier 4 at same price (RVI 1.67) may be overvalued
-- **Output**: RVI displayed in PDF reports and JSON data
-
-#### 🔄 **Multi-Source Scraping Fallback** (Phase 2A.5)
-- **3-tier cascading data system** for maximum reliability:
-  1. **Live scraping** (Lamudi, Rumah.com, 99.co) → 85% confidence
-  2. **Cached data** (<24h old) → 75-85% confidence  
-  3. **Static benchmarks** → 50% confidence
-- **Never fails**: Always provides price data, even if all sources timeout
-- **Cache-first strategy**: Reduces API load by checking cache before scraping
-
-#### 🛡️ **Request Hardening** (Phase 2A.6)
-- **Exponential backoff retry logic**: 3 retries with 2s, 4s, 8s delays
-- **Configurable timeouts**: Per-source timeout settings in `config.yaml`
-- **Graceful degradation**: Partial data better than complete failure
-- **Error handling**: Comprehensive logging for debugging scraping issues
-
-#### 📋 **Benchmark Update Procedure** (Phase 2A.7)
-- **Quarterly maintenance process** documented (Jan, Apr, Jul, Oct deadlines)
-- **Data source weighting**: 60% official (BPS/BI), 25% web scraping, 15% commercial
-- **Confidence scoring**: Accounts for data freshness and source quality
-- **Emergency protocols**: Handle infrastructure events, economic shocks
-
-#### 🔍 **Official Data Sources Research** (Phase 2A.8)
-- **BPS API discovered**: Province-level property indices available via REST API
-- **Decision**: Keep manual quarterly process (province data too coarse for 29 city regions)
-- **Future Phase 3**: BPS API as validation layer (detect anomalies)
-- **Automation roadmap**: Documented path to semi-automated updates
-
-#### � **Documentation Updates** (Phase 2A.9)
-- **DOCUMENTATION_INDEX.md** created (2000+ lines): Central navigation hub for all docs
-- **README.md updated**: v2.6-alpha features section, documentation hierarchy
-- **Cross-references verified**: All file paths and version numbers consistent
-
-#### 🧪 **Comprehensive Test Suite** (Phase 2A.10)
-- **test_market_intelligence_v26.py** created (400+ lines, 31 tests)
-- **17 passing tests** validating core Phase 2A features (75% coverage)
-- **Test coverage**: Tier classification, RVI calculation, benchmark updates, BPS API patterns, integration workflows
-
-#### ✅ **v2.5 vs v2.6-alpha Validation** (Phase 2A.11) ⚠️ **CRITICAL DECISION GATE**
-- **12 regions tested** across all 4 tiers with both systems
-- **Average improvement score: 86.7/100** ✅ **GATE PASSED** (≥80% required)
-- **Tier 2 perfect performance (100/100)**: Validates core tier approach
-- **Tier 4 critical correction (-53% benchmark)**: Prevents overinvestment in frontier regions
-- **RVI sensibility: 66.7%** (8/12 regions economically sensible)
-- **Recommendation changes: 25%** (3/12 regions - meaningful differentiation)
-- **Decision**: ✅ **PROCEED TO PHASE 2B** - RVI integration into market multiplier approved
-
-### �📁 New Documentation Files
-
-- **`BENCHMARK_UPDATE_PROCEDURE.md`** (950+ lines): Complete quarterly update guide
-- **`OFFICIAL_DATA_SOURCES_RESEARCH.md`** (8500+ lines): BPS/BI API research and integration approach
-- **`WEB_SCRAPING_DOCUMENTATION.md`**: Multi-source scraping system technical reference
-- **`TECHNICAL_SCORING_DOCUMENTATION.md`**: Single source of truth for all technical details (3200+ lines)
-- **`DOCUMENTATION_INDEX.md`** (2000+ lines): Central navigation guide for all 8 documentation files
-- **`VALIDATION_REPORT_V26_ALPHA.md`**: Comprehensive v2.5 vs v2.6-alpha validation report
-
-### 🎯 Phase 2A Achievement Summary
-
-**Phase 2A Complete: 11/11 phases (100%)**
-
-✅ Tier-based market intelligence foundation established  
-✅ RVI (Relative Value Index) providing economic valuation context  
-✅ Multi-source scraping resilience (3-tier fallback)  
-✅ Request hardening (exponential backoff, retry logic)  
-✅ Comprehensive documentation (8 files, 15,000+ lines)  
-✅ Full test coverage (31 tests, 17 passing - 75%)  
-✅ **Validation confirmation: 86.7/100 improvement vs v2.5**
-
-**Major Improvements Validated:**
-- Tier 2 (Provincial Capitals): **Perfect 100/100 score** - all benchmarks accurate
-- Tier 4 (Frontier): **-53% benchmark correction** - prevents false BUY recommendations
-- RVI provides meaningful differentiation: 1 STRONG BUY upgrade, 2 WATCH downgrades
-
-**Next Phase**: Phase 2B - Integrate RVI into market multiplier calculation
-
-**See [VALIDATION_REPORT_V26_ALPHA.md](VALIDATION_REPORT_V26_ALPHA.md) for complete validation details.**
-
----
 
 ## ✨ The Scoring Philosophy: From Activity to Opportunity
 
-Our scoring system is designed to answer two fundamental questions every investor asks:
+The system answers three questions every investor asks:
 
-1.  **Where is the activity?** (The Activity Score)
-2.  **Is this activity a profitable opportunity?** (The Financial & Contextual Multipliers)
+1.  **Where is new activity?** (Satellite change detection — the primary signal)
+2.  **Is this activity a good investment?** (Market, infrastructure, and news multipliers)
+3.  **Is it accelerating?** (Momentum from historical comparisons)
 
-The final score is a blend of these elements, ensuring that we recommend not just *busy* areas, but *valuable* ones.
+**Final Score** = Activity × Infrastructure × Market × News × Confidence × Momentum
 
-**Final Score** = (Activity Score) × (Infrastructure Multiplier) × (Market Multiplier) × (News Catalyst) × (Confidence Score)
+```
+Activity Score (0-40)              ← Satellite changes detected (SAR + optical fusion)
+  × Infrastructure (0.8x-1.3x)    ← OSM roads, airports, railways (7-day cache)
+  × Market (0.85x-1.40x)          ← RVI from live Lamudi prices, or price trend from history
+  × News (0.95x-1.20x)            ← Jakarta Post, Kompas, Antara article sentiment
+  × Confidence (0.70-1.00)        ← Data completeness + dual-sensor boost
+  × Momentum (0.85x-1.30x)        ← 4-week recent vs 8-16 week baseline acceleration
+= Final Investment Score (0-100)   → BUY (≥40) / WATCH (25-39) / PASS (<25)
+```
 
-Where:
-- **Activity Score (0-40)**: Fused Sentinel-2 optical + Sentinel-1 SAR radar change detection
-- **Infrastructure Multiplier (0.8x-1.3x)**: OSM-based infrastructure quality
-- **Market Multiplier (0.85x-1.40x)**: RVI-aware land valuation from live scrapers
-- **News Catalyst (0.95x-1.20x)**: Indonesian infrastructure news sentiment (Jakarta Post, Kompas, Antara)
-- **Confidence Score (0.70-1.00)**: Data completeness + SAR dual-sensor boost (+10%)
+### What each component tracks over time
+
+| Component | Data Source | Cached? | Compares Historically? |
+|-----------|-----------|---------|----------------------|
+| **Satellite Activity** | GEE Sentinel-1 SAR + Sentinel-2 | 14-day GEE cache | Not directly — momentum analyzer compares weekly scores |
+| **Infrastructure** | OpenStreetMap Overpass API | 7-day file cache | Snapshot only (OSM tracks current state) |
+| **Market Prices** | Lamudi live scraping (20+ listings/region) | 24h cache + JSONL price archive | ✅ Yes — price trend calculated from 14-60 day history |
+| **News Catalyst** | Jakarta Post, Kompas, Antara | Per-run in-memory cache | Not yet (current articles only) |
+| **Momentum** | Historical `weekly_monitoring_*.json` files | File system | ✅ Yes — compares 4-week recent velocity vs 8-16 week baseline |
+| **RVI (Relative Value Index)** | Scraped prices vs tier benchmarks | Via financial engine | Indirectly (benchmarks are static, scraped prices change) |
 
 ---
 
 ## ⚙️ How the Scoring Works
 
-### Part 1: The Activity Score (0-40 Points) - *Finding the Action*
+### Part 1: Activity Score (0-40 Points) — Satellite Change Detection
 
-This is the foundation of our analysis, derived from **dual-sensor satellite fusion**:
+The foundation of the score. Detects *where* development is happening via dual-sensor satellite analysis:
 
-* **Sentinel-2 Optical** (primary): High-resolution 10m imagery detecting vegetation loss, construction, and land clearing
-* **Sentinel-1 SAR Radar** (complement): Cloud-penetrating radar detecting surface roughness changes, construction activity, and land clearing even through Indonesia's frequent cloud cover
+* **Sentinel-2 Optical** (primary): 10m resolution imagery detecting vegetation loss, construction, and land clearing
+* **Sentinel-1 SAR Radar** (complement): Cloud-penetrating radar that works through Indonesia's frequent cloud cover
 
-**Sensor Fusion Strategy:**
-* Both sensors available: 60% optical + 40% SAR weighted combination (+10% confidence boost)
-* Optical only: Standard analysis (traditional behavior)
-* SAR only: Radar fallback when clouds block optical (key benefit for tropical regions)
+**Sensor Fusion:** Both available → 60% optical + 40% SAR (+10% confidence boost). Optical only → standard. SAR only → radar fallback (critical during Java rainy season).
 
-* **What We Detect:**
-    * **Vegetation Loss (High Weight):** VH backscatter decrease (SAR) + NDVI change (optical)
-    * **New Construction (Highest Weight):** VV increase + VH decrease pattern (SAR) + spectral change (optical)
-    * **Land Preparation (Medium Weight):** Surface roughness changes (SAR) + bare soil index (optical)
+**What gets detected:** Vegetation loss (VH backscatter decrease + NDVI change), new construction (VV increase + VH decrease pattern), land preparation (surface roughness + bare soil index).
 
-### Part 2: Financial & Contextual Multipliers - *Is It a Good Deal?*
+**Caching:** GEE image results cached 14 days. Optical attempts limited to 5 date windows to avoid timeouts.
 
-High activity is meaningless if the investment doesn't make financial sense. These multipliers adjust the Activity Score based on real-world financial and logistical factors.
+### Part 2: Infrastructure Multiplier (0.8x - 1.3x) — OSM Analysis
 
-#### 🏗️ **The Infrastructure Multiplier (0.8x - 1.3x)**
-This multiplier answers: "Can this area support new development?" It assesses the quality of surrounding infrastructure from OpenStreetMap.
+Assesses surrounding infrastructure quality via OpenStreetMap Overpass API. Three parallel queries: roads (motorway/trunk/primary density), airports (within 100km, distance-decay weighted), railways (rail/light_rail/subway).
 
-* **Note on Accuracy:** This component was recently overhauled to provide a more realistic analysis. It now correctly models the concept of **diminishing returns**—the first highway provides immense value, while the tenth adds much less.
+| Infrastructure Score | Multiplier | Interpretation |
+| :--- | :--- | :--- |
+| **90-100** | **1.30x** | Major hub, excellent connectivity |
+| **75-89** | **1.15x** | Strong transport links |
+| **60-74** | **1.00x** | Adequate for development |
+| **40-59** | **0.90x** | Basic, potential limitations |
+| **< 40** | **0.80x** | Weak or missing infrastructure |
 
-| Infrastructure Score | Tier | Multiplier | Interpretation |
-| :--- | :--- | :--- | :--- |
-| **90-100** | Excellent | **1.30x** | World-class infrastructure, major hub. |
-| **75-89** | Very Good | **1.15x** | Strong logistical and transport links. |
-| **60-74** | Good | **1.00x** | Adequate for standard development. |
-| **40-59** | Fair | **0.90x** | Basic infrastructure, potential limitations. |
-| **< 40** | Poor | **0.80x** | Weak or missing infrastructure. |
+**Caching:** OSM results cached 7 days per region. Queries run in parallel with 30s hard timeout.
 
-#### 💰 **The Market Multiplier (0.85x - 1.40x)**
-This is our most powerful feature. To determine the market context, we use a **cascading data system**:
-1.  **Live Web Scraping:** First, we attempt to scrape live land prices from top Indonesian real estate portals like `Lamudi.co.id` and `Rumah.com`.
-2.  **Cached Data:** If a live scrape isn't possible, we use data cached within the last 24-48 hours.
-3.  **Regional Benchmarks:** As a final fallback, we use our internal database of historical price trends.
+### Part 3: Market Multiplier (0.85x - 1.40x) — Live Price Data
 
-This live data feeds our **Market Multiplier**, which rewards regions with strong economic fundamentals.
+Two modes, depending on data availability:
 
-| Annual Price Trend | Tier | Multiplier | Interpretation |
-| :--- | :--- | :--- | :--- |
-| **> 15%** | Booming | **1.40x** | Exceptional, high-growth market. |
-| **8-15%** | Strong | **1.20x** | Very healthy market with strong demand. |
-| **2-8%** | Stable | **1.00x** | Steady, sustainable growth. |
-| **0-2%** | Stagnant | **0.95x** | Slow growth, limited momentum. |
-| **< 0%** | Declining | **0.85x** | Market is contracting. |
+**Mode A: RVI-Aware (when FinancialMetricsEngine available)**
+Compares live scraped prices against tier-appropriate expected prices:
 
-#### 📰 **The News Catalyst Multiplier (0.95x - 1.20x)**
-This multiplier captures real-world development momentum from Indonesian media coverage. We scrape infrastructure news from three sources:
+| RVI Value | Multiplier | Interpretation |
+| :--- | :--- | :--- |
+| **< 0.7** | **1.40x** | Significantly undervalued |
+| **0.7-0.9** | **1.25x** | Undervalued — buy opportunity |
+| **0.9-1.1** | **1.00x** | Fair value |
+| **1.1-1.3** | **0.90x** | Overvalued — caution |
+| **≥ 1.3** | **0.85x** | Significantly overvalued |
 
-1. **Jakarta Post** (English) - Business and infrastructure articles
-2. **Kompas** (Indonesian) - Property and economy sections
-3. **Antara News** (English) - Official wire service, economy/business
+**Mode B: Trend-Based (fallback)**
+Uses price change over time from JSONL price history archive:
 
-Articles are matched to regions by city name, then scored by keyword relevance (toll roads, SEZs, airports, etc.) and sentiment (positive/negative). The 7-day cached results produce a multiplier:
+| Price Trend (annualized) | Multiplier | Market Heat |
+| :--- | :--- | :--- |
+| **> 15%** | **1.40x** | Booming |
+| **8-15%** | **1.20x** | Strong |
+| **2-8%** | **1.00x** | Stable |
+| **0-2%** | **0.95x** | Stagnant |
+| **< 0%** | **0.85x** | Declining |
 
-| News Signal | Articles | Multiplier | Interpretation |
-| :--- | :--- | :--- | :--- |
-| **Major Hub** | 6+ positive | **1.15x-1.20x** | Active development zone with strong media coverage |
-| **Active Zone** | 3-5 positive | **1.10x** | Multiple development projects announced |
-| **Early Signals** | 1-2 positive | **1.05x** | Some development news detected |
-| **Neutral** | 0 articles | **1.00x** | No significant development news |
-| **Cautionary** | Negative dominant | **0.95x** | Cancellations, disputes, or delays reported |
+**Data cascade:** Live Lamudi scraping (20+ listings/region, verified Rp 4-24M/m² range) → Rumah.com → 99.co → 24h cache → static benchmarks (last resort, 50% confidence).
 
-### Part 3: The Reality Check (Confidence Score)
+**Price history:** Each scrape appends a timestamped snapshot to JSONL files (`output/scraper_cache/price_history/`). Trend calculator reads the record closest to 30 days ago (accepts 14-60 day window). Over successive weekly runs, this builds a reliable price trend for each region.
 
-This score ensures our system is honest about the quality of its own data. A low confidence score will reduce the final investment score, preventing us from making a strong recommendation based on incomplete information.
+### Part 4: News Catalyst (0.95x - 1.20x) — Development News
 
-* **How it's calculated:** It's a weighted average of our confidence in each data source:
-    * **Satellite Data (50% weight):** Higher confidence with recent, cloud-free images. **+10% boost when SAR dual-sensor fusion is active.**
-    * **Infrastructure Data (30% weight):** Highest with live OSM data, lower with regional fallbacks.
-    * **Market Data (20% weight):** Highest with live-scraped prices, lowest with static benchmarks.
+Scrapes Indonesian infrastructure news from three sources:
 
-For a complete breakdown of the formulas and data sources, see our full [Technical Scoring Documentation](TECHNICAL_SCORING_DOCUMENTATION.md).
+1. **Jakarta Post** — English business/infrastructure articles
+2. **Kompas** — Indonesian property/economy sections
+3. **Antara News** — Indonesian wire service economy section
+
+Articles are matched to regions by city name (word-boundary matching to avoid false positives), then scored by keyword relevance (toll roads, SEZs, airports, railway, industrial parks, etc.) and sentiment. Clickable article links appear in the PDF report.
+
+| News Signal | Multiplier |
+| :--- | :--- |
+| **6+ positive articles** | **1.15x-1.20x** |
+| **3-5 positive** | **1.10x** |
+| **1-2 positive** | **1.05x** |
+| **No articles** | **1.00x** |
+| **Negative dominant** | **0.95x** |
+
+### Part 5: Confidence Score (0.70 - 1.00) — Data Quality Check
+
+Ensures the system is honest about data quality. Low confidence reduces the score, preventing strong recommendations from incomplete data.
+
+* **Satellite Data (50% weight):** Higher with recent, cloud-free images. +10% boost with SAR dual-sensor fusion.
+* **Infrastructure Data (30% weight):** Highest with live OSM data, lower with regional fallbacks.
+* **Market Data (20% weight):** 85% confidence for live scraped prices, 50% for static benchmarks.
+
+### Part 6: Momentum (0.85x - 1.30x) — Historical Acceleration
+
+Compares recent satellite activity against historical baseline to detect regions that are accelerating:
+
+* **Recent window:** Average change_count over last 4 weekly monitoring runs
+* **Baseline window:** Average change_count from 8-16 weeks ago
+* **Momentum ratio:** recent_velocity / baseline_velocity
+
+| Momentum Ratio | Multiplier | Trend |
+| :--- | :--- | :--- |
+| **≥ 5.0** | **1.30x** | Surging — dramatic acceleration |
+| **2.0-5.0** | **1.15x-1.30x** | Accelerating — strong growth |
+| **1.0-2.0** | **1.00x-1.15x** | Steady to growing |
+| **0.5-1.0** | **0.85x-1.00x** | Decelerating — activity slowing |
+| **< 0.5** | **0.85x** | Stalling — significant slowdown |
+
+**Data source:** Reads all `output/monitoring/weekly_monitoring_*.json` files to build historical velocity per region. Requires at least 2 data points in each window to activate.
 
 ---
 
@@ -345,36 +202,29 @@ The primary output is a multi-page PDF report that provides a comprehensive over
 
 ## 🏗️ System Architecture Overview
 
-The system works as a data processing pipeline, taking raw data sources and refining them into a final, actionable report.
-
 ```
-Data Inputs
-├── Sentinel-2 Optical Imagery (Google Earth Engine)
-├── Sentinel-1 SAR Radar (Google Earth Engine) ← NEW v2.10
-├── OpenStreetMap Infrastructure Data
-├── Indonesian Real Estate Websites (Lamudi, Rumah.com, 99.co)
-└── Indonesian News Media (Jakarta Post, Kompas, Antara) ← NEW v2.10
+DATA INPUTS                           CACHING LAYER
+├── Sentinel-2 Optical (GEE)    ──→   GEE cache (14-day TTL)
+├── Sentinel-1 SAR Radar (GEE)  ──→   GEE cache (14-day TTL)
+├── OpenStreetMap Overpass API   ──→   OSM cache (7-day TTL)
+├── Lamudi.co.id (live scrape)  ──→   Scraper cache (24h) + JSONL price history
+├── 99.co (live scrape)         ──→   Scraper cache (24h) + JSONL price history
+└── News (JP, Kompas, Antara)   ──→   In-memory per-run cache
      ↓
-Core Analysis Engines
-├── SAR Change Detector (sar_change_detector.py) ← NEW v2.10
-│   └── Sentinel-1 VV/VH backscatter analysis + cloud-penetrating fallback
-├── Optical-SAR Fusion (60/40 weighted combination)
-│   └── Fused satellite changes → Base Score (0-40)
-├── News Catalyst Engine (news_catalyst.py) ← NEW v2.10
-│   └── Development news → Multiplier (0.95x-1.20x)
-├── Activity Scoring Engine (corrected_scoring.py)
-│   └── Fused changes × Infrastructure × Market × News × Confidence
-└── Financial Projection Engine (financial_metrics.py)
-    └── Estimates ROI, land values, development costs
+SCORING PIPELINE (per region, ~45s each)
+├── Optical + SAR Change Detection → satellite_changes (fused)
+├── OSM Infrastructure Query (parallel: roads, airports, railways)
+├── Live Market Price Scraping → RVI or price trend multiplier
+├── News Article Matching → sentiment-based multiplier
+├── Momentum Analysis → compare 4wk recent vs 8-16wk baseline
+└── CorrectedInvestmentScorer combines all → Final Score (0-100)
      ↓
-Aggregated Intelligence
-├── Final Investment Score (0-100)
-├── Financial Projections (ROI, land values)
-├── Confidence Rating (40-95%) + SAR dual-sensor boost
-└── BUY/WATCH/PASS Recommendation
-     ↓
-Final Output
-└── Automated PDF Report (Executive Summary + Region Details)
+OUTPUT
+├── JSON Data: output/monitoring/weekly_monitoring_[timestamp].json
+├── PDF Report: output/reports/executive_summary_[timestamp].pdf
+│   └── Clickable news article links, score breakdown, satellite imagery
+├── Email: Auto-sent to configured recipient with PDF attached
+└── Price Archive: output/scraper_cache/price_history/ (JSONL, accumulates)
 ```
 
 ---
@@ -426,31 +276,39 @@ After running the analysis, you'll find:
 CloudClearingAPI/
 ├── src/
 │   ├── core/
-│   │   ├── corrected_scoring.py       # Investment scoring engine
-│   │   ├── sar_change_detector.py     # Sentinel-1 SAR radar detection (NEW v2.10)
-│   │   ├── news_catalyst.py           # News-based catalyst scoring (NEW v2.10)
-│   │   ├── financial_metrics.py       # ROI & land value projections
+│   │   ├── corrected_scoring.py       # Main scoring engine (Activity × Infra × Market × News × Confidence)
+│   │   ├── automated_monitor.py       # Orchestrates full 29-region pipeline
+│   │   ├── sar_change_detector.py     # Sentinel-1 SAR radar change detection
 │   │   ├── change_detector.py         # Sentinel-2 optical change detection
-│   │   ├── infrastructure_analyzer.py # Infrastructure analysis
-│   │   └── pdf_report_generator.py    # Report generation
+│   │   ├── infrastructure_analyzer.py # OSM Overpass API infrastructure scoring
+│   │   ├── news_catalyst.py           # News sentiment → multiplier (0.95-1.20x)
+│   │   ├── momentum_analyzer.py       # Historical acceleration (4wk vs 8-16wk baseline)
+│   │   ├── financial_metrics.py       # ROI projections, RVI calculation, land value estimates
+│   │   ├── pdf_report_generator.py    # Executive summary PDF with linked news articles
+│   │   └── gee_cache.py              # GEE image cache (14-day TTL)
 │   ├── scrapers/
-│   │   ├── news_scraper.py            # Indonesian news scraper (NEW v2.10)
-│   │   ├── lamudi_scraper.py          # Lamudi.co.id scraper
-│   │   ├── rumah_scraper.py           # Rumah.com scraper
-│   │   └── scraper_orchestrator.py    # Scraping coordination
-│   └── indonesia_expansion_regions.py # 29 monitored regions
+│   │   ├── lamudi_scraper.py          # Lamudi.co.id HTML+JSON-LD parser (primary source)
+│   │   ├── ninety_nine_scraper.py     # 99.co __NEXT_DATA__ JSON parser
+│   │   ├── rumah_scraper.py           # Rumah.com (JS-rendered, needs headless browser)
+│   │   ├── news_scraper.py            # Jakarta Post, Kompas, Antara News scraper
+│   │   ├── scraper_orchestrator.py    # Cascading fallback: Lamudi → 99.co → cache → benchmarks
+│   │   └── base_scraper.py           # Base class with caching, retry, price history archive
+│   └── indonesia_expansion_regions.py # 29 monitored Java regions with coordinates
 │
-├── config/
-│   └── config.yaml                    # System configuration
+├── cache/
+│   ├── osm/                          # OSM infrastructure query cache (7-day TTL, .gitignored)
+│   ├── news/                         # News article cache (weekly TTL, .gitignored)
+│   └── gee/                          # GEE satellite image cache (14-day TTL, .gitignored)
 │
 ├── output/
-│   ├── reports/                       # Generated PDF reports
-│   ├── monitoring/                    # JSON analysis data
-│   └── scraper_cache/                 # Cached price data
+│   ├── reports/                       # Generated PDF executive summaries
+│   ├── monitoring/                    # Weekly monitoring JSON (used by momentum analyzer)
+│   └── scraper_cache/                 # Market price cache (24h) + price_history/ JSONL archive
 │
-├── run_weekly_java_monitor.py         # Main execution script
-├── QUICKSTART.md                      # Detailed setup guide
-└── TECHNICAL_SCORING_DOCUMENTATION.md # In-depth technical docs
+├── run_weekly_java_monitor.py         # Main entry point — runs all 29 regions + emails report
+├── run_weekly_cron.py                 # Cron wrapper with email and error handling
+├── .env                              # GMAIL_APP_PASSWORD, GEE project ID (not in git)
+└── config/config.yaml                # System configuration
 ```
 
 ---

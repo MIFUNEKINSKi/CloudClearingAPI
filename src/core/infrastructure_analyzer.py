@@ -90,54 +90,51 @@ class InfrastructureAnalyzer:
             'port': {'max_distance': 50, 'half_life': 15}          # Expanded from 15km to 50km
         }
         
-        # 🆕 COMPREHENSIVE: Regional fallback database with known infrastructure patterns
+        # Regional fallback database — all 29 Java monitoring regions
+        # Used when OSM Overpass API queries fail or timeout
         self.regional_infrastructure_database = {
-            # Jakarta Metro Area
+            # Jakarta Metro Area (Tier 1)
             'jakarta_north_sprawl': {'infra_score': 95, 'highways': 8, 'ports': 2, 'airports': 2, 'railways': 3},
             'jakarta_south_suburbs': {'infra_score': 90, 'highways': 7, 'ports': 1, 'airports': 2, 'railways': 2},
             'tangerang_bsd_corridor': {'infra_score': 92, 'highways': 7, 'ports': 1, 'airports': 2, 'railways': 1},
             'bekasi_industrial_belt': {'infra_score': 88, 'highways': 6, 'ports': 1, 'airports': 1, 'railways': 2},
-            
-            # Bandung Area
+            'cikarang_mega_industrial': {'infra_score': 85, 'highways': 5, 'ports': 1, 'airports': 1, 'railways': 2},
+            'bogor_puncak_highland': {'infra_score': 70, 'highways': 4, 'ports': 0, 'airports': 0, 'railways': 1},
+
+            # Bandung Area (Tier 1-2)
             'bandung_north_expansion': {'infra_score': 82, 'highways': 5, 'ports': 0, 'airports': 1, 'railways': 2},
-            'bandung_periurban': {'infra_score': 78, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
-            'cimahi_expansion': {'infra_score': 75, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
-            
-            # Central Java
-            'semarang_suburbs': {'infra_score': 80, 'highways': 5, 'ports': 2, 'airports': 1, 'railways': 2},
-            'solo_periphery': {'infra_score': 72, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
-            'yogyakarta_north': {'infra_score': 75, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
-            'yogyakarta_south': {'infra_score': 73, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
-            'magelang_corridor': {'infra_score': 68, 'highways': 3, 'ports': 0, 'airports': 0, 'railways': 0},
-            'purwokerto_area': {'infra_score': 65, 'highways': 3, 'ports': 0, 'airports': 0, 'railways': 1},
-            
-            # East Java
-            'surabaya_west': {'infra_score': 88, 'highways': 6, 'ports': 2, 'airports': 1, 'railways': 2},
-            'surabaya_south': {'infra_score': 85, 'highways': 6, 'ports': 1, 'airports': 1, 'railways': 1},
-            'malang_suburbs': {'infra_score': 70, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
-            'sidoarjo_delta': {'infra_score': 82, 'highways': 5, 'ports': 1, 'airports': 1, 'railways': 1},
-            
-            # Banten
-            'serang_cilegon_industrial': {'infra_score': 85, 'highways': 5, 'ports': 2, 'airports': 1, 'railways': 1},
-            'cilegon_corridor': {'infra_score': 83, 'highways': 5, 'ports': 2, 'airports': 0, 'railways': 1},
-            'merak_port': {'infra_score': 90, 'highways': 4, 'ports': 3, 'airports': 0, 'railways': 1},
-            'anyer_carita_coastal': {'infra_score': 60, 'highways': 2, 'ports': 1, 'airports': 0, 'railways': 0},
-            
-            # Regional/Coastal Areas
+            'bandung_east_tech_corridor': {'infra_score': 78, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
+
+            # West Java Corridors (Tier 2-3)
             'cirebon_port_industrial': {'infra_score': 75, 'highways': 4, 'ports': 2, 'airports': 1, 'railways': 1},
-            'tegal_industrial': {'infra_score': 68, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 1},
-            'pekalongan_coast': {'infra_score': 65, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 1},
-            'jepara_coast': {'infra_score': 62, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 0},
-            'probolinggo_corridor': {'infra_score': 68, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 1},
-            'banyuwangi_ferry': {'infra_score': 70, 'highways': 3, 'ports': 2, 'airports': 0, 'railways': 0},
-            'jember_southern_coast': {'infra_score': 58, 'highways': 2, 'ports': 0, 'airports': 0, 'railways': 0},
-            'kediri_suburbs': {'infra_score': 65, 'highways': 3, 'ports': 0, 'airports': 0, 'railways': 1},
-            'blitar_area': {'infra_score': 62, 'highways': 3, 'ports': 0, 'airports': 0, 'railways': 1},
-            'madiun_suburbs': {'infra_score': 68, 'highways': 3, 'ports': 0, 'airports': 0, 'railways': 1},
-            
-            # Yogyakarta Special Regions
+            'subang_patimban_megaport': {'infra_score': 72, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 0},
+
+            # Central Java (Tier 2)
+            'semarang_port_expansion': {'infra_score': 85, 'highways': 5, 'ports': 2, 'airports': 1, 'railways': 2},
+            'semarang_south_urban': {'infra_score': 80, 'highways': 5, 'ports': 1, 'airports': 1, 'railways': 2},
+            'solo_raya_expansion': {'infra_score': 78, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
+            'tegal_brebes_coastal': {'infra_score': 65, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 1},
+            'purwokerto_south_expansion': {'infra_score': 65, 'highways': 3, 'ports': 0, 'airports': 0, 'railways': 1},
+
+            # Yogyakarta (Tier 2)
+            'yogyakarta_urban_core': {'infra_score': 75, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
             'yogyakarta_kulon_progo_airport': {'infra_score': 82, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 0},
-            'bogor_puncak_highland': {'infra_score': 70, 'highways': 4, 'ports': 0, 'airports': 0, 'railways': 0},
+            'magelang_borobudur_corridor': {'infra_score': 68, 'highways': 3, 'ports': 0, 'airports': 0, 'railways': 0},
+
+            # East Java (Tier 1-2)
+            'surabaya_west_expansion': {'infra_score': 88, 'highways': 6, 'ports': 2, 'airports': 1, 'railways': 2},
+            'surabaya_east_industrial': {'infra_score': 85, 'highways': 6, 'ports': 1, 'airports': 1, 'railways': 1},
+            'gresik_port_industrial': {'infra_score': 82, 'highways': 5, 'ports': 2, 'airports': 1, 'railways': 1},
+            'sidoarjo_delta_development': {'infra_score': 82, 'highways': 5, 'ports': 1, 'airports': 1, 'railways': 1},
+            'malang_south_highland': {'infra_score': 70, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
+            'probolinggo_bromo_gateway': {'infra_score': 68, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 1},
+            'jember_southern_coast': {'infra_score': 58, 'highways': 2, 'ports': 0, 'airports': 0, 'railways': 0},
+            'banyuwangi_ferry_corridor': {'infra_score': 70, 'highways': 3, 'ports': 2, 'airports': 1, 'railways': 0},
+
+            # Banten (Tier 2-3)
+            'serang_cilegon_industrial': {'infra_score': 85, 'highways': 5, 'ports': 2, 'airports': 1, 'railways': 1},
+            'merak_port_corridor': {'infra_score': 90, 'highways': 4, 'ports': 3, 'airports': 0, 'railways': 1},
+            'anyer_carita_coastal': {'infra_score': 60, 'highways': 2, 'ports': 1, 'airports': 0, 'railways': 0},
         }
 
     def analyze_infrastructure_context(self, 

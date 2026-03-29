@@ -119,6 +119,25 @@ CITY_TO_REGIONS = {
     'bogor': ['bogor_puncak_highland'],
     'magelang': ['magelang_borobudur_corridor'],
     'borobudur': ['magelang_borobudur_corridor'],
+
+    # Province-level matching (articles mentioning province match all regions in it)
+    'jawa barat': ['bandung_north_expansion', 'bandung_east_tech_corridor', 'cirebon_port_industrial',
+                   'subang_patimban_megaport', 'bogor_puncak_highland'],
+    'west java': ['bandung_north_expansion', 'bandung_east_tech_corridor', 'cirebon_port_industrial',
+                  'subang_patimban_megaport', 'bogor_puncak_highland'],
+    'jawa tengah': ['semarang_port_expansion', 'semarang_south_urban', 'solo_raya_expansion',
+                    'tegal_brebes_coastal', 'purwokerto_south_expansion', 'magelang_borobudur_corridor'],
+    'central java': ['semarang_port_expansion', 'semarang_south_urban', 'solo_raya_expansion',
+                     'tegal_brebes_coastal', 'purwokerto_south_expansion', 'magelang_borobudur_corridor'],
+    'jawa timur': ['surabaya_west_expansion', 'surabaya_east_industrial', 'gresik_port_industrial',
+                   'sidoarjo_delta_development', 'malang_south_highland', 'banyuwangi_ferry_corridor',
+                   'probolinggo_bromo_gateway', 'jember_southern_coast'],
+    'east java': ['surabaya_west_expansion', 'surabaya_east_industrial', 'gresik_port_industrial',
+                  'sidoarjo_delta_development', 'malang_south_highland', 'banyuwangi_ferry_corridor',
+                  'probolinggo_bromo_gateway', 'jember_southern_coast'],
+    'banten': ['serang_cilegon_industrial', 'merak_port_corridor', 'anyer_carita_coastal',
+               'tangerang_bsd_corridor'],
+    'diy': ['yogyakarta_urban_core', 'yogyakarta_kulon_progo_airport', 'magelang_borobudur_corridor'],
 }
 
 
@@ -248,6 +267,7 @@ class NewsScraper:
         urls = [
             "https://www.thejakartapost.com/indonesia",
             "https://www.thejakartapost.com/business",
+            "https://www.thejakartapost.com/business/economy",
         ]
         
         seen_urls = set()
@@ -303,6 +323,9 @@ class NewsScraper:
         urls = [
             "https://properti.kompas.com/",
             "https://money.kompas.com/",
+            "https://www.kompas.com/jawa-tengah",
+            "https://www.kompas.com/jawa-timur",
+            "https://www.kompas.com/jawa-barat",
         ]
         
         seen_urls = set()
@@ -348,10 +371,11 @@ class NewsScraper:
         return articles[:30]
     
     def _scrape_antara(self) -> List[Dict]:
-        """Scrape infrastructure articles from Antara News (English)."""
+        """Scrape infrastructure articles from Antara News."""
         articles = []
         urls = [
             "https://www.antaranews.com/ekonomi",
+            "https://www.antaranews.com/ekonomi/bisnis",
         ]
         
         seen_urls = set()
@@ -369,8 +393,11 @@ class NewsScraper:
 
                     if not title_text or len(title_text) < 20:
                         continue
-                    if 'antaranews.com/' not in href:
+                    # Accept absolute antaranews URLs or relative /berita/ paths
+                    if 'antaranews.com/' not in href and not href.startswith('/berita/'):
                         continue
+                    if href.startswith('/'):
+                        href = 'https://www.antaranews.com' + href
                     if href in seen_urls:
                         continue
                     seen_urls.add(href)
