@@ -1685,19 +1685,24 @@ class AutomatedMonitor:
             recommendation = {
                 'region': region_name,
                 'investment_score': investment_score,
-                'confidence_level': confidence,
+                'confidence': confidence,  # Standardized key name
+                'confidence_level': confidence,  # Backward compat
                 'current_price_per_m2': region_score.get('current_price_per_m2', 0),
                 'price_trend_30d': price_trend,
                 'market_heat': region_score.get('market_heat', 'unknown'),
                 'infrastructure_score': region_score.get('infrastructure_score', 0),
-                'infrastructure_details': region_score.get('infrastructure_details', {}),  # NEW: Detailed breakdown
+                'infrastructure_details': region_score.get('infrastructure_details', {}),
                 'satellite_changes': region_score.get('satellite_changes', 0),
                 'data_sources': region_score.get('data_sources', {}),
                 'analysis_type': region_score.get('analysis_type', 'dynamic'),
-                'financial_projection': region_score.get('financial_projection'),  # ✅ FIX: Include financial projection
+                'financial_projection': region_score.get('financial_projection'),
                 'sensitivity_flag': region_score.get('sensitivity_flag'),
                 'sensitivity_detail': region_score.get('sensitivity_detail'),
                 'score_headroom': region_score.get('score_headroom'),
+                'sar_data': region_score.get('sar_data'),
+                'news_catalyst': region_score.get('news_catalyst'),
+                'momentum': region_score.get('momentum'),
+                'rvi_data': region_score.get('rvi_data'),
             }
             
             # ✅ CORRECTED THRESHOLDS (based on proper 0-60 score range)

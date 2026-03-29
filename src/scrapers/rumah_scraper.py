@@ -91,25 +91,59 @@ class RumahComScraper(BaseLandPriceScraper):
             success=True
         )
     
+    def _extract_city_from_region(self, region_name: str) -> str:
+        """
+        Extract city slug from internal region name for Rumah.com URL.
+
+        Maps region identifiers like 'jakarta_north_sprawl' → 'jakarta'.
+        """
+        normalized = region_name.lower()
+
+        location_map = {
+            'jakarta': 'jakarta', 'bandung': 'bandung', 'surabaya': 'surabaya',
+            'semarang': 'semarang', 'yogyakarta': 'yogyakarta', 'solo': 'solo',
+            'surakarta': 'solo', 'malang': 'malang', 'bogor': 'bogor',
+            'tangerang': 'tangerang', 'bekasi': 'bekasi', 'cirebon': 'cirebon',
+            'tegal': 'tegal', 'purwokerto': 'purwokerto', 'sleman': 'sleman',
+            'bantul': 'bantul', 'gunungkidul': 'gunungkidul', 'kulonprogo': 'kulonprogo',
+            'magelang': 'magelang', 'serang': 'serang', 'cilegon': 'cilegon',
+            'gresik': 'gresik', 'sidoarjo': 'sidoarjo', 'probolinggo': 'probolinggo',
+            'banyuwangi': 'banyuwangi', 'jember': 'jember', 'cikarang': 'cikarang',
+            'subang': 'subang', 'karawang': 'karawang', 'merak': 'merak',
+            'anyer': 'anyer', 'depok': 'depok',
+        }
+
+        if normalized in location_map:
+            return location_map[normalized]
+
+        parts = normalized.replace('_', ' ').split()
+        for part in parts:
+            if part in location_map:
+                return location_map[part]
+
+        first_word = parts[0] if parts else normalized
+        logger.warning(f"No Rumah.com location mapping for '{region_name}', using: '{first_word}'")
+        return first_word
+
     def _build_search_url(self, region_name: str) -> str:
         """
         Build Rumah.com search URL for land in region
-        
+
         Args:
             region_name: Region to search
-            
+
         Returns:
             Full search URL
         """
-        # Rumah.com URL structure: /properti/tanah/{location}
-        location_slug = region_name.lower().replace(' ', '-')
-        
+        # Extract city from region name (e.g., jakarta_north_sprawl → jakarta)
+        location_slug = self._extract_city_from_region(region_name)
+
         # Search for land (tanah) listings
         search_url = f"{self.base_url}/properti/tanah/{location_slug}"
-        
+
         # Add query parameters
         search_url += "?sort=terbaru"  # Sort by newest
-        
+
         return search_url
     
     def _parse_search_results(self, soup, region_name: str, max_listings: int) -> List[ScrapedListing]:

@@ -150,6 +150,8 @@ class LamudiScraper(BaseLandPriceScraper):
             'brebes': 'brebes',
             
             # West Java
+            'cikarang': 'cikarang',
+            'subang': 'subang',
             'cimahi': 'cimahi',
             'tasikmalaya': 'tasikmalaya',
             'cianjur': 'cianjur',
@@ -160,6 +162,8 @@ class LamudiScraper(BaseLandPriceScraper):
             # Banten
             'serang': 'serang',
             'cilegon': 'cilegon',
+            'merak': 'serang',       # Merak is in Cilegon/Serang regency
+            'anyer': 'serang',       # Anyer is in Serang regency
             
             # East Java
             'gresik': 'gresik',
@@ -249,54 +253,129 @@ class LamudiScraper(BaseLandPriceScraper):
         """
         listings = []
         
-        # PRIORITY 1: Try JSON-LD structured data (Lamudi includes this in initial HTML)
+        # PRIORITY 1: Try JSON-LD @graph → mainEntity → itemListElement path (2026 structure)
         json_ld_scripts = soup.find_all('script', type='application/ld+json')
-        
+
         for script in json_ld_scripts:
             try:
                 import json
                 data = json.loads(script.string)
-                
-                # Handle both single objects and arrays
+
+                # Navigate 2026 structure: [{@graph: [{mainEntity: [ItemList...]}]}]
+                graph_items = []
                 if isinstance(data, list):
                     for item in data:
-                        if isinstance(item, dict) and 'about' in item:
-                            # "about" contains array of Accommodation objects
+                        if isinstance(item, dict) and '@graph' in item:
+                            graph_items.extend(item['@graph'])
+                        elif isinstance(item, dict) and 'about' in item:
+                            # Legacy 2025 structure
                             accommodations = item.get('about', [])
-                            for accommodation in accommodations[:max_listings]:
-                                listing = self._parse_json_ld_listing(accommodation, region_name)
+                            for acc in accommodations[:max_listings]:
+                                listing = self._parse_json_ld_listing(acc, region_name)
                                 if listing:
                                     listings.append(listing)
-                elif isinstance(data, dict) and 'about' in data:
-                    accommodations = data.get('about', [])
-                    for accommodation in accommodations[:max_listings]:
-                        listing = self._parse_json_ld_listing(accommodation, region_name)
-                        if listing:
-                            listings.append(listing)
+
+                for graph_item in graph_items:
+                    main_entity = graph_item.get('mainEntity', [])
+                    if not isinstance(main_entity, list):
+                        main_entity = [main_entity]
+                    for entity in main_entity:
+                        if isinstance(entity, dict) and entity.get('@type') == 'ItemList':
+                            elements = entity.get('itemListElement', [])
+                            for el in elements[:max_listings]:
+                                acc = el.get('item', el)
+                                listing = self._parse_json_ld_listing(acc, region_name)
+                                if listing:
+                                    listings.append(listing)
             except Exception as e:
                 logger.debug(f"Failed to parse JSON-LD: {str(e)}")
                 continue
-        
-        if listings:
+
+        if len(listings) >= 5:
             logger.info(f"Extracted {len(listings)} listings from JSON-LD structured data")
             return listings[:max_listings]
-        
-        # FALLBACK: Try HTML parsing (legacy method - may not work with JS rendering)
-        logger.debug("No JSON-LD found, trying HTML parsing...")
-        
-        # Try primary selector
+
+        # PRIORITY 2: HTML snippet parsing (2026 Lamudi uses snippet__content__* classes)
+        # Also used when JSON-LD returns <5 listings (common — JSON-LD often lacks prices)
+        logger.debug("JSON-LD had no prices, trying HTML snippet parsing...")
+
+        price_divs = soup.find_all('div', class_='snippet__content__price')
+
+        for pd in price_divs[:max_listings]:
+            try:
+                parent_a = pd.find_parent('a')
+                if not parent_a:
+                    continue
+
+                # Price (Indonesian format: "Rp 12Jt", "Rp 282,57M", "Rp 5,30Jt/m²")
+                price_text = pd.get_text(strip=True)
+                price_idr = self._parse_indonesian_price(price_text)
+                if not price_idr or price_idr <= 0:
+                    continue
+
+                # Detect if price is per-m² (contains /m or per m)
+                is_per_m2 = bool(re.search(r'/m|per\s*m', price_text, re.IGNORECASE))
+
+                # Area (m²) from snippet__content__properties
+                area_div = parent_a.find('div', class_='snippet__content__properties')
+                area_m2 = 0.0
+                if area_div:
+                    area_text = area_div.get_text(strip=True)
+                    # Parse "1.600 m²" or "1600 m²"
+                    area_match = re.search(r'([\d.]+(?:,\d+)?)\s*m', area_text)
+                    if area_match:
+                        area_str = area_match.group(1).replace('.', '').replace(',', '.')
+                        area_m2 = float(area_str)
+
+                if area_m2 <= 0:
+                    continue
+
+                if is_per_m2:
+                    price_per_m2 = price_idr
+                    price_idr = price_idr * area_m2  # Calculate total
+                else:
+                    price_per_m2 = price_idr / area_m2
+                    # Sanity check: if price/m² is suspiciously low (<100k IDR),
+                    # the "total" price might actually be per-m²
+                    if price_per_m2 < 100_000 and price_idr > 1_000_000:
+                        price_per_m2 = price_idr  # Treat as per-m²
+                        price_idr = price_per_m2 * area_m2
+
+                # Title + location
+                title_div = parent_a.find('div', class_='snippet__content__title__container')
+                title = title_div.get_text(strip=True) if title_div else ''
+                loc_div = parent_a.find('div', class_='snippet__content__location')
+                location = loc_div.get_text(strip=True) if loc_div else ''
+
+                href = parent_a.get('href', '')
+                if href and not href.startswith('http'):
+                    href = self.base_url + href
+
+                listing = ScrapedListing(
+                    total_price=price_idr,
+                    price_per_m2=price_per_m2,
+                    size_m2=area_m2,
+                    location=location or title or region_name,
+                    source_url=href,
+                    listing_date=None,
+                    listing_type='land',
+                )
+                listings.append(listing)
+            except Exception as e:
+                logger.debug(f"Failed to parse snippet card: {str(e)}")
+                continue
+
+        if listings:
+            logger.info(f"Extracted {len(listings)} listings from HTML snippets")
+            return listings[:max_listings]
+
+        # FALLBACK 3: Legacy HTML parsing
         listing_cards = soup.find_all('div', class_=re.compile(r'ListingCard|PropertyCard|listing-item', re.I))
-        
         if not listing_cards:
-            # Try alternative selectors
             listing_cards = soup.find_all('article', class_=re.compile(r'listing|property', re.I))
-        
         if not listing_cards:
-            # Try data attributes
             listing_cards = soup.find_all(attrs={'data-listing-id': True})
-        
-        logger.debug(f"Found {len(listing_cards)} potential listing cards")
-        
+
         for card in listing_cards[:max_listings]:
             try:
                 listing = self._parse_listing_card(card, region_name)
@@ -305,14 +384,53 @@ class LamudiScraper(BaseLandPriceScraper):
             except Exception as e:
                 logger.debug(f"Failed to parse listing card: {str(e)}")
                 continue
-        
+
         logger.info(f"Successfully parsed {len(listings)} listings from {len(listing_cards)} cards")
         return listings
     
+    def _parse_indonesian_price(self, price_text: str) -> float:
+        """
+        Parse Indonesian price format to IDR value.
+
+        Examples:
+            "Rp 12Jt"        → 12,000,000 (12 Juta)
+            "Rp 282,57M"     → 282,570,000,000 (wait, that's too much)
+            "Rp 1,5M"        → 1,500,000,000 (1.5 Miliar)
+            "Rp 6,10Jt"      → 6,100,000 (6.1 Juta)
+            "Rp 850Jt"       → 850,000,000
+
+        Returns:
+            Price in IDR, or 0 if parsing fails
+        """
+        import re
+        text = price_text.strip().replace('Rp', '').replace('.', '').strip()
+
+        # Match number + suffix (Jt/Juta = million, M/Miliar = billion)
+        match = re.match(r'([\d,]+(?:,\d+)?)\s*(Jt|Juta|M|Miliar|Rb|Ribu)?', text, re.IGNORECASE)
+        if not match:
+            return 0
+
+        num_str = match.group(1).replace(',', '.')  # Convert comma decimal to dot
+        suffix = (match.group(2) or '').lower()
+
+        try:
+            value = float(num_str)
+        except ValueError:
+            return 0
+
+        if suffix in ('jt', 'juta'):
+            return value * 1_000_000
+        elif suffix in ('m', 'miliar'):
+            return value * 1_000_000_000
+        elif suffix in ('rb', 'ribu'):
+            return value * 1_000
+        else:
+            return value  # Already in IDR
+
     def _parse_json_ld_listing(self, accommodation: dict, region_name: str) -> Optional[ScrapedListing]:
         """
         Parse listing from JSON-LD Accommodation object
-        
+
         JSON-LD structure from Lamudi:
         {
             "@type": "Accommodation",
