@@ -1343,6 +1343,7 @@ class AutomatedMonitor:
                                 'top_keywords': news_catalyst_result.top_keywords,
                                 'top_article_title': news_catalyst_result.top_article_title,
                                 'summary': news_catalyst_result.summary,
+                                'article_links': news_catalyst_result.article_links,
                             } if news_catalyst_result else None,
                             # Development momentum (historical acceleration) (v2.11)
                             'momentum': {

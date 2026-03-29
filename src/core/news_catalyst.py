@@ -28,6 +28,11 @@ class NewsCatalystResult:
     top_keywords: List[str]      # Most frequent keywords
     top_article_title: str       # Highest relevance article title
     summary: str                 # Human-readable description
+    article_links: List[dict] = None  # [{title, url, source, sentiment}]
+
+    def __post_init__(self):
+        if self.article_links is None:
+            self.article_links = []
 
 
 class NewsCatalyst:
@@ -115,6 +120,18 @@ class NewsCatalyst:
                     f"({pos_count}+ / {neg_count}- / {len(neutral)} neutral, "
                     f"{len(articles)} total articles)")
         
+        # Build article links list (sorted by relevance)
+        sorted_articles = sorted(articles, key=lambda a: a.relevance_score, reverse=True)
+        article_links = [
+            {
+                'title': a.title[:120],
+                'url': a.url,
+                'source': a.source,
+                'sentiment': a.sentiment,
+            }
+            for a in sorted_articles[:10]  # Cap at 10 most relevant
+        ]
+
         return NewsCatalystResult(
             region_name=region_name,
             multiplier=multiplier,
@@ -125,6 +142,7 @@ class NewsCatalyst:
             top_keywords=top_keywords,
             top_article_title=top_article.title[:100],
             summary=summary,
+            article_links=article_links,
         )
     
     def _generate_summary(self, multiplier: float, pos: int, neg: int, total: int, keywords: List[str]) -> str:

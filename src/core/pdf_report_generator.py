@@ -1094,6 +1094,25 @@ class PDFReportGenerator:
                             self.styles['Normal']
                         ))
 
+                    # Show linked articles
+                    article_links = news_data.get('article_links', [])
+                    for art in article_links[:5]:
+                        sentiment_icon = {'positive': '+', 'negative': '-', 'neutral': '~'}.get(art.get('sentiment', ''), '~')
+                        source_label = art.get('source', '').replace('_', ' ').title()
+                        title = art.get('title', '')[:90]
+                        url = art.get('url', '')
+                        if url:
+                            story.append(Paragraph(
+                                f'   [{sentiment_icon}] <a href="{url}" color="blue"><u>{title}</u></a> '
+                                f'<font size="7">({source_label})</font>',
+                                self.styles['Normal']
+                            ))
+                        else:
+                            story.append(Paragraph(
+                                f'   [{sentiment_icon}] {title} ({source_label})',
+                                self.styles['Normal']
+                            ))
+
             # ✅ NEW: Show detailed infrastructure breakdown
             if infra_details:
                 story.append(Paragraph(
