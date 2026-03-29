@@ -246,16 +246,16 @@ class CorrectedInvestmentScorer:
         rvi_interpretation = None
         rvi_breakdown = None
         
-        if actual_price_m2 is not None and self.price_engine:
+        if actual_price_m2 is not None and self.financial_engine:
             try:
                 # Prepare satellite data for RVI calculation
                 satellite_data_for_rvi = {
                     'vegetation_loss_pixels': satellite_changes // 2,  # Estimate
                     'construction_activity_pct': development_score / 200.0  # Normalize to 0-0.20 range
                 }
-                
+
                 # Calculate RVI using financial metrics engine
-                rvi_result = self.price_engine.calculate_relative_value_index(
+                rvi_result = self.financial_engine.calculate_relative_value_index(
                     region_name=region_name,
                     actual_price_m2=actual_price_m2,
                     infrastructure_score=infrastructure_data['infrastructure_score'],

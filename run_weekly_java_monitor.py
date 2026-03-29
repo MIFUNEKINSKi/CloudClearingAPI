@@ -143,6 +143,85 @@ async def run_parallel_monitoring(
     return all_results
 
 
+def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
+    """Send email report after a successful monitoring run.
+
+    Requires GMAIL_APP_PASSWORD in .env file.
+    Returns True if email was sent, False otherwise.
+    """
+    import os
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from email.mime.application import MIMEApplication
+
+    # Load .env
+    env_file = Path('.env')
+    if env_file.exists():
+        with open(env_file) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    os.environ.setdefault(key.strip(), value.strip())
+
+    gmail_address = os.environ.get('GMAIL_ADDRESS', 'moorecash@gmail.com')
+    gmail_password = os.environ.get('GMAIL_APP_PASSWORD', '')
+    recipient = os.environ.get('REPORT_RECIPIENT', 'moorecash@gmail.com')
+
+    if not gmail_password:
+        logger.warning("GMAIL_APP_PASSWORD not set — skipping email")
+        return False
+
+    # Build email body from JSON summary
+    body_lines = [f"CloudClearingAPI Monitoring Report — {datetime.now().strftime('%B %d, %Y')}", ""]
+    try:
+        import json as _json
+        with open(json_path) as f:
+            data = _json.load(f)
+        recs = data.get('recommendations', [])
+        buy = [r for r in recs if r.get('recommendation') == 'BUY']
+        watch = [r for r in recs if r.get('recommendation') == 'WATCH']
+        body_lines.append(f"Regions analyzed: {len(recs)}")
+        body_lines.append(f"BUY: {len(buy)}, WATCH: {len(watch)}, PASS: {len(recs) - len(buy) - len(watch)}")
+        body_lines.append("")
+        if buy:
+            body_lines.append("Top opportunities:")
+            for r in sorted(buy, key=lambda x: x.get('score', 0), reverse=True)[:5]:
+                body_lines.append(f"  {r.get('region', '?')} — score {r.get('score', 0):.1f}, confidence {r.get('confidence', r.get('confidence_level', 0))*100:.0f}%")
+        body_lines.append("")
+        body_lines.append("Full PDF report attached.")
+    except Exception as e:
+        body_lines.append(f"(Could not parse summary: {e})")
+        body_lines.append("See attached PDF for details.")
+
+    body_lines.append("")
+    body_lines.append("— CloudClearingAPI Automated Report")
+
+    msg = MIMEMultipart()
+    msg['From'] = gmail_address
+    msg['To'] = recipient
+    msg['Subject'] = f"CloudClearingAPI Report — {datetime.now().strftime('%B %d, %Y %H:%M')}"
+    msg.attach(MIMEText('\n'.join(body_lines), 'plain'))
+
+    if pdf_path and Path(pdf_path).exists():
+        with open(pdf_path, 'rb') as f:
+            att = MIMEApplication(f.read(), _subtype='pdf')
+            att.add_header('Content-Disposition', 'attachment', filename=Path(pdf_path).name)
+            msg.attach(att)
+        logger.info(f"Attached PDF: {Path(pdf_path).name}")
+
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(gmail_address, gmail_password)
+            server.send_message(msg)
+        logger.info(f"Email sent to {recipient}")
+        return True
+    except Exception as e:
+        logger.error(f"Email failed: {e}")
+        return False
+
+
 async def main():
     """Run weekly monitoring for ALL Java regions with parallel processing"""
     
@@ -398,7 +477,21 @@ async def main():
         except Exception as e:
             logger.warning(f"Failed to generate PDF report: {e}")
             print(f"   ⚠️  PDF generation failed: {e}")
-        
+            pdf_path = None
+
+        # 📧 Send email report after every successful run
+        print()
+        print("📧 Sending email report...")
+        try:
+            email_sent = _send_report_email(str(json_filename), pdf_path)
+            if email_sent:
+                print("   ✅ Email sent successfully")
+            else:
+                print("   ⚠️  Email not sent (check GMAIL_APP_PASSWORD in .env)")
+        except Exception as e:
+            logger.warning(f"Email sending failed: {e}")
+            print(f"   ⚠️  Email failed: {e}")
+
         print()
         print("=" * 100)
         print("✅ JAVA-WIDE MONITORING COMPLETED!")
