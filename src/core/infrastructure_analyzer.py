@@ -101,6 +101,8 @@ class InfrastructureAnalyzer:
             'cikarang_mega_industrial': {'infra_score': 85, 'highways': 5, 'ports': 1, 'airports': 1, 'railways': 2},
             'bogor_puncak_highland': {'infra_score': 70, 'highways': 4, 'ports': 0, 'airports': 0, 'railways': 1},
 
+            'karawang_industrial_corridor': {'infra_score': 85, 'highways': 5, 'ports': 1, 'airports': 1, 'railways': 2},
+
             # Bandung Area (Tier 1-2)
             'bandung_north_expansion': {'infra_score': 82, 'highways': 5, 'ports': 0, 'airports': 1, 'railways': 2},
             'bandung_east_tech_corridor': {'infra_score': 78, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
@@ -114,6 +116,7 @@ class InfrastructureAnalyzer:
             'semarang_south_urban': {'infra_score': 80, 'highways': 5, 'ports': 1, 'airports': 1, 'railways': 2},
             'solo_raya_expansion': {'infra_score': 78, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
             'tegal_brebes_coastal': {'infra_score': 65, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 1},
+            'batang_industrial_sez': {'infra_score': 72, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 1},
             'purwokerto_south_expansion': {'infra_score': 65, 'highways': 3, 'ports': 0, 'airports': 0, 'railways': 1},
 
             # Yogyakarta (Tier 2)

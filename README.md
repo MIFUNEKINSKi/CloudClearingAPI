@@ -1,7 +1,7 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.11 (Scraper Integration + Price History + Auto-Email)
-**Status:** ✅ Production Ready | 29 Java Regions | Weekly Automated Reports with Email Delivery
+**Version:** 2.12 (Decision Matrix + Expanded Coverage)
+**Status:** ✅ Production Ready | 65 Regions (31 Java + 11 Sumatra + 10 Bali/Lombok/NTT + 13 Eastern Indonesia) | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
 
@@ -19,6 +19,13 @@ The core idea: satellite change detection (SAR radar + optical) identifies *wher
 ---
 
 ## Changelog
+
+### v2.12 (March 2026) — Decision Matrix + Expanded Coverage
+
+- **Decision Matrix page in PDF** — all regions ranked in a single table with Score, BUY/WATCH/PASS action, Price/m², RVI valuation, Momentum trend, 3Y ROI, and Confidence
+- **65 regions** (up from 51) — added Labuan Bajo (Komodo gateway), Nusa Dua/Bukit (Bali luxury), Senggigi (Lombok), Kupang (NTT), Karawang industrial corridor, Batang SEZ, Padang, Banda Aceh
+- **Infrastructure fallback database updated** — all 31 Java regions now have correct fallback scores when OSM API fails
+- **News scraper improvements** — added Kompas regional sections (Jawa Barat/Tengah/Timur), province-level article matching, fixed Antara relative URL handling
 
 ### v2.11 (March 2026) — SAR Fusion + News Catalyst + Price Momentum
 
@@ -183,20 +190,36 @@ Compares recent satellite activity against historical baseline to detect regions
 
 **Data source:** Reads all `output/monitoring/weekly_monitoring_*.json` files to build historical velocity per region. Requires at least 2 data points in each window to activate.
 
+### Known Scoring Gaps (v2.12)
+
+These are documented architectural limitations, not bugs. They work functionally but could be improved:
+
+1. **Momentum applied post-hoc** — multiplied after `CorrectedInvestmentScorer.calculate_investment_score()` returns, rather than inside the scoring formula. Architecturally messy but produces correct results.
+
+2. **Infrastructure construction projects detected but don't boost score** — OSM queries find construction sites, but the infrastructure multiplier only considers existing roads/airports/railways. A new highway under construction near a region should increase its score.
+
+3. **No news sentiment trend over time** — news catalyst is snapshot-only (current week's articles). An investor would benefit from knowing "news coverage doubled this month" or "negative sentiment increasing."
+
+4. **Infrastructure and news don't accumulate history** — market prices have JSONL archives and momentum uses historical JSONs, but infrastructure and news are snapshot-only. This is a gap worth noting but not critical for v1.
+
+5. **News-driven discovery not implemented** — the system checks fixed regions. A smarter version could scan news for "new airport in X" and dynamically add that area to monitoring. The fixed-region approach works well as a foundation.
+
 ---
 
 ## 📊 System Output: The Investment Report
 
 The primary output is a multi-page PDF report that provides a comprehensive overview of each region.
 
-* **Page 1: Executive Summary:** Highlights the top investment opportunities and summary statistics.
+* **Page 1: Executive Summary** — Market status, key metrics, SAR/news data source coverage, scoring methodology
+* **Page 2: Decision Matrix** — All regions ranked in a single table: Score, BUY/WATCH/PASS action, Price/m², RVI (Relative Value Index), Momentum trend, 3-Year ROI, Confidence. Color-coded for quick scanning.
+* **Page 3: Top 5 Investment Opportunities** — Detailed breakdown of the highest-scoring BUY regions with price momentum, satellite changes, infrastructure quality, market heat, and data source transparency
 * **Region Detail Pages:** Each region gets its own detailed analysis, including:
-    1.  **Final Recommendation:** A clear **✅ BUY**, **⚠️ WATCH**, or **🔴 PASS** rating.
-    2.  **Score & Confidence:** The final score and the data confidence percentage.
-    3.  **Financial Projection Summary:** The most valuable section, detailing **ROI projections**, **land value estimates**, total investment costs, and key risks.
-    4.  **Satellite Imagery:** A grid of 5 images showing before/after, vegetation loss, and new construction hotspots.
-    5.  **Infrastructure Details:** A list of nearby highways, ports, and airports.
-    6.  **Development Activity Analysis:** A breakdown of detected activity (e.g., 60% Land Clearing, 40% Active Construction).
+    1.  **Final Recommendation:** A clear **BUY**, **WATCH**, or **PASS** rating with score and confidence
+    2.  **Financial Projection Summary:** ROI projections (3yr/5yr), land value estimates, development costs, bear/bull scenarios
+    3.  **Satellite Imagery:** Before/after imagery, vegetation loss maps, construction hotspots
+    4.  **Infrastructure Details:** Roads, airports, railways, ports with distance/quality scores
+    5.  **News Catalyst:** Matched articles with clickable links, sentiment indicators, and keyword matches
+    6.  **Momentum:** Recent vs baseline development velocity, acceleration/deceleration trend
 
 ---
 
@@ -293,7 +316,7 @@ CloudClearingAPI/
 │   │   ├── news_scraper.py            # Jakarta Post, Kompas, Antara News scraper
 │   │   ├── scraper_orchestrator.py    # Cascading fallback: Lamudi → 99.co → cache → benchmarks
 │   │   └── base_scraper.py           # Base class with caching, retry, price history archive
-│   └── indonesia_expansion_regions.py # 29 monitored Java regions with coordinates
+│   └── indonesia_expansion_regions.py # 65 monitored regions across Indonesia
 │
 ├── cache/
 │   ├── osm/                          # OSM infrastructure query cache (7-day TTL, .gitignored)
@@ -364,20 +387,21 @@ README.md (Overview)
 
 ## 🌍 Current Coverage
 
-**29 Regions Across Java Island:**
+**65 Regions Across Indonesia:**
 
-| Region | Priority | Focus |
-|--------|----------|-------|
-| Jakarta Metro (4 regions) | High | Urban expansion |
-| Bandung Metro (2 regions) | High | Transportation hubs |
-| Semarang-Yogyakarta-Solo (6 regions) | High | Infrastructure corridors |
-| Surabaya Metro (4 regions) | High | Industrial development |
-| Banten Industrial Corridor (3 regions) | Medium | Port-adjacent zones |
-| Regional Hubs (10 regions) | Medium | Emerging markets |
+| Island | Regions | Priority Focus |
+|--------|---------|----------------|
+| **Java** (31) | Jakarta Metro (6), Bandung (2), Central Java (8), East Java (8), Banten (3), Karawang, Batang SEZ, Bogor, Cirebon | Industrial corridors, urban expansion, SEZs |
+| **Sumatra** (11) | Medan (2), Palembang (2), Lampung (2), Batam, Pekanbaru, Padang, Banda Aceh, Lake Toba | Ports, industrial, reconstruction |
+| **Bali** (6) | Denpasar, Canggu-Seminyak, Sanur, Ubud, Tabanan, Nusa Dua/Bukit | Tourism, luxury development |
+| **Lombok/NTT** (4) | Mataram, Mandalika, Senggigi, Labuan Bajo, Kupang | Tourism SEZs, gateway hubs |
+| **Kalimantan** (6) | IKN Nusantara (2), Balikpapan, Samarinda, Banjarmasin, Pontianak | New capital, resource corridors |
+| **Sulawesi** (4) | Makassar (2), Manado, Bitung | Port, tourism |
+| **Papua/Maluku** (2) | Jayapura, Ambon | Urban, tourism |
 
-**Total Monitored Area:** ~8,500 km²  
-**Analysis Frequency:** Weekly  
-**Average Processing Time:** 3 minutes per region
+**Total Monitored Area:** ~18,000 km²
+**Analysis Frequency:** Weekly (Java primary), monthly (other islands)
+**Average Processing Time:** ~45 seconds per region
 
 ---
 
