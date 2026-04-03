@@ -179,18 +179,45 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
         import json as _json
         with open(json_path) as f:
             data = _json.load(f)
-        recs = data.get('recommendations', [])
-        buy = [r for r in recs if r.get('recommendation') == 'BUY']
-        watch = [r for r in recs if r.get('recommendation') == 'WATCH']
-        body_lines.append(f"Regions analyzed: {len(recs)}")
-        body_lines.append(f"BUY: {len(buy)}, WATCH: {len(watch)}, PASS: {len(recs) - len(buy) - len(watch)}")
+
+        # Extract recommendations from the actual JSON structure
+        yog = data.get('investment_analysis', {}).get('yogyakarta_analysis', {})
+        buy = yog.get('buy_recommendations', [])
+        watch = yog.get('watch_list', [])
+        passes = yog.get('pass_list', [])
+        all_recs = buy + watch + passes
+
+        body_lines.append(f"Regions analyzed: {len(all_recs)}")
+        body_lines.append(f"BUY: {len(buy)}, WATCH: {len(watch)}, PASS: {len(passes)}")
         body_lines.append("")
+
         if buy:
-            body_lines.append("Top opportunities:")
-            for r in sorted(buy, key=lambda x: x.get('score', 0), reverse=True)[:5]:
-                body_lines.append(f"  {r.get('region', '?')} — score {r.get('score', 0):.1f}, confidence {r.get('confidence', r.get('confidence_level', 0))*100:.0f}%")
+            body_lines.append("Top BUY opportunities:")
+            for r in sorted(buy, key=lambda x: x.get('investment_score', 0), reverse=True)[:5]:
+                name = r.get('region', '?').replace('_', ' ').title()
+                score = r.get('investment_score', 0)
+                conf = r.get('confidence', r.get('confidence_level', 0))
+                price = r.get('current_price_per_m2', 0)
+                rvi = r.get('rvi_data', {}).get('rvi', 0)
+                mom = r.get('momentum', {}).get('trend', 'unknown')
+                roi = r.get('financial_projection', {}).get('projected_roi_3yr', 0)
+                body_lines.append(
+                    f"  {name} — Score {score:.1f}/100, {conf*100:.0f}% confidence"
+                )
+                body_lines.append(
+                    f"    Price: Rp {price:,.0f}/m² | RVI: {rvi:.2f} | Momentum: {mom} | 3Y ROI: {roi*100:.1f}%"
+                )
+
+        if watch:
+            body_lines.append("")
+            body_lines.append(f"WATCH list ({len(watch)} regions):")
+            for r in sorted(watch, key=lambda x: x.get('investment_score', 0), reverse=True)[:5]:
+                name = r.get('region', '?').replace('_', ' ').title()
+                score = r.get('investment_score', 0)
+                body_lines.append(f"  {name} — Score {score:.1f}/100")
+
         body_lines.append("")
-        body_lines.append("Full PDF report attached.")
+        body_lines.append("Full PDF report attached with Decision Matrix and regional detail.")
     except Exception as e:
         body_lines.append(f"(Could not parse summary: {e})")
         body_lines.append("See attached PDF for details.")
