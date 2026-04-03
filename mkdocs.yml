@@ -1,0 +1,252 @@
+# MkDocs Configuration for CloudClearingAPI
+# CCAPI-30.1: MkDocs Documentation Site
+
+site_name: CloudClearingAPI
+site_description: Satellite-based land investment intelligence platform for Indonesia
+site_author: Chris Moore
+site_url: https://mifunekinsi.github.io/CloudClearingAPI/
+repo_name: MIFUNEKINSKi/CloudClearingAPI
+repo_url: https://github.com/MIFUNEKINSKi/CloudClearingAPI
+edit_uri: edit/main/docs/
+
+# Copyright
+copyright: Copyright &copy; 2025 Chris Moore
+
+# Theme configuration
+theme:
+  name: material
+  language: en
+  
+  # Color scheme
+  palette:
+    # Light mode
+    - scheme: default
+      primary: blue
+      accent: light blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    
+    # Dark mode
+    - scheme: slate
+      primary: blue
+      accent: light blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  
+  # Font
+  font:
+    text: Roboto
+    code: Roboto Mono
+  
+  # Features
+  features:
+    - navigation.tabs           # Top-level navigation tabs
+    - navigation.tabs.sticky    # Sticky navigation tabs
+    - navigation.sections       # Section navigation
+    - navigation.expand         # Auto-expand sections
+    - navigation.indexes        # Section index pages
+    - navigation.top            # Back to top button
+    - navigation.tracking       # URL tracking
+    - toc.follow                # TOC follows scroll
+    - toc.integrate             # TOC integrated in left sidebar
+    - search.suggest            # Search suggestions
+    - search.highlight          # Highlight search terms
+    - search.share              # Share search query
+    - content.code.copy         # Copy code button
+    - content.code.annotate     # Code annotations
+    - content.tabs.link         # Link tabs
+  
+  # Logo and favicon
+  icon:
+    repo: fontawesome/brands/github
+    logo: material/satellite-variant
+  
+  # Custom overrides
+  custom_dir: docs/overrides
+
+# Plugins
+plugins:
+  - search:
+      lang: en
+      separator: '[\s\-,:!=\[\]()"/]+|(?!\b)(?=[A-Z][a-z])|\.(?!\d)|&[lg]t;'
+      
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_source: true
+            show_root_heading: true
+            show_root_toc_entry: true
+            show_root_full_path: false
+            show_object_full_path: false
+            show_category_heading: true
+            show_if_no_docstring: false
+            show_signature: true
+            show_signature_annotations: true
+            separate_signature: true
+            line_length: 80
+            merge_init_into_class: true
+            docstring_style: google
+            docstring_options:
+              ignore_init_summary: true
+            
+  - mermaid2:
+      version: 10.6.1
+      
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: timeago
+      
+  - minify:
+      minify_html: true
+      minify_js: true
+      minify_css: true
+
+# Extensions
+markdown_extensions:
+  # Python Markdown
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  
+  # Python Markdown Extensions
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Extra configuration
+extra:
+  version:
+    provider: mike
+    default: latest
+  
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/MIFUNEKINSKi/CloudClearingAPI
+    - icon: fontawesome/brands/linkedin
+      link: https://linkedin.com/in/your-profile
+  
+  analytics:
+    provider: google
+    property: G-XXXXXXXXXX
+  
+  status:
+    new: Recently added
+    deprecated: Deprecated
+
+# Additional CSS and JS
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/extra.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+# Navigation structure
+nav:
+  - Home: index.md
+  
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Configuration: getting-started/configuration.md
+      - Quick Start: getting-started/quickstart.md
+      - Docker Setup: getting-started/docker.md
+  
+  - Architecture:
+      - Overview: architecture/overview.md
+      - Data Flow Pipeline: architecture/data-flow.md
+      - Scoring System: architecture/scoring-system.md
+      - Infrastructure: architecture/infrastructure.md
+      - Database Schema: architecture/database-schema.md
+  
+  - API Reference:
+      - Overview: api/overview.md
+      - Core Modules:
+          - CorrectedInvestmentScorer: api/corrected-scoring.md
+          - Financial Metrics Engine: api/financial-metrics.md
+          - Land Price Orchestrator: api/land-price-orchestrator.md
+          - PDF Report Generator: api/pdf-generator.md
+      - Infrastructure:
+          - Change Detector: api/change-detector.md
+          - Infrastructure Analyzer: api/infrastructure-analyzer.md
+          - Automated Monitor: api/automated-monitor.md
+      - Observability:
+          - CloudWatch Metrics: api/cloudwatch-metrics.md
+          - CloudWatch Logs: api/cloudwatch-logs.md
+      - Data Engineering:
+          - dbt Models: api/dbt-models.md
+          - GEE Cache: api/gee-cache.md
+  
+  - Deployment:
+      - Overview: deployment/overview.md
+      - Docker Deployment: deployment/docker.md
+      - AWS Deployment: deployment/aws.md
+      - Terraform Guide: deployment/terraform.md
+      - Step Functions: deployment/step-functions.md
+      - CloudWatch Setup: deployment/cloudwatch.md
+      - dbt Analytics: deployment/dbt.md
+  
+  - Development:
+      - Contributing: development/contributing.md
+      - Code Style: development/code-style.md
+      - Testing: development/testing.md
+      - Local Development: development/local-setup.md
+      - CI/CD Pipeline: development/cicd.md
+  
+  - User Guide:
+      - Running Monitoring: user-guide/running-monitoring.md
+      - Reading Reports: user-guide/reading-reports.md
+      - Interpreting Scores: user-guide/interpreting-scores.md
+      - Troubleshooting: user-guide/troubleshooting.md
+  
+  - Reference:
+      - Configuration Schema: reference/config-schema.md
+      - Region Definitions: reference/regions.md
+      - Data Sources: reference/data-sources.md
+      - Glossary: reference/glossary.md
+  
+  - Project Info:
+      - Changelog: changelog.md
+      - Roadmap: roadmap.md
+      - License: license.md
+      - About: about.md
+
+# Validation
+strict: true

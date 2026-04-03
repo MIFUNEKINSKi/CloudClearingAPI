@@ -1,0 +1,86 @@
+# sources.yml - Raw data source definitions
+
+version: 2
+
+sources:
+  - name: raw
+    description: "Raw JSON data from CloudClearingAPI Step Functions pipeline stored in S3"
+    database: cloudclearing
+    schema: raw
+    
+    tables:
+      - name: satellite_changes_json
+        description: "Sentinel-2 satellite change detection data from Google Earth Engine"
+        external:
+          location: "s3://cloudclearing-data-lake/raw/satellite_changes/"
+          row_format: "serde 'org.openx.data.jsonserde.JsonSerDe'"
+        columns:
+          - name: data
+            description: "JSON payload containing satellite analysis results"
+            data_type: string
+          - name: _file_modified_time
+            description: "S3 object modification timestamp"
+            data_type: timestamp
+        
+        freshness:
+          warn_after: {count: 8, period: day}
+          error_after: {count: 14, period: day}
+        
+        loaded_at_field: _file_modified_time
+      
+      - name: infrastructure_scores_json
+        description: "OpenStreetMap infrastructure scoring data from Overpass API"
+        external:
+          location: "s3://cloudclearing-data-lake/raw/infrastructure_scores/"
+          row_format: "serde 'org.openx.data.jsonserde.JsonSerDe'"
+        columns:
+          - name: data
+            description: "JSON payload containing infrastructure analysis results"
+            data_type: string
+          - name: _file_modified_time
+            description: "S3 object modification timestamp"
+            data_type: timestamp
+        
+        freshness:
+          warn_after: {count: 8, period: day}
+          error_after: {count: 14, period: day}
+        
+        loaded_at_field: _file_modified_time
+      
+      - name: market_data_json
+        description: "Market intelligence from web scraping (Lamudi, Rumah.com) and benchmarks"
+        external:
+          location: "s3://cloudclearing-data-lake/raw/market_data/"
+          row_format: "serde 'org.openx.data.jsonserde.JsonSerDe'"
+        columns:
+          - name: data
+            description: "JSON payload containing market analysis results"
+            data_type: string
+          - name: _file_modified_time
+            description: "S3 object modification timestamp"
+            data_type: timestamp
+        
+        freshness:
+          warn_after: {count: 8, period: day}
+          error_after: {count: 14, period: day}
+        
+        loaded_at_field: _file_modified_time
+      
+      - name: financial_projections_json
+        description: "Financial projections and ROI calculations from FinancialMetricsEngine"
+        external:
+          location: "s3://cloudclearing-data-lake/raw/financial_projections/"
+          row_format: "serde 'org.openx.data.jsonserde.JsonSerDe'"
+        columns:
+          - name: data
+            description: "JSON payload containing financial projection results"
+            data_type: string
+          - name: _file_modified_time
+            description: "S3 object modification timestamp"
+            data_type: timestamp
+        
+        freshness:
+          warn_after: {count: 8, period: day}
+          error_after: {count: 14, period: day}
+        
+        loaded_at_field: _file_modified_time

@@ -343,46 +343,61 @@ class LandPriceOrchestrator:
             (price_trend_pct: float, market_heat: str)
         """
         try:
-            # Try to load historical cache (from any scraper)
-            # Look for cache that's approximately 30 days old
+            # Try to calculate trend from price history archive (JSONL files)
             from datetime import datetime, timedelta
-            import os
-            
-            target_age_days = 30
-            tolerance_days = 5  # Accept cache 25-35 days old
-            
-            # Check all scraper caches for historical data
+            import json as _json
+
+            slug = region_name.lower().replace(' ', '_')
             for scraper in [self.lamudi, self.rumah_com, self.ninety_nine]:
-                cache_file = scraper.cache_dir / f"{region_name.lower().replace(' ', '_')}.json"
-                
-                if cache_file.exists():
-                    try:
-                        # Check file age
-                        file_mtime = datetime.fromtimestamp(os.path.getmtime(cache_file))
-                        age_days = (datetime.now() - file_mtime).days
-                        
-                        # If cache is in the ideal window (25-35 days)
-                        if target_age_days - tolerance_days <= age_days <= target_age_days + tolerance_days:
-                            cached_result = scraper._load_from_cache(region_name)
-                            if cached_result and cached_result.success and cached_result.average_price_per_m2 > 0:
-                                historical_price = cached_result.average_price_per_m2
-                                
-                                # Calculate percentage change
-                                trend_pct = ((current_price - historical_price) / historical_price) * 100
-                                
-                                # Classify market heat based on annualized trend
-                                # 30-day trend → annualized: * (365/30) = * 12.17
-                                annualized_trend = trend_pct * 12.17
-                                market_heat = self._classify_market_heat(annualized_trend)
-                                
-                                logger.info(f"   📊 Price Trend ({age_days}d): {trend_pct:+.1f}% (annualized: {annualized_trend:+.1f}%)")
-                                
-                                return trend_pct, market_heat
-                    except Exception as e:
-                        logger.debug(f"   Error reading cache from {scraper.get_source_name()}: {e}")
-                        continue
-            
-            # No suitable historical cache found - use benchmark appreciation rate
+                history_file = scraper.cache_dir / 'price_history' / f"{slug}.jsonl"
+                if not history_file.exists():
+                    # Also try with source prefix stripped
+                    continue
+
+                try:
+                    records = []
+                    with open(history_file, 'r') as f:
+                        for line in f:
+                            try:
+                                records.append(_json.loads(line))
+                            except _json.JSONDecodeError:
+                                pass
+
+                    if len(records) >= 2:
+                        # Find a record ~30 days ago (accept 14-60 day window)
+                        today = datetime.now().date()
+                        best_rec = None
+                        best_delta = 999
+
+                        for rec in records:
+                            try:
+                                rec_date = datetime.strptime(rec['date'], '%Y-%m-%d').date()
+                                age_days = (today - rec_date).days
+                                # Prefer ~30 days, accept 14-60
+                                if 14 <= age_days <= 60:
+                                    delta = abs(age_days - 30)
+                                    if delta < best_delta:
+                                        best_delta = delta
+                                        best_rec = rec
+                            except (KeyError, ValueError):
+                                pass
+
+                        if best_rec and best_rec.get('avg_price_m2', 0) > 0:
+                            historical_price = best_rec['avg_price_m2']
+                            age_days = (today - datetime.strptime(best_rec['date'], '%Y-%m-%d').date()).days
+
+                            trend_pct = ((current_price - historical_price) / historical_price) * 100
+                            annualized_trend = trend_pct * (365.0 / max(age_days, 1))
+                            market_heat = self._classify_market_heat(annualized_trend)
+
+                            logger.info(f"   📊 Price Trend ({age_days}d history): {trend_pct:+.1f}% (annualized: {annualized_trend:+.1f}%)")
+                            return trend_pct, market_heat
+
+                except Exception as e:
+                    logger.debug(f"   Error reading price history: {e}")
+                    continue
+
+            # No suitable historical data found - use benchmark appreciation rate
             benchmark = self._find_nearest_benchmark(region_name)
             annual_appreciation = benchmark.get('historical_appreciation', 5.0)  # Default 5%/yr
             

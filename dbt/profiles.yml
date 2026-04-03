@@ -1,0 +1,39 @@
+# profiles.yml - Database connection configuration
+# This file should be placed in ~/.dbt/profiles.yml on the deployment machine
+
+cloudclearing:
+  target: dev
+  outputs:
+    # Development environment (local Athena/Trino)
+    dev:
+      type: trino
+      method: none
+      user: admin
+      host: localhost
+      port: 8080
+      database: cloudclearing
+      schema: analytics_dev
+      threads: 4
+      http_scheme: http
+      
+    # Production environment (AWS Athena)
+    prod:
+      type: athena
+      s3_staging_dir: s3://cloudclearing-data-lake/athena-results/
+      region_name: ap-southeast-1
+      database: cloudclearing
+      schema: analytics_prod
+      work_group: primary
+      threads: 8
+      aws_profile_name: cloudclearing-prod
+      
+    # CI/CD environment for automated testing
+    ci:
+      type: athena
+      s3_staging_dir: s3://cloudclearing-data-lake/athena-results-ci/
+      region_name: ap-southeast-1
+      database: cloudclearing_ci
+      schema: analytics_ci
+      work_group: ci
+      threads: 4
+      aws_profile_name: cloudclearing-ci

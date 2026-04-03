@@ -45,6 +45,13 @@ try:
 except ImportError:
     NEWS_AVAILABLE = False
 
+# Import momentum analyzer for historical rate-of-change scoring
+try:
+    from .momentum_analyzer import MomentumAnalyzer
+    MOMENTUM_AVAILABLE = True
+except ImportError:
+    MOMENTUM_AVAILABLE = False
+
 # Try to import RegionManager with fallback
 try:
     from ..regions import RegionManager
@@ -124,6 +131,15 @@ class AutomatedMonitor:
                 logger.info("✅ News Catalyst + Scraper initialized")
             except Exception as e:
                 logger.warning(f"⚠️ News modules unavailable: {e}")
+
+        # Initialize momentum analyzer (historical rate-of-change)
+        self.momentum_analyzer = None
+        if MOMENTUM_AVAILABLE:
+            try:
+                self.momentum_analyzer = MomentumAnalyzer()
+                logger.info("✅ Momentum Analyzer initialized (historical acceleration scoring)")
+            except Exception as e:
+                logger.warning(f"⚠️ Momentum Analyzer unavailable: {e}")
 
         # Initialize financial metrics engine (v2.7 CCAPI-27.0: with budget config)
         self.financial_engine = None
@@ -406,9 +422,10 @@ class AutomatedMonitor:
         }
         
         # Define date ranges to try for this specific region (in order of preference)
-        # Dynamic fallback: progressively tries older weeks (up to 20 attempts)
+        # Reduced from 20 to 5 attempts since SAR fallback handles cloud-covered periods
+        # (Saves ~60s per region when optical is unavailable during rainy season)
         now = datetime.now()
-        max_attempts = 20
+        max_attempts = 5
         date_attempts = []
         
         for attempt_num in range(max_attempts):
@@ -455,7 +472,11 @@ class AutomatedMonitor:
                         logger.warning(f"   ⚠️ {region_name}: {description} unavailable, will try next fallback")
                         continue
                     else:
-                        logger.error(f"   ❌ {region_name}: All {len(date_attempts)} date range attempts failed!")
+                        logger.warning(f"   ⚠️ {region_name}: All {len(date_attempts)} optical date ranges failed — attempting SAR-only fallback")
+                        sar_only_result = self._attempt_sar_only_fallback(region_name, region_bbox)
+                        if sar_only_result is not None:
+                            return sar_only_result
+                        logger.error(f"   ❌ {region_name}: All {len(date_attempts)} date range attempts AND SAR fallback failed!")
                         return None
                 
                 # If we got here without error, we have good data!
@@ -521,8 +542,12 @@ class AutomatedMonitor:
                         logger.warning(f"   ⚠️ {region_name}: {description} unavailable, will try next fallback")
                         continue
                     else:
-                        # All dynamic attempts failed
-                        logger.error(f"   ❌ {region_name}: All {len(date_attempts)} date range attempts failed!")
+                        # All optical attempts failed — try SAR-only
+                        logger.warning(f"   ⚠️ {region_name}: All {len(date_attempts)} optical date ranges failed — attempting SAR-only fallback")
+                        sar_only_result = self._attempt_sar_only_fallback(region_name, region_bbox)
+                        if sar_only_result is not None:
+                            return sar_only_result
+                        logger.error(f"   ❌ {region_name}: All {len(date_attempts)} date range attempts AND SAR fallback failed!")
                         return None
                 else:
                     # Some other error, don't retry
@@ -531,6 +556,81 @@ class AutomatedMonitor:
         
         # If we got here, all attempts failed
         logger.error(f"❌ {region_name}: Failed to analyze after {len(date_attempts)} attempts. Last error: {last_error}")
+        return None
+
+    def _attempt_sar_only_fallback(self, region_name: str, region_bbox: Dict) -> Optional[Dict]:
+        """
+        When all optical (Sentinel-2) date ranges fail, attempt SAR-only
+        analysis using Sentinel-1 radar which penetrates cloud cover.
+
+        SAR data is available year-round regardless of weather, so this
+        should succeed even when optical is completely unavailable.
+
+        Returns a region_result dict compatible with the optical path,
+        or None if SAR also fails.
+        """
+        if not self.sar_detector:
+            logger.warning(f"   ⚠️ {region_name}: SAR detector not available, cannot fallback")
+            return None
+
+        logger.info(f"   🛰️ {region_name}: Attempting SAR-only analysis (Sentinel-1 radar)...")
+
+        # Try multiple date ranges for SAR too (though SAR is much more available)
+        from datetime import timedelta
+        now = datetime.now()
+        sar_attempts = [
+            (now - timedelta(days=14), now - timedelta(days=7), now),        # 1-2 weeks ago
+            (now - timedelta(days=28), now - timedelta(days=14), now),       # 2-4 weeks ago
+            (now - timedelta(days=60), now - timedelta(days=30), now),       # 1-2 months ago
+        ]
+
+        for period_a_start, period_a_end, period_b_end in sar_attempts:
+            try:
+                sar_result = self.sar_detector.detect_sar_changes(
+                    bbox=region_bbox,
+                    region_name=region_name,
+                    period_a_start=period_a_start.strftime('%Y-%m-%d'),
+                    period_a_end=period_a_end.strftime('%Y-%m-%d'),
+                    period_b_start=period_a_end.strftime('%Y-%m-%d'),
+                    period_b_end=period_b_end.strftime('%Y-%m-%d')
+                )
+
+                if sar_result and sar_result.success and sar_result.sar_change_pixels > 0:
+                    logger.info(f"   ✅ {region_name}: SAR-only fallback succeeded! "
+                               f"{sar_result.sar_change_pixels:,} radar changes detected")
+
+                    # Build a region_result that mimics optical output
+                    # Use SAR change pixels as the primary change count
+                    region_result = {
+                        'region_name': region_name,
+                        'bbox': region_bbox,
+                        'change_count': sar_result.sar_change_pixels,
+                        'total_area_m2': sar_result.sar_change_pixels * 100,  # ~100m² per pixel at 10m resolution
+                        'change_types': {
+                            'construction': sar_result.construction_pixels,
+                            'clearing': sar_result.clearing_pixels,
+                            'sar_total': sar_result.sar_change_pixels,
+                        },
+                        'week_a': period_a_start.strftime('%Y-%m-%d'),
+                        'week_b': period_b_end.strftime('%Y-%m-%d'),
+                        'analysis_timestamp': datetime.now().isoformat(),
+                        'satellite_images': {},  # No optical imagery available
+                        'saved_images': {},
+                        'date_range_used': f'SAR-only fallback ({period_a_start.strftime("%Y-%m-%d")} to {period_b_end.strftime("%Y-%m-%d")})',
+                        'sar_result': sar_result,
+                        'data_source': 'sar_only',  # Flag that this is SAR-only
+                    }
+                    return region_result
+
+                logger.info(f"   ⚠️ {region_name}: SAR attempt "
+                           f"{period_a_start.strftime('%Y-%m-%d')}-{period_b_end.strftime('%Y-%m-%d')} "
+                           f"returned no changes, trying next period")
+
+            except Exception as e:
+                logger.warning(f"   ⚠️ {region_name}: SAR attempt failed: {e}")
+                continue
+
+        logger.warning(f"   ❌ {region_name}: SAR-only fallback also failed after {len(sar_attempts)} attempts")
         return None
 
     async def _analyze_strategic_corridor(self, corridor, week_a: str, week_b: str) -> Optional[Dict[str, Any]]:
@@ -1046,11 +1146,11 @@ class AutomatedMonitor:
                         import signal
                         
                         def timeout_handler(signum, frame):
-                            raise TimeoutError("Corrected scoring exceeded 45 second timeout")
-                        
+                            raise TimeoutError("Corrected scoring exceeded timeout")
+
                         signal.signal(signal.SIGALRM, timeout_handler)
-                        signal.alarm(45)  # 45 second timeout for scoring
-                        
+                        signal.alarm(180)  # 180s timeout for full scoring pipeline (OSM + financial + RVI)
+
                         try:
                             # Get satellite data from change detection
                             optical_changes = region_data.get('change_count', 0)
@@ -1100,11 +1200,11 @@ class AutomatedMonitor:
                                 sar_confidence_boost=fusion_result['confidence_boost'] if fusion_result else 0.0,
                                 news_catalyst_multiplier=news_catalyst_result.multiplier if news_catalyst_result else 1.0
                             )
-                            signal.alarm(0)  # Cancel the alarm
+                            # (alarm cancelled after financial + RVI block below)
                         except TimeoutError as te:
-                            signal.alarm(0)  # Cancel the alarm
+                            signal.alarm(0)  # Cancel on timeout
                             raise Exception(f"Corrected scoring timeout: {te}")
-                        
+
                         # --- NEW: Calculate Financial Projection ---
                         financial_projection = None
                         if self.financial_engine:
@@ -1175,6 +1275,23 @@ class AutomatedMonitor:
                                 logger.warning(f"   ⚠️ RVI calculation failed for {region_name}: {e}")
                         # -------------------------------------------
                         
+                        # Calculate development momentum (historical acceleration)
+                        momentum_data = None
+                        if self.momentum_analyzer:
+                            try:
+                                momentum_data = self.momentum_analyzer.calculate_momentum(region_name)
+                                if momentum_data and momentum_data.get('trend') not in ('insufficient_data', 'new_region'):
+                                    # Apply momentum multiplier to the final score
+                                    momentum_mult = momentum_data['multiplier']
+                                    corrected_result.final_investment_score = min(100,
+                                        corrected_result.final_investment_score * momentum_mult)
+                                    logger.info(f"   📈 Momentum: {momentum_data['momentum_ratio']:.2f}x → "
+                                              f"{momentum_mult:.2f}x multiplier ({momentum_data['trend']})")
+                            except Exception as e:
+                                logger.warning(f"   ⚠️ Momentum analysis failed for {region_name}: {e}")
+
+                        signal.alarm(0)  # Cancel the timeout — scoring + financial + RVI + momentum complete
+
                         # Convert to format compatible with reporting system
                         dynamic_score = {
                             'region_name': region_name,
@@ -1200,6 +1317,10 @@ class AutomatedMonitor:
                             'analysis_type': 'corrected_satellite_centric',  # Mark as corrected!
                             'financial_projection': financial_projection,  # NEW: Financial metrics
                             'rvi_data': rvi_data,  # NEW (v2.6-alpha): Relative Value Index
+                            # Sensitivity analysis — borderline detection
+                            'sensitivity_flag': corrected_result.sensitivity_flag,
+                            'sensitivity_detail': corrected_result.sensitivity_detail,
+                            'score_headroom': corrected_result.score_headroom,
                             # SAR radar fusion data (v2.10)
                             'sar_data': {
                                 'available': fusion_result is not None,
@@ -1222,7 +1343,19 @@ class AutomatedMonitor:
                                 'top_keywords': news_catalyst_result.top_keywords,
                                 'top_article_title': news_catalyst_result.top_article_title,
                                 'summary': news_catalyst_result.summary,
+                                'article_links': news_catalyst_result.article_links,
                             } if news_catalyst_result else None,
+                            # Development momentum (historical acceleration) (v2.11)
+                            'momentum': {
+                                'multiplier': momentum_data['multiplier'],
+                                'momentum_ratio': momentum_data['momentum_ratio'],
+                                'trend': momentum_data['trend'],
+                                'description': momentum_data['description'],
+                                'recent_velocity': momentum_data['recent_velocity'],
+                                'baseline_velocity': momentum_data['baseline_velocity'],
+                                'data_points_recent': momentum_data.get('data_points_recent', 0),
+                                'data_points_baseline': momentum_data.get('data_points_baseline', 0),
+                            } if momentum_data and momentum_data.get('trend') not in ('insufficient_data', 'new_region') else None,
                         }
                         
                         dynamic_scored_regions.append(dynamic_score)
@@ -1553,16 +1686,24 @@ class AutomatedMonitor:
             recommendation = {
                 'region': region_name,
                 'investment_score': investment_score,
-                'confidence_level': confidence,
+                'confidence': confidence,  # Standardized key name
+                'confidence_level': confidence,  # Backward compat
                 'current_price_per_m2': region_score.get('current_price_per_m2', 0),
                 'price_trend_30d': price_trend,
                 'market_heat': region_score.get('market_heat', 'unknown'),
                 'infrastructure_score': region_score.get('infrastructure_score', 0),
-                'infrastructure_details': region_score.get('infrastructure_details', {}),  # NEW: Detailed breakdown
+                'infrastructure_details': region_score.get('infrastructure_details', {}),
                 'satellite_changes': region_score.get('satellite_changes', 0),
                 'data_sources': region_score.get('data_sources', {}),
                 'analysis_type': region_score.get('analysis_type', 'dynamic'),
-                'financial_projection': region_score.get('financial_projection')  # ✅ FIX: Include financial projection
+                'financial_projection': region_score.get('financial_projection'),
+                'sensitivity_flag': region_score.get('sensitivity_flag'),
+                'sensitivity_detail': region_score.get('sensitivity_detail'),
+                'score_headroom': region_score.get('score_headroom'),
+                'sar_data': region_score.get('sar_data'),
+                'news_catalyst': region_score.get('news_catalyst'),
+                'momentum': region_score.get('momentum'),
+                'rvi_data': region_score.get('rvi_data'),
             }
             
             # ✅ CORRECTED THRESHOLDS (based on proper 0-60 score range)

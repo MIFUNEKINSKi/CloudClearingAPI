@@ -1,0 +1,196 @@
+# schema.yml - Staging model tests and documentation
+
+version: 2
+
+models:
+  - name: stg_satellite_changes
+    description: "Staging model for satellite change detection data with type casting and quality flags"
+    columns:
+      - name: region_name
+        description: "Region identifier (e.g., 'jakarta_south_suburbs')"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_infrastructure_scores')
+              field: region_name
+      
+      - name: analysis_date
+        description: "Date of analysis execution"
+        tests:
+          - not_null
+      
+      - name: total_changes
+        description: "Total number of changed pixels detected"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1000000
+      
+      - name: vegetation_loss_pixels
+        description: "Number of pixels showing vegetation loss (NDVI decrease)"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+      
+      - name: construction_activity_pct
+        description: "Percentage of area showing construction activity (NDBI increase)"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1.0
+              strictly: false
+      
+      - name: cloud_coverage_pct
+        description: "Cloud coverage percentage of imagery"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
+      
+      - name: data_freshness_category
+        description: "Data freshness classification"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['current_week', 'recent', 'fallback', 'stale']
+      
+      - name: imagery_quality_tier
+        description: "Imagery quality classification based on cloud coverage"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['excellent', 'good', 'acceptable', 'poor']
+
+  - name: stg_infrastructure_scores
+    description: "Staging model for infrastructure scoring from OpenStreetMap"
+    columns:
+      - name: region_name
+        description: "Region identifier"
+        tests:
+          - not_null
+          - unique:
+              config:
+                where: "analysis_date = (SELECT MAX(analysis_date) FROM {{ ref('stg_infrastructure_scores') }})"
+      
+      - name: infrastructure_score
+        description: "Overall infrastructure score (0-100)"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
+      
+      - name: infrastructure_multiplier
+        description: "Multiplier for investment scoring (0.8 to 1.3)"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0.8
+              max_value: 1.3
+      
+      - name: accessibility_tier
+        description: "Accessibility classification"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['excellent', 'good', 'moderate', 'limited', 'poor']
+      
+      - name: major_features_count
+        description: "Count of major infrastructure features"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+
+  - name: stg_market_data
+    description: "Staging model for market intelligence with 3-tier data source fallback"
+    columns:
+      - name: region_name
+        description: "Region identifier"
+        tests:
+          - not_null
+      
+      - name: price_per_m2_idr
+        description: "Land price per square meter in Indonesian Rupiah"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 100000  # Minimum realistic land price
+              max_value: 50000000000  # Maximum realistic land price
+      
+      - name: market_multiplier
+        description: "Multiplier for investment scoring (0.85 to 1.4)"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0.85
+              max_value: 1.4
+      
+      - name: data_source
+        description: "Data source type (live_scrape, cache, static_benchmark)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['live_scrape', 'cache', 'static_benchmark']
+      
+      - name: confidence_level
+        description: "Data confidence level (0.0 to 1.0)"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0.0
+              max_value: 1.0
+      
+      - name: market_heat
+        description: "Market temperature classification"
+        tests:
+          - accepted_values:
+              values: ['hot', 'warming', 'stable', 'cooling', 'cold']
+
+  - name: stg_financial_projections
+    description: "Staging model for financial projections and ROI calculations"
+    columns:
+      - name: region_name
+        description: "Region identifier"
+        tests:
+          - not_null
+      
+      - name: projected_roi_3yr_pct
+        description: "Projected 3-year ROI as decimal percentage"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -0.50  # Allow for negative ROI (losses)
+              max_value: 3.0    # Cap at 300% ROI
+      
+      - name: payback_period_years
+        description: "Estimated payback period in years"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 20
+      
+      - name: risk_category
+        description: "Investment risk classification"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['low', 'medium', 'high', 'speculative']
+      
+      - name: confidence_score
+        description: "Financial projection confidence score (0.0 to 1.0)"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0.0
+              max_value: 1.0
+      
+      - name: roi_tier
+        description: "ROI performance tier"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['excellent', 'strong', 'moderate', 'weak', 'poor']

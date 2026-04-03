@@ -152,6 +152,9 @@ class PDFReportGenerator:
         # Add monitoring results
         story.extend(self._build_monitoring_results(data))
         
+        # Add decision matrix — ranked comparison of ALL regions
+        story.extend(self._build_decision_matrix(data))
+
         # Add investment analysis (MOVED UP - this is the main value!)
         story.extend(self._build_investment_analysis(data))
         
@@ -392,6 +395,140 @@ class PDFReportGenerator:
                 story.append(Paragraph(f"• {alert['message']}", self.styles['AlertMajor']))
             story.append(Spacer(1, 15))
         
+        return story
+
+    def _build_decision_matrix(self, data: Dict[str, Any]) -> List:
+        """Build a ranked comparison table of ALL regions for quick decision making."""
+        story = []
+
+        yogyakarta_analysis = data.get('investment_analysis', {}).get('yogyakarta_analysis', {})
+        buys = yogyakarta_analysis.get('buy_recommendations', [])
+        watch = yogyakarta_analysis.get('watch_list', [])
+        passes = yogyakarta_analysis.get('pass_list', [])
+        all_regions = buys + watch + passes
+
+        if not all_regions:
+            return story
+
+        story.append(PageBreak())
+        story.append(Paragraph("DECISION MATRIX — All Regions Ranked", self.styles['SectionHeader']))
+
+        # Summary counts
+        story.append(Paragraph(
+            f"<b>{len(buys)} BUY</b> | <b>{len(watch)} WATCH</b> | <b>{len(passes)} PASS</b> "
+            f"&nbsp;&nbsp;(BUY >= 40 | WATCH 25-39 | PASS < 25)",
+            self.styles['Normal']
+        ))
+        story.append(Spacer(1, 10))
+
+        # Sort all regions by score descending
+        all_regions.sort(key=lambda r: r.get('investment_score', 0), reverse=True)
+
+        cell_style = ParagraphStyle('CellStyle', parent=self.styles['Normal'], fontSize=7, leading=9)
+        header_style = ParagraphStyle('HeaderStyle', parent=self.styles['Normal'], fontSize=7, leading=9, textColor=colors.white)
+
+        table_data = [[
+            Paragraph('<b>Region</b>', header_style),
+            Paragraph('<b>Score</b>', header_style),
+            Paragraph('<b>Action</b>', header_style),
+            Paragraph('<b>Price/m²</b>', header_style),
+            Paragraph('<b>RVI</b>', header_style),
+            Paragraph('<b>Momentum</b>', header_style),
+            Paragraph('<b>3Y Land</b>', header_style),
+            Paragraph('<b>Conf.</b>', header_style),
+        ]]
+
+        for r in all_regions:
+            score = r.get('investment_score', 0)
+            rec = r.get('recommendation', 'PASS')
+            price = r.get('current_price_per_m2', 0)
+            rvi_data = r.get('rvi_data', {})
+            rvi = rvi_data.get('rvi', 0)
+            rvi_interp = rvi_data.get('interpretation', '')
+            mom = r.get('momentum', {})
+            mom_mult = mom.get('multiplier', 1.0)
+            mom_trend = mom.get('trend', '')
+            fp = r.get('financial_projection', {})
+            roi_3yr = fp.get('land_only_roi_3yr', fp.get('projected_roi_3yr', 0))
+            confidence = r.get('confidence', r.get('confidence_level', 0))
+            region_name = r.get('region', '').replace('_', ' ').title()
+
+            # Color-code action
+            if rec == 'BUY':
+                action_str = '<font color="green"><b>BUY</b></font>'
+            elif rec == 'WATCH':
+                action_str = '<font color="#CC8800"><b>WATCH</b></font>'
+            else:
+                action_str = '<font color="red"><b>PASS</b></font>'
+
+            # RVI interpretation shorthand
+            if rvi < 0.7:
+                rvi_str = f'<font color="green">{rvi:.2f}</font>'
+            elif rvi < 0.9:
+                rvi_str = f'<font color="green">{rvi:.2f}</font>'
+            elif rvi < 1.1:
+                rvi_str = f'{rvi:.2f}'
+            elif rvi < 1.3:
+                rvi_str = f'<font color="#CC8800">{rvi:.2f}</font>'
+            else:
+                rvi_str = f'<font color="red">{rvi:.2f}</font>'
+
+            # Momentum shorthand
+            if mom_trend == 'accelerating':
+                mom_str = f'<font color="green">{mom_mult:.2f}x</font>'
+            elif mom_trend == 'decelerating':
+                mom_str = f'<font color="red">{mom_mult:.2f}x</font>'
+            else:
+                mom_str = f'{mom_mult:.2f}x'
+
+            table_data.append([
+                Paragraph(region_name, cell_style),
+                Paragraph(f'<b>{score:.1f}</b>', cell_style),
+                Paragraph(action_str, cell_style),
+                Paragraph(f'Rp {price/1e6:.1f}M' if price else '-', cell_style),
+                Paragraph(rvi_str, cell_style),
+                Paragraph(mom_str, cell_style),
+                Paragraph(f'{roi_3yr*100:.1f}%' if roi_3yr else '-', cell_style),
+                Paragraph(f'{confidence:.0%}', cell_style),
+            ])
+
+        col_widths = [1.5*inch, 0.5*inch, 0.5*inch, 0.8*inch, 0.5*inch, 0.65*inch, 0.55*inch, 0.45*inch]
+        table = Table(table_data, colWidths=col_widths, repeatRows=1)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E86AB')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('FONTSIZE', (0, 0), (-1, -1), 7),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.HexColor('#F0F8FF'), colors.white]),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        story.append(table)
+        story.append(Spacer(1, 10))
+
+        # RVI legend
+        story.append(Paragraph(
+            '<font size="7"><b>RVI (Relative Value Index):</b> '
+            '<font color="green">&lt;0.9 = Undervalued</font> | '
+            '0.9-1.1 = Fair Value | '
+            '<font color="#CC8800">1.1-1.3 = Overvalued</font> | '
+            '<font color="red">&gt;1.3 = Significantly Overvalued</font></font>',
+            self.styles['Normal']
+        ))
+        story.append(Paragraph(
+            '<font size="7"><b>Momentum:</b> '
+            '<font color="green">Accelerating = rising activity</font> | '
+            'Steady | '
+            '<font color="red">Decelerating = slowing activity</font></font>',
+            self.styles['Normal']
+        ))
+
+        story.append(Spacer(1, 15))
         return story
 
     def _build_investment_analysis(self, data: Dict[str, Any]) -> List:
@@ -1033,9 +1170,86 @@ class PDFReportGenerator:
                 if news_data.get('summary'):
                     score_components.append(f"News: {news_data['summary'][:100]}")
 
+            # Development momentum (historical acceleration)
+            momentum_data = investment_rec.get('momentum')
+            if momentum_data:
+                trend_emoji = {
+                    'surging': '🚀', 'accelerating': '📈', 'growing': '↗️',
+                    'steady': '➡️', 'slowing': '📉', 'stalling': '⬇️'
+                }.get(momentum_data['trend'], '📊')
+                score_components.append(
+                    f"Momentum: {momentum_data['multiplier']:.2f}x "
+                    f"({trend_emoji} {momentum_data['trend']} — "
+                    f"{momentum_data['momentum_ratio']:.1f}x recent vs baseline)"
+                )
+
             for component in score_components:
                 story.append(Paragraph(f"   • {component}", self.styles['Normal']))
-            
+
+            # Planned Infrastructure Catalysts — surface actual projects from news
+            news_data = investment_rec.get('news_catalyst')
+            if news_data and news_data.get('articles_found', 0) > 0:
+                top_keywords = news_data.get('top_keywords', [])
+                top_article = news_data.get('top_article_title', '')
+
+                # Only show section if there are infrastructure-related keywords
+                infra_kws = [kw for kw in top_keywords if kw.lower() in (
+                    'toll road', 'jalan tol', 'highway', 'airport', 'bandara', 'port',
+                    'pelabuhan', 'railway', 'kereta api', 'sez', 'special economic zone',
+                    'kawasan ekonomi khusus', 'industrial park', 'kawasan industri',
+                    'groundbreaking', 'proyek strategis nasional', 'psn',
+                    'high-speed rail', 'kereta cepat', 'new city', 'kota baru',
+                    'expressway', 'mrt', 'lrt',
+                )]
+
+                if infra_kws or top_article:
+                    story.append(Paragraph(
+                        "<b>Planned Infrastructure Catalysts:</b>",
+                        self.styles['Normal']
+                    ))
+                    if infra_kws:
+                        story.append(Paragraph(
+                            f"   • Detected projects: <b>{', '.join(infra_kws)}</b>",
+                            self.styles['Normal']
+                        ))
+                    if top_article:
+                        story.append(Paragraph(
+                            f"   • Top article: <i>\"{top_article}\"</i>",
+                            self.styles['Normal']
+                        ))
+                    pos_count = news_data.get('positive_count', 0)
+                    neg_count = news_data.get('negative_count', 0)
+                    if neg_count > 0:
+                        story.append(Paragraph(
+                            f"   • ⚠ {neg_count} negative article(s) found "
+                            f"(cancellations, delays, disputes) — review before investing",
+                            self.styles['Normal']
+                        ))
+                    elif pos_count >= 3:
+                        story.append(Paragraph(
+                            f"   • {pos_count} positive articles — active development corridor",
+                            self.styles['Normal']
+                        ))
+
+                    # Show linked articles
+                    article_links = news_data.get('article_links', [])
+                    for art in article_links[:5]:
+                        sentiment_icon = {'positive': '+', 'negative': '-', 'neutral': '~'}.get(art.get('sentiment', ''), '~')
+                        source_label = art.get('source', '').replace('_', ' ').title()
+                        title = art.get('title', '')[:90]
+                        url = art.get('url', '')
+                        if url:
+                            story.append(Paragraph(
+                                f'   [{sentiment_icon}] <a href="{url}" color="blue"><u>{title}</u></a> '
+                                f'<font size="7">({source_label})</font>',
+                                self.styles['Normal']
+                            ))
+                        else:
+                            story.append(Paragraph(
+                                f'   [{sentiment_icon}] {title} ({source_label})',
+                                self.styles['Normal']
+                            ))
+
             # ✅ NEW: Show detailed infrastructure breakdown
             if infra_details:
                 story.append(Paragraph(
@@ -1130,6 +1344,19 @@ class PDFReportGenerator:
                     f"(multiplier: {news_data['multiplier']:.2f}x)"
                 )
 
+            # Development momentum (historical acceleration)
+            momentum_data = investment_rec.get('momentum')
+            if momentum_data:
+                confidence_factors.append(
+                    f"✅ Historical momentum: {momentum_data['trend']} "
+                    f"({momentum_data['data_points_recent']}w recent / "
+                    f"{momentum_data['data_points_baseline']}w baseline)"
+                    if momentum_data.get('data_points_recent', 0) > 0
+                    else "⚠️ Historical momentum: Insufficient run history"
+                )
+            else:
+                confidence_factors.append("⚠️ Historical momentum: Not available")
+
             for conf_factor in confidence_factors:
                 story.append(Paragraph(f"   • {conf_factor}", self.styles['Normal']))
             
@@ -1145,8 +1372,19 @@ class PDFReportGenerator:
                 f"   <i>{conf_summary}</i>",
                 self.styles['Normal']
             ))
+            # Sensitivity flag — borderline detection
+            sensitivity_flag = investment_rec.get('sensitivity_flag')
+            sensitivity_detail = investment_rec.get('sensitivity_detail')
+            if sensitivity_flag:
+                flag_color = '#D4380D' if 'PASS' in sensitivity_flag else '#D48806'
+                story.append(Paragraph(
+                    f"<b style='color:{flag_color}'>⚠ {sensitivity_flag}:</b> "
+                    f"<i>{sensitivity_detail}. A 10% data change could flip this recommendation.</i>",
+                    self.styles['Normal']
+                ))
+
             story.append(Spacer(1, 5))
-            
+
             # 💰 NEW: Draw financial projection section if available
             financial_projection = investment_rec.get('financial_projection')
             if financial_projection:
@@ -1637,6 +1875,33 @@ class PDFReportGenerator:
             
             story.append(Spacer(1, 5))
         
+        # USD-Adjusted Returns for Foreign Investors
+        usd_roi_3yr = financial_data.get('usd_roi_3yr')
+        usd_roi_5yr = financial_data.get('usd_roi_5yr')
+        usd_exit_3yr = financial_data.get('usd_exit_value_3yr')
+        idr_depr = financial_data.get('idr_depreciation_rate_annual', 0.035)
+        if usd_roi_3yr is not None:
+            story.append(Paragraph(
+                f"<b>USD-Adjusted Returns</b> (assuming {idr_depr:.1%}/yr IDR depreciation):",
+                self.styles['Normal']
+            ))
+            story.append(Paragraph(
+                f"   • 3-Year ROI (USD): <b>{usd_roi_3yr:.1%}</b> | "
+                f"5-Year ROI (USD): <b>{(usd_roi_5yr or 0):.1%}</b>",
+                self.styles['Normal']
+            ))
+            if usd_exit_3yr and usd_exit_3yr > 0:
+                story.append(Paragraph(
+                    f"   • Projected Exit Value (USD, 3yr): <b>${usd_exit_3yr:,.0f}</b>",
+                    self.styles['Normal']
+                ))
+            story.append(Paragraph(
+                f"   <i>Note: IDR has averaged ~3-4% annual depreciation vs USD (2015-2025). "
+                f"Actual currency movements will affect real returns.</i>",
+                self.styles['Footer']
+            ))
+            story.append(Spacer(1, 5))
+
         # Risk Assessment
         story.append(Paragraph(
             "<b>Risk Assessment:</b>",
@@ -1662,6 +1927,22 @@ class PDFReportGenerator:
             ))
 
         story.append(Spacer(1, 5))
+
+        # Liquidity warning for illiquid regions
+        liquidity_warning = financial_data.get('liquidity_warning')
+        est_txns = financial_data.get('estimated_monthly_transactions')
+        if liquidity_warning:
+            story.append(Paragraph(
+                f"<b style='color:#D4380D'>🔴 {liquidity_warning}</b>",
+                self.styles['Normal']
+            ))
+            story.append(Spacer(1, 5))
+        elif est_txns is not None:
+            story.append(Paragraph(
+                f"   Est. monthly transactions: ~{est_txns}",
+                self.styles['Normal']
+            ))
+            story.append(Spacer(1, 5))
 
         # Add disclaimer for financial projections
         story.append(Spacer(1, 5))

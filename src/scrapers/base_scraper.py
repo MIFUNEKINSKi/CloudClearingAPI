@@ -336,9 +336,49 @@ class BaseLandPriceScraper(ABC):
                 json.dump(data, f, indent=2, ensure_ascii=False)
             
             logger.debug(f"Cached result for {result.region_name} at {cache_file}")
-            
+
+            # Also append to price history archive for trend analysis
+            if result.success and result.average_price_per_m2 > 0:
+                self._append_price_history(result)
+
         except Exception as e:
             logger.error(f"Failed to save cache for {result.region_name}: {str(e)}")
+
+    def _append_price_history(self, result: ScrapeResult):
+        """Append a price snapshot to the history archive for trend analysis."""
+        try:
+            history_dir = self.cache_dir / 'price_history'
+            history_dir.mkdir(parents=True, exist_ok=True)
+
+            slug = result.region_name.lower().replace(' ', '_')
+            history_file = history_dir / f"{slug}.jsonl"
+
+            entry = {
+                'date': result.scraped_at.strftime('%Y-%m-%d'),
+                'source': result.source,
+                'avg_price_m2': result.average_price_per_m2,
+                'median_price_m2': result.median_price_per_m2,
+                'listing_count': result.listing_count,
+            }
+
+            # Avoid duplicate entries for the same date+source
+            existing_dates = set()
+            if history_file.exists():
+                with open(history_file, 'r') as f:
+                    for line in f:
+                        try:
+                            rec = json.loads(line)
+                            existing_dates.add((rec.get('date'), rec.get('source')))
+                        except json.JSONDecodeError:
+                            pass
+
+            key = (entry['date'], entry['source'])
+            if key not in existing_dates:
+                with open(history_file, 'a') as f:
+                    f.write(json.dumps(entry) + '\n')
+                logger.debug(f"Appended price history for {result.region_name}")
+        except Exception as e:
+            logger.debug(f"Failed to save price history: {e}")
     
     def _get_cache_filename(self, region_name: str) -> Path:
         """Get cache filename for a region"""

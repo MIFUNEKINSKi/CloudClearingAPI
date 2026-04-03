@@ -90,30 +90,67 @@ NEGATIVE_KEYWORDS = {
 
 # City → region mapping (reuses Lamudi's pattern)
 CITY_TO_REGIONS = {
-    'jakarta': ['jakarta_north_sprawl', 'jakarta_east_industrial', 'jakarta_south_premium', 'jakarta_west_tangerang'],
-    'tangerang': ['tangerang_bsd_corridor', 'tangerang_industrial_corridor', 'jakarta_west_tangerang'],
-    'bekasi': ['bekasi_east_expansion'],
-    'bandung': ['bandung_north_expansion', 'bandung_south_development'],
-    'yogyakarta': ['yogyakarta_urban', 'yogyakarta_periurban'],
-    'jogja': ['yogyakarta_urban', 'yogyakarta_periurban'],
-    'semarang': ['semarang_port_expansion', 'semarang_south_hills'],
+    'jakarta': ['jakarta_north_sprawl', 'jakarta_south_suburbs'],
+    'tangerang': ['tangerang_bsd_corridor'],
+    'bekasi': ['bekasi_industrial_belt'],
+    'cikarang': ['cikarang_mega_industrial'],
+    'karawang': ['karawang_industrial_corridor'],
+    'bandung': ['bandung_north_expansion', 'bandung_east_tech_corridor'],
+    'yogyakarta': ['yogyakarta_urban_core', 'yogyakarta_kulon_progo_airport'],
+    'jogja': ['yogyakarta_urban_core', 'yogyakarta_kulon_progo_airport'],
+    'semarang': ['semarang_port_expansion', 'semarang_south_urban'],
     'solo': ['solo_raya_expansion'],
     'surakarta': ['solo_raya_expansion'],
-    'surabaya': ['surabaya_east_industrial', 'surabaya_south_expansion', 'surabaya_west_corridor'],
-    'malang': ['malang_batu_corridor'],
+    'surabaya': ['surabaya_west_expansion', 'surabaya_east_industrial'],
+    'gresik': ['gresik_port_industrial'],
+    'sidoarjo': ['sidoarjo_delta_development'],
+    'malang': ['malang_south_highland'],
     'banyuwangi': ['banyuwangi_ferry_corridor'],
     'jember': ['jember_southern_coast'],
     'probolinggo': ['probolinggo_bromo_gateway'],
     'tegal': ['tegal_brebes_coastal'],
-    'pekalongan': ['pekalongan_batang_corridor'],
     'purwokerto': ['purwokerto_south_expansion'],
-    'cilacap': ['cilacap_industrial_port'],
-    'serang': ['serang_banten_gateway'],
-    'cilegon': ['cilegon_industrial_port'],
-    'denpasar': ['denpasar_north_expansion'],
-    'bali': ['denpasar_north_expansion'],
-    'java': [],  # too broad to match specific region
-    'jawa': [],
+    'serang': ['serang_cilegon_industrial'],
+    'cilegon': ['serang_cilegon_industrial'],
+    'merak': ['merak_port_corridor'],
+    'anyer': ['anyer_carita_coastal'],
+    'cirebon': ['cirebon_port_industrial'],
+    'subang': ['subang_patimban_megaport'],
+    'patimban': ['subang_patimban_megaport'],
+    'bogor': ['bogor_puncak_highland'],
+    'magelang': ['magelang_borobudur_corridor'],
+    'borobudur': ['magelang_borobudur_corridor'],
+    'batang': ['batang_industrial_sez'],
+    'labuan bajo': ['labuan_bajo_komodo_gateway'],
+    'komodo': ['labuan_bajo_komodo_gateway'],
+    'nusa dua': ['nusa_dua_bukit_peninsula'],
+    'jimbaran': ['nusa_dua_bukit_peninsula'],
+    'uluwatu': ['nusa_dua_bukit_peninsula'],
+    'padang': ['padang_urban_coastal'],
+    'banda aceh': ['banda_aceh_reconstruction'],
+    'senggigi': ['lombok_senggigi_coast'],
+    'kupang': ['kupang_urban_development'],
+
+    # Province-level matching (articles mentioning province match all regions in it)
+    'jawa barat': ['bandung_north_expansion', 'bandung_east_tech_corridor', 'cirebon_port_industrial',
+                   'subang_patimban_megaport', 'bogor_puncak_highland', 'karawang_industrial_corridor'],
+    'west java': ['bandung_north_expansion', 'bandung_east_tech_corridor', 'cirebon_port_industrial',
+                  'subang_patimban_megaport', 'bogor_puncak_highland', 'karawang_industrial_corridor'],
+    'jawa tengah': ['semarang_port_expansion', 'semarang_south_urban', 'solo_raya_expansion',
+                    'tegal_brebes_coastal', 'purwokerto_south_expansion', 'magelang_borobudur_corridor',
+                    'batang_industrial_sez'],
+    'central java': ['semarang_port_expansion', 'semarang_south_urban', 'solo_raya_expansion',
+                     'tegal_brebes_coastal', 'purwokerto_south_expansion', 'magelang_borobudur_corridor',
+                     'batang_industrial_sez'],
+    'jawa timur': ['surabaya_west_expansion', 'surabaya_east_industrial', 'gresik_port_industrial',
+                   'sidoarjo_delta_development', 'malang_south_highland', 'banyuwangi_ferry_corridor',
+                   'probolinggo_bromo_gateway', 'jember_southern_coast'],
+    'east java': ['surabaya_west_expansion', 'surabaya_east_industrial', 'gresik_port_industrial',
+                  'sidoarjo_delta_development', 'malang_south_highland', 'banyuwangi_ferry_corridor',
+                  'probolinggo_bromo_gateway', 'jember_southern_coast'],
+    'banten': ['serang_cilegon_industrial', 'merak_port_corridor', 'anyer_carita_coastal',
+               'tangerang_bsd_corridor'],
+    'diy': ['yogyakarta_urban_core', 'yogyakarta_kulon_progo_airport', 'magelang_borobudur_corridor'],
 }
 
 
@@ -243,6 +280,7 @@ class NewsScraper:
         urls = [
             "https://www.thejakartapost.com/indonesia",
             "https://www.thejakartapost.com/business",
+            "https://www.thejakartapost.com/business/economy",
         ]
         
         seen_urls = set()
@@ -298,6 +336,9 @@ class NewsScraper:
         urls = [
             "https://properti.kompas.com/",
             "https://money.kompas.com/",
+            "https://www.kompas.com/jawa-tengah",
+            "https://www.kompas.com/jawa-timur",
+            "https://www.kompas.com/jawa-barat",
         ]
         
         seen_urls = set()
@@ -343,11 +384,11 @@ class NewsScraper:
         return articles[:30]
     
     def _scrape_antara(self) -> List[Dict]:
-        """Scrape infrastructure articles from Antara News (English)."""
+        """Scrape infrastructure articles from Antara News."""
         articles = []
         urls = [
-            "https://en.antaranews.com/economy",
-            "https://en.antaranews.com/business",
+            "https://www.antaranews.com/ekonomi",
+            "https://www.antaranews.com/ekonomi/bisnis",
         ]
         
         seen_urls = set()
@@ -365,8 +406,11 @@ class NewsScraper:
 
                     if not title_text or len(title_text) < 20:
                         continue
-                    if 'antaranews.com/news' not in href:
+                    # Accept absolute antaranews URLs or relative /berita/ paths
+                    if 'antaranews.com/' not in href and not href.startswith('/berita/'):
                         continue
+                    if href.startswith('/'):
+                        href = 'https://www.antaranews.com' + href
                     if href in seen_urls:
                         continue
                     seen_urls.add(href)
@@ -395,11 +439,13 @@ class NewsScraper:
     # ─── MATCHING ────────────────────────────────────────────────
     
     def _match_keywords(self, text: str) -> List[str]:
-        """Check which infrastructure keywords appear in text."""
+        """Check which infrastructure keywords appear in text (word boundary match)."""
+        import re as _re
         text_lower = text.lower()
         matched = []
         for keyword in INFRA_KEYWORDS:
-            if keyword in text_lower:
+            # Use word boundaries to avoid false positives like "port" in "support"
+            if _re.search(r'\b' + _re.escape(keyword) + r'\b', text_lower):
                 matched.append(keyword)
         return matched
     
@@ -436,8 +482,9 @@ class NewsScraper:
         for article in articles:
             text = f"{article['title']} {article.get('snippet', '')}".lower()
             
-            # Check if any target city is mentioned
-            city_match = any(city in text for city in target_cities)
+            # Check if any target city is mentioned (word boundary match)
+            import re as _re
+            city_match = any(_re.search(r'\b' + _re.escape(city) + r'\b', text) for city in target_cities)
             if not city_match:
                 continue
             

@@ -90,54 +90,54 @@ class InfrastructureAnalyzer:
             'port': {'max_distance': 50, 'half_life': 15}          # Expanded from 15km to 50km
         }
         
-        # 🆕 COMPREHENSIVE: Regional fallback database with known infrastructure patterns
+        # Regional fallback database — all 29 Java monitoring regions
+        # Used when OSM Overpass API queries fail or timeout
         self.regional_infrastructure_database = {
-            # Jakarta Metro Area
+            # Jakarta Metro Area (Tier 1)
             'jakarta_north_sprawl': {'infra_score': 95, 'highways': 8, 'ports': 2, 'airports': 2, 'railways': 3},
             'jakarta_south_suburbs': {'infra_score': 90, 'highways': 7, 'ports': 1, 'airports': 2, 'railways': 2},
             'tangerang_bsd_corridor': {'infra_score': 92, 'highways': 7, 'ports': 1, 'airports': 2, 'railways': 1},
             'bekasi_industrial_belt': {'infra_score': 88, 'highways': 6, 'ports': 1, 'airports': 1, 'railways': 2},
-            
-            # Bandung Area
+            'cikarang_mega_industrial': {'infra_score': 85, 'highways': 5, 'ports': 1, 'airports': 1, 'railways': 2},
+            'bogor_puncak_highland': {'infra_score': 70, 'highways': 4, 'ports': 0, 'airports': 0, 'railways': 1},
+
+            'karawang_industrial_corridor': {'infra_score': 85, 'highways': 5, 'ports': 1, 'airports': 1, 'railways': 2},
+
+            # Bandung Area (Tier 1-2)
             'bandung_north_expansion': {'infra_score': 82, 'highways': 5, 'ports': 0, 'airports': 1, 'railways': 2},
-            'bandung_periurban': {'infra_score': 78, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
-            'cimahi_expansion': {'infra_score': 75, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
-            
-            # Central Java
-            'semarang_suburbs': {'infra_score': 80, 'highways': 5, 'ports': 2, 'airports': 1, 'railways': 2},
-            'solo_periphery': {'infra_score': 72, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
-            'yogyakarta_north': {'infra_score': 75, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
-            'yogyakarta_south': {'infra_score': 73, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
-            'magelang_corridor': {'infra_score': 68, 'highways': 3, 'ports': 0, 'airports': 0, 'railways': 0},
-            'purwokerto_area': {'infra_score': 65, 'highways': 3, 'ports': 0, 'airports': 0, 'railways': 1},
-            
-            # East Java
-            'surabaya_west': {'infra_score': 88, 'highways': 6, 'ports': 2, 'airports': 1, 'railways': 2},
-            'surabaya_south': {'infra_score': 85, 'highways': 6, 'ports': 1, 'airports': 1, 'railways': 1},
-            'malang_suburbs': {'infra_score': 70, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
-            'sidoarjo_delta': {'infra_score': 82, 'highways': 5, 'ports': 1, 'airports': 1, 'railways': 1},
-            
-            # Banten
-            'serang_cilegon_industrial': {'infra_score': 85, 'highways': 5, 'ports': 2, 'airports': 1, 'railways': 1},
-            'cilegon_corridor': {'infra_score': 83, 'highways': 5, 'ports': 2, 'airports': 0, 'railways': 1},
-            'merak_port': {'infra_score': 90, 'highways': 4, 'ports': 3, 'airports': 0, 'railways': 1},
-            'anyer_carita_coastal': {'infra_score': 60, 'highways': 2, 'ports': 1, 'airports': 0, 'railways': 0},
-            
-            # Regional/Coastal Areas
+            'bandung_east_tech_corridor': {'infra_score': 78, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
+
+            # West Java Corridors (Tier 2-3)
             'cirebon_port_industrial': {'infra_score': 75, 'highways': 4, 'ports': 2, 'airports': 1, 'railways': 1},
-            'tegal_industrial': {'infra_score': 68, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 1},
-            'pekalongan_coast': {'infra_score': 65, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 1},
-            'jepara_coast': {'infra_score': 62, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 0},
-            'probolinggo_corridor': {'infra_score': 68, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 1},
-            'banyuwangi_ferry': {'infra_score': 70, 'highways': 3, 'ports': 2, 'airports': 0, 'railways': 0},
-            'jember_southern_coast': {'infra_score': 58, 'highways': 2, 'ports': 0, 'airports': 0, 'railways': 0},
-            'kediri_suburbs': {'infra_score': 65, 'highways': 3, 'ports': 0, 'airports': 0, 'railways': 1},
-            'blitar_area': {'infra_score': 62, 'highways': 3, 'ports': 0, 'airports': 0, 'railways': 1},
-            'madiun_suburbs': {'infra_score': 68, 'highways': 3, 'ports': 0, 'airports': 0, 'railways': 1},
-            
-            # Yogyakarta Special Regions
+            'subang_patimban_megaport': {'infra_score': 72, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 0},
+
+            # Central Java (Tier 2)
+            'semarang_port_expansion': {'infra_score': 85, 'highways': 5, 'ports': 2, 'airports': 1, 'railways': 2},
+            'semarang_south_urban': {'infra_score': 80, 'highways': 5, 'ports': 1, 'airports': 1, 'railways': 2},
+            'solo_raya_expansion': {'infra_score': 78, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
+            'tegal_brebes_coastal': {'infra_score': 65, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 1},
+            'batang_industrial_sez': {'infra_score': 72, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 1},
+            'purwokerto_south_expansion': {'infra_score': 65, 'highways': 3, 'ports': 0, 'airports': 0, 'railways': 1},
+
+            # Yogyakarta (Tier 2)
+            'yogyakarta_urban_core': {'infra_score': 75, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
             'yogyakarta_kulon_progo_airport': {'infra_score': 82, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 0},
-            'bogor_puncak_highland': {'infra_score': 70, 'highways': 4, 'ports': 0, 'airports': 0, 'railways': 0},
+            'magelang_borobudur_corridor': {'infra_score': 68, 'highways': 3, 'ports': 0, 'airports': 0, 'railways': 0},
+
+            # East Java (Tier 1-2)
+            'surabaya_west_expansion': {'infra_score': 88, 'highways': 6, 'ports': 2, 'airports': 1, 'railways': 2},
+            'surabaya_east_industrial': {'infra_score': 85, 'highways': 6, 'ports': 1, 'airports': 1, 'railways': 1},
+            'gresik_port_industrial': {'infra_score': 82, 'highways': 5, 'ports': 2, 'airports': 1, 'railways': 1},
+            'sidoarjo_delta_development': {'infra_score': 82, 'highways': 5, 'ports': 1, 'airports': 1, 'railways': 1},
+            'malang_south_highland': {'infra_score': 70, 'highways': 4, 'ports': 0, 'airports': 1, 'railways': 1},
+            'probolinggo_bromo_gateway': {'infra_score': 68, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 1},
+            'jember_southern_coast': {'infra_score': 58, 'highways': 2, 'ports': 0, 'airports': 0, 'railways': 0},
+            'banyuwangi_ferry_corridor': {'infra_score': 70, 'highways': 3, 'ports': 2, 'airports': 1, 'railways': 0},
+
+            # Banten (Tier 2-3)
+            'serang_cilegon_industrial': {'infra_score': 85, 'highways': 5, 'ports': 2, 'airports': 1, 'railways': 1},
+            'merak_port_corridor': {'infra_score': 90, 'highways': 4, 'ports': 3, 'airports': 0, 'railways': 1},
+            'anyer_carita_coastal': {'infra_score': 60, 'highways': 2, 'ports': 1, 'airports': 0, 'railways': 0},
         }
 
     def analyze_infrastructure_context(self, 
@@ -183,11 +183,30 @@ class InfrastructureAnalyzer:
             expanded_bbox = self._expand_bbox(bbox, expansion_km=50)
             
             logger.info(f"📡 Querying OSM infrastructure for {region_name}...")
-            
+
             # Query OpenStreetMap for infrastructure with retry logic
-            roads_data = self._query_osm_roads(expanded_bbox)
-            airports_data = self._query_osm_airports(expanded_bbox)
-            railways_data = self._query_osm_railways(expanded_bbox)
+            # Use concurrent.futures to run all 3 queries in parallel with a hard 30s ceiling
+            from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+            with ThreadPoolExecutor(max_workers=3) as executor:
+                roads_future = executor.submit(self._query_osm_roads, expanded_bbox)
+                airports_future = executor.submit(self._query_osm_airports, expanded_bbox)
+                railways_future = executor.submit(self._query_osm_railways, expanded_bbox)
+
+                try:
+                    roads_data = roads_future.result(timeout=30)
+                except Exception:
+                    roads_data = []
+                    logger.warning(f"  ⚠️ Roads query failed/timed out for {region_name}")
+                try:
+                    airports_data = airports_future.result(timeout=30)
+                except Exception:
+                    airports_data = []
+                    logger.warning(f"  ⚠️ Airports query failed/timed out for {region_name}")
+                try:
+                    railways_data = railways_future.result(timeout=30)
+                except Exception:
+                    railways_data = []
+                    logger.warning(f"  ⚠️ Railways query failed/timed out for {region_name}")
             
             # Check if we got ANY data
             has_any_data = bool(roads_data or airports_data or railways_data)
@@ -298,7 +317,7 @@ class InfrastructureAnalyzer:
         """Query OpenStreetMap for road infrastructure with retry logic and failover"""
         
         overpass_query = f"""
-        [out:json][timeout:45];
+        [out:json][timeout:10];
         (
           way["highway"~"^(motorway|trunk|primary|secondary)$"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
           way["highway"~"^(motorway|trunk|primary)_construction$"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
@@ -312,7 +331,7 @@ class InfrastructureAnalyzer:
         """Query OpenStreetMap for airports with retry logic and failover"""
         
         overpass_query = f"""
-        [out:json][timeout:45];
+        [out:json][timeout:10];
         (
           way["aeroway"="aerodrome"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
           node["aeroway"="aerodrome"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
@@ -327,7 +346,7 @@ class InfrastructureAnalyzer:
         """Query OpenStreetMap for railway infrastructure with retry logic and failover"""
         
         overpass_query = f"""
-        [out:json][timeout:45];
+        [out:json][timeout:10];
         (
           way["railway"="rail"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
           way["railway"="light_rail"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
@@ -341,32 +360,29 @@ class InfrastructureAnalyzer:
     def _query_overpass_with_retry(self, query: str, feature_type: str, 
                                    max_retries: int = 3) -> List[Dict]:
         """
-        🆕 IMPROVED: Query Overpass API with exponential backoff retry and failover
-        
-        Retry strategy:
-        - Attempt 1: Primary server, 45s timeout
-        - Attempt 2: Primary server, 60s timeout, 2s delay
-        - Attempt 3: Fallback server 1, 60s timeout, 4s delay
-        - Attempt 4: Fallback server 2, 60s timeout, 8s delay
+        🆕 IMPROVED: Query Overpass API with aggressive timeouts
+
+        Retry strategy (fail-fast, we have regional fallbacks):
+        - Attempt 1: Primary server, 10s timeout
+        - Attempt 2: Primary server, 15s timeout, 1s delay
+        Total worst-case per feature: ~26s. All 3 features run in parallel.
         """
         import time
-        
-        # Build list of (url, timeout) pairs to try
+
+        # Build list of (url, timeout) pairs to try — aggressive timeouts
+        # We have regional fallbacks, so failing fast is better than blocking the pipeline
         attempts = [
-            (self.osm_base_url, 45),
-            (self.osm_base_url, 60),
+            (self.osm_base_url, 10),
+            (self.osm_base_url, 15),
         ]
-        # Add fallback servers
-        for fallback_url in self.osm_fallback_urls:
-            attempts.append((fallback_url, 60))
         
         last_error = None
         
         for attempt_num, (api_url, timeout) in enumerate(attempts, 1):
             try:
-                # Apply exponential backoff delay (skip on first attempt)
+                # Apply short backoff delay (skip on first attempt)
                 if attempt_num > 1:
-                    delay = 2 ** (attempt_num - 2)  # 2s, 4s, 8s...
+                    delay = attempt_num - 1  # 1s, 2s (linear, not exponential)
                     logger.info(f"  Retry {attempt_num}/{len(attempts)} for {feature_type} after {delay}s delay...")
                     time.sleep(delay)
                 

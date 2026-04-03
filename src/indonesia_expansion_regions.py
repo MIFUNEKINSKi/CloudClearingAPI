@@ -107,6 +107,16 @@ class IndonesiaExpansionManager:
                 description="Cikarang mega-industrial park"
             ),
             
+            IndonesiaRegion(
+                name="karawang_industrial_corridor",
+                bbox=(107.25, -6.40, 107.45, -6.20),
+                island="java",
+                province="west_java",
+                focus="industrial",
+                priority=1,
+                description="Karawang industrial corridor — automotive, electronics manufacturing hub"
+            ),
+
             # === WEST JAVA ===
             IndonesiaRegion(
                 name="bandung_north_expansion",
@@ -228,6 +238,16 @@ class IndonesiaExpansionManager:
                 description="Tegal-Brebes coastal development"
             ),
             
+            IndonesiaRegion(
+                name="batang_industrial_sez",
+                bbox=(109.65, -7.00, 109.85, -6.80),
+                island="java",
+                province="central_java",
+                focus="industrial",
+                priority=2,
+                description="Batang SEZ — petrochemical, steel, and heavy industry zone"
+            ),
+
             # === EAST JAVA ===
             IndonesiaRegion(
                 name="surabaya_west_expansion",
@@ -404,6 +424,28 @@ class IndonesiaExpansionManager:
                 description="Bakauheni ferry terminal corridor"
             ),
             
+            # === WEST SUMATRA ===
+            IndonesiaRegion(
+                name="padang_urban_coastal",
+                bbox=(100.30, -1.05, 100.50, -0.85),
+                island="sumatra",
+                province="west_sumatra",
+                focus="urban",
+                priority=2,
+                description="Padang — West Sumatra capital, port, earthquake-resilient rebuild"
+            ),
+
+            # === ACEH ===
+            IndonesiaRegion(
+                name="banda_aceh_reconstruction",
+                bbox=(95.25, 5.45, 95.45, 5.65),
+                island="sumatra",
+                province="aceh",
+                focus="urban",
+                priority=3,
+                description="Banda Aceh — post-reconstruction growth, infrastructure hub"
+            ),
+
             # === RIAU & BATAM ===
             IndonesiaRegion(
                 name="batam_industrial_expansion",
@@ -475,6 +517,16 @@ class IndonesiaExpansionManager:
                 description="West Tabanan coastal development"
             ),
             
+            IndonesiaRegion(
+                name="nusa_dua_bukit_peninsula",
+                bbox=(115.18, -8.85, 115.28, -8.73),
+                island="bali",
+                province="bali",
+                focus="tourism",
+                priority=1,
+                description="Nusa Dua & Bukit Peninsula luxury tourism zone"
+            ),
+
             # === LOMBOK ===
             IndonesiaRegion(
                 name="mataram_urban_expansion",
@@ -493,6 +545,35 @@ class IndonesiaExpansionManager:
                 focus="tourism",
                 priority=1,
                 description="Mandalika mega-resort development"
+            ),
+            IndonesiaRegion(
+                name="lombok_senggigi_coast",
+                bbox=(116.02, -8.55, 116.15, -8.42),
+                island="lombok",
+                province="west_nusa_tenggara",
+                focus="tourism",
+                priority=2,
+                description="Senggigi beach resort corridor"
+            ),
+
+            # === NTT (East Nusa Tenggara) ===
+            IndonesiaRegion(
+                name="labuan_bajo_komodo_gateway",
+                bbox=(119.80, -8.60, 120.00, -8.40),
+                island="flores",
+                province="east_nusa_tenggara",
+                focus="tourism",
+                priority=1,
+                description="Labuan Bajo — Komodo gateway, fastest-growing tourism zone"
+            ),
+            IndonesiaRegion(
+                name="kupang_urban_development",
+                bbox=(123.50, -10.25, 123.70, -10.05),
+                island="timor",
+                province="east_nusa_tenggara",
+                focus="urban",
+                priority=3,
+                description="Kupang — NTT provincial capital, port and urban hub"
             ),
         ]
     
