@@ -200,12 +200,13 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
                 price = r.get('current_price_per_m2', 0)
                 rvi = r.get('rvi_data', {}).get('rvi', 0)
                 mom = r.get('momentum', {}).get('trend', 'unknown')
-                roi = r.get('financial_projection', {}).get('projected_roi_3yr', 0)
+                fp = r.get('financial_projection', {})
+                land_roi = fp.get('land_only_roi_3yr', fp.get('projected_roi_3yr', 0))
                 body_lines.append(
                     f"  {name} — Score {score:.1f}/100, {conf*100:.0f}% confidence"
                 )
                 body_lines.append(
-                    f"    Price: Rp {price:,.0f}/m² | RVI: {rvi:.2f} | Momentum: {mom} | 3Y ROI: {roi*100:.1f}%"
+                    f"    Price: Rp {price:,.0f}/m² | RVI: {rvi:.2f} | Momentum: {mom} | 3Y Land ROI: {land_roi*100:.1f}%"
                 )
 
         if watch:

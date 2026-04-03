@@ -434,7 +434,7 @@ class PDFReportGenerator:
             Paragraph('<b>Price/m²</b>', header_style),
             Paragraph('<b>RVI</b>', header_style),
             Paragraph('<b>Momentum</b>', header_style),
-            Paragraph('<b>3Y ROI</b>', header_style),
+            Paragraph('<b>3Y Land</b>', header_style),
             Paragraph('<b>Conf.</b>', header_style),
         ]]
 
@@ -449,7 +449,7 @@ class PDFReportGenerator:
             mom_mult = mom.get('multiplier', 1.0)
             mom_trend = mom.get('trend', '')
             fp = r.get('financial_projection', {})
-            roi_3yr = fp.get('projected_roi_3yr', 0)
+            roi_3yr = fp.get('land_only_roi_3yr', fp.get('projected_roi_3yr', 0))
             confidence = r.get('confidence', r.get('confidence_level', 0))
             region_name = r.get('region', '').replace('_', ' ').title()
 
