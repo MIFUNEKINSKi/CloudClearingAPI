@@ -11,8 +11,8 @@ import os
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from core.config import ConfigManager, AppConfig, ChangeDetectionConfig
-from core.change_detector import ChangeDetector
+from core.config import ConfigManager, AppConfig
+from core.change_detector import ChangeDetector, ChangeDetectionConfig
 
 class TestConfig(unittest.TestCase):
     """Test configuration management"""
