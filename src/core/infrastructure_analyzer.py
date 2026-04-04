@@ -90,8 +90,8 @@ class InfrastructureAnalyzer:
             'port': {'max_distance': 50, 'half_life': 15}          # Expanded from 15km to 50km
         }
         
-        # Regional fallback database — all 29 Java monitoring regions
-        # Used when OSM Overpass API queries fail or timeout
+        # Regional fallback database — all 65 monitoring regions across Indonesia
+        # Used when OSM Overpass API queries fail or return implausibly low results
         self.regional_infrastructure_database = {
             # Jakarta Metro Area (Tier 1)
             'jakarta_north_sprawl': {'infra_score': 95, 'highways': 8, 'ports': 2, 'airports': 2, 'railways': 3},
@@ -138,6 +138,52 @@ class InfrastructureAnalyzer:
             'serang_cilegon_industrial': {'infra_score': 85, 'highways': 5, 'ports': 2, 'airports': 1, 'railways': 1},
             'merak_port_corridor': {'infra_score': 90, 'highways': 4, 'ports': 3, 'airports': 0, 'railways': 1},
             'anyer_carita_coastal': {'infra_score': 60, 'highways': 2, 'ports': 1, 'airports': 0, 'railways': 0},
+
+            # Sumatra (11 regions)
+            'medan_kuala_namu_corridor': {'infra_score': 82, 'highways': 5, 'ports': 1, 'airports': 1, 'railways': 1},
+            'medan_belawan_port': {'infra_score': 80, 'highways': 4, 'ports': 2, 'airports': 1, 'railways': 1},
+            'palembang_jakabaring_expansion': {'infra_score': 75, 'highways': 4, 'ports': 1, 'airports': 1, 'railways': 1},
+            'palembang_boom_baru_port': {'infra_score': 78, 'highways': 4, 'ports': 2, 'airports': 1, 'railways': 1},
+            'bandar_lampung_south_expansion': {'infra_score': 70, 'highways': 3, 'ports': 1, 'airports': 1, 'railways': 1},
+            'bakauheni_ferry_corridor': {'infra_score': 65, 'highways': 2, 'ports': 2, 'airports': 0, 'railways': 0},
+            'batam_industrial_expansion': {'infra_score': 85, 'highways': 4, 'ports': 3, 'airports': 1, 'railways': 0},
+            'pekanbaru_urban_growth': {'infra_score': 68, 'highways': 3, 'ports': 1, 'airports': 1, 'railways': 0},
+            'padang_urban_coastal': {'infra_score': 65, 'highways': 3, 'ports': 1, 'airports': 1, 'railways': 0},
+            'banda_aceh_reconstruction': {'infra_score': 60, 'highways': 2, 'ports': 1, 'airports': 1, 'railways': 0},
+            'lake_toba_tourism_zone': {'infra_score': 55, 'highways': 2, 'ports': 1, 'airports': 1, 'railways': 0},
+
+            # Bali (6 regions)
+            'denpasar_north_expansion': {'infra_score': 80, 'highways': 4, 'ports': 1, 'airports': 1, 'railways': 0},
+            'canggu_seminyak_corridor': {'infra_score': 72, 'highways': 3, 'ports': 0, 'airports': 1, 'railways': 0},
+            'sanur_beach_resort': {'infra_score': 70, 'highways': 3, 'ports': 1, 'airports': 1, 'railways': 0},
+            'ubud_north_highland': {'infra_score': 55, 'highways': 2, 'ports': 0, 'airports': 1, 'railways': 0},
+            'tabanan_west_coast': {'infra_score': 55, 'highways': 2, 'ports': 0, 'airports': 1, 'railways': 0},
+            'nusa_dua_bukit_peninsula': {'infra_score': 78, 'highways': 3, 'ports': 1, 'airports': 1, 'railways': 0},
+
+            # Lombok / NTT (4 regions)
+            'mataram_urban_expansion': {'infra_score': 62, 'highways': 2, 'ports': 1, 'airports': 1, 'railways': 0},
+            'lombok_mandalika_resort': {'infra_score': 65, 'highways': 2, 'ports': 1, 'airports': 1, 'railways': 0},
+            'lombok_senggigi_coast': {'infra_score': 55, 'highways': 2, 'ports': 1, 'airports': 1, 'railways': 0},
+            'labuan_bajo_komodo_gateway': {'infra_score': 58, 'highways': 1, 'ports': 1, 'airports': 1, 'railways': 0},
+            'kupang_urban_development': {'infra_score': 52, 'highways': 1, 'ports': 1, 'airports': 1, 'railways': 0},
+
+            # Kalimantan (6 regions)
+            'nusantara_capital_core': {'infra_score': 70, 'highways': 3, 'ports': 1, 'airports': 1, 'railways': 0},
+            'nusantara_balikpapan_corridor': {'infra_score': 75, 'highways': 3, 'ports': 1, 'airports': 1, 'railways': 0},
+            'balikpapan_port_industrial': {'infra_score': 78, 'highways': 4, 'ports': 2, 'airports': 1, 'railways': 0},
+            'samarinda_urban_expansion': {'infra_score': 68, 'highways': 3, 'ports': 1, 'airports': 1, 'railways': 0},
+            'banjarmasin_port_development': {'infra_score': 70, 'highways': 3, 'ports': 2, 'airports': 1, 'railways': 0},
+            'pontianak_urban_growth': {'infra_score': 62, 'highways': 2, 'ports': 1, 'airports': 1, 'railways': 0},
+
+            # Sulawesi (4 regions)
+            'makassar_port_corridor': {'infra_score': 82, 'highways': 4, 'ports': 2, 'airports': 1, 'railways': 0},
+            'makassar_urban_expansion': {'infra_score': 78, 'highways': 4, 'ports': 1, 'airports': 1, 'railways': 0},
+            'manado_tourism_expansion': {'infra_score': 65, 'highways': 2, 'ports': 1, 'airports': 1, 'railways': 0},
+            'bitung_port_industrial': {'infra_score': 68, 'highways': 2, 'ports': 2, 'airports': 1, 'railways': 0},
+
+            # Eastern Indonesia (2 regions)
+            'jayapura_urban_development': {'infra_score': 52, 'highways': 1, 'ports': 1, 'airports': 1, 'railways': 0},
+            'ambon_tourism_expansion': {'infra_score': 55, 'highways': 1, 'ports': 1, 'airports': 1, 'railways': 0},
         }
 
     def analyze_infrastructure_context(self, 
@@ -240,6 +286,21 @@ class InfrastructureAnalyzer:
             
             logger.info(f"✅ OSM infrastructure analysis complete for {region_name} (score: {analysis['infrastructure_score']})")
             
+            # Sanity check: if OSM score is implausibly low for a known region,
+            # use the higher of OSM live vs regional fallback.  This catches cases
+            # where Overpass returns partial data (e.g. roads query times out but
+            # airports succeed, yielding a score of ~20 for a major metro).
+            fallback = self._get_regional_infrastructure_fallback(region_name)
+            fallback_score = fallback.get('infrastructure_score', 0)
+            osm_score = analysis['infrastructure_score']
+            if fallback_score > 0 and osm_score < fallback_score * 0.6:
+                logger.warning(
+                    f"⚠️ OSM score ({osm_score}) is <60% of fallback ({fallback_score}) "
+                    f"for {region_name} — likely incomplete OSM data, using fallback"
+                )
+                analysis.update(fallback)
+                analysis['data_source'] = 'regional_fallback_sanity'
+            
         except Exception as e:
             logger.warning(f"Infrastructure analysis failed for {region_name}: {e}")
             analysis['reasoning'].append("⚠️ Infrastructure data unavailable - using regional defaults")
@@ -293,6 +354,18 @@ class InfrastructureAnalyzer:
             ))
             
             logger.info(f"✅ Processed cached infrastructure for {region_name} (score: {analysis['infrastructure_score']})")
+            
+            # Sanity check: prefer fallback when cached OSM is implausibly low
+            fallback = self._get_regional_infrastructure_fallback(region_name)
+            fallback_score = fallback.get('infrastructure_score', 0)
+            osm_score = analysis['infrastructure_score']
+            if fallback_score > 0 and osm_score < fallback_score * 0.6:
+                logger.warning(
+                    f"⚠️ Cached OSM score ({osm_score}) is <60% of fallback ({fallback_score}) "
+                    f"for {region_name} — likely incomplete data, using fallback"
+                )
+                analysis.update(fallback)
+                analysis['data_source'] = 'regional_fallback_sanity'
             
         except Exception as e:
             logger.warning(f"Failed to process cached infrastructure for {region_name}: {e}")

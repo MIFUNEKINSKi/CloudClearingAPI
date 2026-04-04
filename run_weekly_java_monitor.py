@@ -262,7 +262,7 @@ async def main(all_regions: bool = False, auto_confirm: bool = False):
         monitoring_regions = expansion_manager.get_all_regions()
         scope_label = "INDONESIA-WIDE"
     else:
-        monitoring_regions = expansion_manager.get_monitoring_regions()
+        monitoring_regions = expansion_manager.get_java_regions()
         scope_label = "JAVA-WIDE"
 
     print("\n" + "="*100)
@@ -448,9 +448,23 @@ async def main(all_regions: bool = False, auto_confirm: bool = False):
                 enable_alerts=True
             )
             
-            # Track drift using region analysis data (includes financial projections)
-            # Filter to only dict items (skip any malformed entries)
-            drift_input = [r for r in results_list if isinstance(r, dict)]
+            # Extract scored regions from investment analysis (these have financial_projection)
+            yog = investment_analysis.get('yogyakarta_analysis', {})
+            scored_regions = (
+                yog.get('buy_recommendations', []) +
+                yog.get('watch_list', []) +
+                yog.get('pass_list', [])
+            )
+            # Normalise key: investment analysis uses 'region' not 'region_name'
+            drift_input = []
+            for r in scored_regions:
+                if not isinstance(r, dict):
+                    continue
+                entry = dict(r)
+                if 'region' in entry and 'region_name' not in entry:
+                    entry['region_name'] = entry['region']
+                drift_input.append(entry)
+            
             drift_summary = drift_monitor.track_drift(drift_input)
             
             # Add drift summary to results
