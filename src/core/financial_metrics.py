@@ -48,15 +48,15 @@ class FinancialProjection:
     break_even_years: float = 0.0  # Years to break even
     
     # Investment Sizing
-    recommended_plot_size_m2: float  # Recommended acquisition size
-    total_acquisition_cost: float  # IDR
-    total_development_cost: float  # IDR
-    projected_exit_value: float  # IDR (3-year)
-    
+    recommended_plot_size_m2: float = 0.0  # Recommended acquisition size
+    total_acquisition_cost: float = 0.0  # IDR
+    total_development_cost: float = 0.0  # IDR
+    projected_exit_value: float = 0.0  # IDR (3-year)
+
     # Risk Factors
-    liquidity_risk: str  # Low/Medium/High
-    speculation_risk: str  # Low/Medium/High
-    infrastructure_risk: str  # Low/Medium/High
+    liquidity_risk: str = 'Unknown'  # Low/Medium/High
+    speculation_risk: str = 'Unknown'  # Low/Medium/High
+    infrastructure_risk: str = 'Unknown'  # Low/Medium/High
     legal_risk: str = 'Unknown'  # Land title/ownership dispute risk
     natural_disaster_risk: str = 'Unknown'  # Flood/earthquake/volcanic exposure
     currency_risk: str = 'Medium'  # IDR/USD volatility (always present for foreign investors)

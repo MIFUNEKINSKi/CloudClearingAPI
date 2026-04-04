@@ -250,52 +250,57 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
         return False
 
 
-async def main():
-    """Run weekly monitoring for ALL Java regions with parallel processing"""
-    
-    print("\n" + "="*100)
-    print("🇮🇩 JAVA-WIDE WEEKLY MONITORING")
-    print("="*100)
-    print()
-    
+async def main(all_regions: bool = False, auto_confirm: bool = False):
+    """Run weekly monitoring for Java or all Indonesia regions with parallel processing"""
+
     # Import expansion manager
     from src.indonesia_expansion_regions import get_expansion_manager
     expansion_manager = get_expansion_manager()
-    
-    # Get ALL Java regions
-    java_regions = expansion_manager.get_java_regions()
-    
-    # Group by priority for reporting
-    priority_1 = [r for r in java_regions if r.priority == 1]
-    priority_2 = [r for r in java_regions if r.priority == 2]
-    priority_3 = [r for r in java_regions if r.priority == 3]
-    
-    print(f"📊 **MONITORING SCOPE**: {len(java_regions)} Java Regions")
+
+    # Get regions based on scope
+    if all_regions:
+        monitoring_regions = expansion_manager.get_all_regions()
+        scope_label = "INDONESIA-WIDE"
+    else:
+        monitoring_regions = expansion_manager.get_monitoring_regions()
+        scope_label = "JAVA-WIDE"
+
+    print("\n" + "="*100)
+    print(f"🇮🇩 {scope_label} WEEKLY MONITORING")
+    print("="*100)
+    print()
+
+    # Group by island and priority for reporting
+    islands = {}
+    for r in monitoring_regions:
+        islands.setdefault(r.island, []).append(r)
+
+    priority_1 = [r for r in monitoring_regions if r.priority == 1]
+    priority_2 = [r for r in monitoring_regions if r.priority == 2]
+    priority_3 = [r for r in monitoring_regions if r.priority == 3]
+
+    print(f"📊 **MONITORING SCOPE**: {len(monitoring_regions)} Regions")
     print()
     print(f"   • Priority 1 (High Investment): {len(priority_1)} regions")
     print(f"   • Priority 2 (Medium Investment): {len(priority_2)} regions")
     print(f"   • Priority 3 (Emerging Markets): {len(priority_3)} regions")
     print()
-    
+
     print("**Coverage Map:**")
-    print("   • Jakarta Metro Area: 4 regions")
-    print("   • Bandung Metro: 2 regions")
-    print("   • Semarang-Yogyakarta-Solo Triangle: 6 regions")
-    print("   • Surabaya Metro: 4 regions")
-    print("   • Banten Industrial Corridor: 3 regions")
-    print("   • Regional Hubs: 10 regions")
+    for island, regions in sorted(islands.items()):
+        print(f"   • {island}: {len(regions)} regions")
     print()
     
     # Estimate processing time with parallel processing
     # With 5 parallel regions per batch: ~6 batches for 29 regions
     # Each batch: ~3-4 minutes (with GEE cache, faster after first run)
     avg_time_per_batch = 3.5  # minutes
-    num_batches = (len(java_regions) + 4) // 5  # Ceiling division
+    num_batches = (len(monitoring_regions) + 4) // 5  # Ceiling division
     estimated_minutes = num_batches * avg_time_per_batch
     estimated_hours = estimated_minutes / 60
     
     print(f"⏱️  **ESTIMATED TIME**: {estimated_minutes:.0f} minutes (~{estimated_hours:.1f} hours)")
-    print(f"    With parallel processing: {len(java_regions)} regions in {num_batches} batches of 5")
+    print(f"    With parallel processing: {len(monitoring_regions)} regions in {num_batches} batches of 5")
     print(f"    (First run: ~30-35 min | Cached runs: ~15-20 min)")
     print(f"📅 **START TIME**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print()
@@ -304,18 +309,19 @@ async def main():
     
     # Confirm before proceeding
     print("⚠️  This is a comprehensive monitoring run that will:")
-    print("   1. Analyze satellite imagery for 29 regions across Java")
+    print(f"   1. Analyze satellite imagery for {len(monitoring_regions)} regions")
     print("   2. Calculate investment scores with resilient API handling")
     print("   3. Generate PDF report with all findings")
     print("   4. Save satellite images for top opportunities")
     print()
-    
-    response = input("Continue with Java-wide monitoring? (yes/no): ").strip().lower()
-    if response != 'yes':
-        print("\n❌ Monitoring cancelled by user")
-        return
-    
-    print("\n🚀 Starting Java-wide monitoring...")
+
+    if not auto_confirm:
+        response = input("Continue with monitoring? (yes/no): ").strip().lower()
+        if response != 'yes':
+            print("\n❌ Monitoring cancelled by user")
+            return
+
+    print(f"\n🚀 Starting {scope_label.lower()} monitoring...")
     print("=" * 100)
     print()
     
@@ -324,12 +330,12 @@ async def main():
     from src.core.config import get_config
     
     # Initialize monitor
-    logger.info("Initializing Automated Monitor for Java-wide coverage...")
+    logger.info(f"Initializing Automated Monitor for {scope_label.lower()} coverage...")
     monitor = AutomatedMonitor()
-    
-    # REPLACE yogyakarta_regions with ALL Java regions
-    monitor.yogyakarta_regions = [region.name for region in java_regions]
-    logger.info(f"✅ Configured with {len(monitor.yogyakarta_regions)} Java regions")
+
+    # Set monitoring regions
+    monitor.yogyakarta_regions = [region.name for region in monitoring_regions]
+    logger.info(f"✅ Configured with {len(monitor.yogyakarta_regions)} regions")
     
     # Update region manager to handle expansion regions
     original_get_bbox = monitor.region_manager.get_region_bbox
@@ -351,7 +357,7 @@ async def main():
     start_time = datetime.now()
     
     try:
-        print(f"\n📡 Processing {len(java_regions)} regions in parallel batches...")
+        print(f"\n📡 Processing {len(monitoring_regions)} regions in parallel batches...")
         print("   (Progress updates will appear as each batch completes)")
         print()
         
@@ -367,7 +373,7 @@ async def main():
         # Run parallel batch processing
         results_list = await run_parallel_monitoring(
             monitor=monitor,
-            regions=[region.name for region in java_regions],
+            regions=[region.name for region in monitoring_regions],
             week_a_start=week_a_start,
             week_b_start=week_b_start,
             batch_size=5  # Process 5 regions at a time
@@ -443,7 +449,9 @@ async def main():
             )
             
             # Track drift using region analysis data (includes financial projections)
-            drift_summary = drift_monitor.track_drift(results_list)
+            # Filter to only dict items (skip any malformed entries)
+            drift_input = [r for r in results_list if isinstance(r, dict)]
+            drift_summary = drift_monitor.track_drift(drift_input)
             
             # Add drift summary to results
             results['drift_monitoring'] = drift_summary
@@ -533,8 +541,8 @@ async def main():
         alerts = results.get('alerts', [])
         
         print("📊 **SATELLITE ANALYSIS RESULTS:**")
-        print(f"   • Regions Successfully Analyzed: {len(regions_analyzed)}/{len(java_regions)}")
-        print(f"   • Success Rate: {len(regions_analyzed)/len(java_regions)*100:.1f}%")
+        print(f"   • Regions Successfully Analyzed: {len(regions_analyzed)}/{len(monitoring_regions)}")
+        print(f"   • Success Rate: {len(regions_analyzed)/len(monitoring_regions)*100:.1f}%")
         print(f"   • Total Changes Detected: {total_changes:,}")
         print(f"   • Total Area Changed: {total_area:,.1f} hectares")
         print(f"   • Critical Alerts: {len([a for a in alerts if a.get('level') == 'CRITICAL'])}")
@@ -544,7 +552,7 @@ async def main():
         # Performance metrics
         print(f"⚡ **PERFORMANCE:**")
         print(f"   • Total Processing Time: {duration:.1f} minutes ({duration/60:.2f} hours)")
-        print(f"   • Average Time per Region: {duration/len(java_regions):.1f} minutes")
+        print(f"   • Average Time per Region: {duration/len(monitoring_regions):.1f} minutes")
         print(f"   • Regions per Hour: {len(regions_analyzed)/(duration/60):.1f}")
         print()
         
@@ -595,7 +603,7 @@ async def main():
                 changes = opp.get('satellite_changes', 0)
                 
                 # Get region details
-                region_obj = next((r for r in java_regions if r.name == region_name), None)
+                region_obj = next((r for r in monitoring_regions if r.name == region_name), None)
                 province = region_obj.province if region_obj else 'Java'
                 
                 print(f"      {i:2d}. {region_name:40s} ({province})")
@@ -648,15 +656,21 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
-    
+    import argparse
+
+    parser = argparse.ArgumentParser(description='CloudClearing Weekly Monitoring')
+    parser.add_argument('--all', action='store_true', help='Monitor all 65 regions (Java + Sumatra + Bali/Lombok/NTT + Eastern)')
+    parser.add_argument('--yes', '-y', action='store_true', help='Skip confirmation prompt')
+    args = parser.parse_args()
+
+    scope = "Indonesia-Wide (65 regions)" if args.all else "Java-Wide (31 regions)"
     print()
-    print("🚀 CloudClearing - Java-Wide Weekly Monitoring")
-    print("   Comprehensive satellite analysis across Java island")
-    print("   29 regions from Jakarta to Banyuwangi")
+    print(f"🚀 CloudClearing - {scope} Weekly Monitoring")
+    print("   Comprehensive satellite analysis across Indonesia")
     print()
-    
+
     try:
-        asyncio.run(main())
+        asyncio.run(main(all_regions=args.all, auto_confirm=args.yes))
     except KeyboardInterrupt:
         print("\n\nExiting...")
         sys.exit(0)

@@ -442,13 +442,13 @@ class PDFReportGenerator:
             score = r.get('investment_score', 0)
             rec = r.get('recommendation', 'PASS')
             price = r.get('current_price_per_m2', 0)
-            rvi_data = r.get('rvi_data', {})
+            rvi_data = r.get('rvi_data') or {}
             rvi = rvi_data.get('rvi', 0)
             rvi_interp = rvi_data.get('interpretation', '')
-            mom = r.get('momentum', {})
+            mom = r.get('momentum') or {}
             mom_mult = mom.get('multiplier', 1.0)
             mom_trend = mom.get('trend', '')
-            fp = r.get('financial_projection', {})
+            fp = r.get('financial_projection') or {}
             roi_3yr = fp.get('land_only_roi_3yr', fp.get('projected_roi_3yr', 0))
             confidence = r.get('confidence', r.get('confidence_level', 0))
             region_name = r.get('region', '').replace('_', ' ').title()
