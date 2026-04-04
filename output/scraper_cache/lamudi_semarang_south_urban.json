@@ -1,21 +1,192 @@
 {
   "region_name": "semarang_south_urban",
-  "average_price_per_m2": 1500000.0,
-  "median_price_per_m2": 1500000.0,
-  "listing_count": 1,
+  "average_price_per_m2": 5197006.7695022635,
+  "median_price_per_m2": 3442708.333333333,
+  "listing_count": 20,
   "listings": [
     {
-      "price_per_m2": 1500000.0,
-      "total_price": 5700000000.0,
-      "size_m2": 3800.0,
-      "location": "Land Dijual di Sambiroto",
+      "price_per_m2": 1700000.0,
+      "total_price": 215900000.0,
+      "size_m2": 127.0,
+      "location": "Tanah Dijual di Gunungpati",
       "listing_date": null,
-      "source_url": "https://www.lamudi.co.id/properti/41032-73-451aa5a39523-7ebd-199e768-826d-71f1",
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-80622bb7c62c-9d34-19a5df9-be89-7343",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 6500000.0,
+      "total_price": 44850000000.0,
+      "size_m2": 6900.0,
+      "location": "Tanah Dijual di Semarang Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-18cb60c59c03-f730-19c5507-b4c5-758f",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 374011.9529593214,
+      "total_price": 9700000000.0,
+      "size_m2": 25935.0,
+      "location": "Tanah Dijual di Semarang",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-bf84287ceb28-739b-19a81c2-be26-7161",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 9411764.705882354,
+      "total_price": 1600000000.0,
+      "size_m2": 170.0,
+      "location": "RW 09, Sambiroto, Tembalang, Kota Semarang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-3e3f17e46e7d-7d90-19ce779-9d05-7351",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 1700000.0,
+      "total_price": 215900000.0,
+      "size_m2": 127.0,
+      "location": "RW 01, Jatirejo, Gunung Pati, Kota Semarang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-80622bb7c62c-9d34-19a5df9-be89-7343",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 6500000.0,
+      "total_price": 44850000000.0,
+      "size_m2": 6900.0,
+      "location": "Komplek Pergudangan, Tawangmas, Semarang Barat, Kota Semarang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-18cb60c59c03-f730-19c5507-b4c5-758f",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 3500000.0,
+      "total_price": 1435000000.0,
+      "size_m2": 410.0,
+      "location": "RW 03, Banyumanik, Banyumanik, Kota Semarang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/semarang/tanah-cocok-untuk-kost2-an-175635746469/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 3000000.0,
+      "total_price": 69000000000.0,
+      "size_m2": 23000.0,
+      "location": "RW 03, Tawangsari, Semarang Barat, Kota Semarang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/semarang/dijual-tanah-luas-di-kic-jl-gatot-subroto-semarang-175367163756/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 14.459224985540775,
+      "total_price": 375000.0,
+      "size_m2": 25935.0,
+      "location": "Dolo, Kalisidi, Kabupaten Semarang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-bf84287ceb28-739b-19a81c2-be26-7161",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 6578947.368421053,
+      "total_price": 5000000000.0,
+      "size_m2": 760.0,
+      "location": "RW 02, Sambiroto, Tembalang, Kota Semarang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/semarang/dijual-tanah-dan-bangunan-tembalang-semarang-171570228884/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 3656307.129798903,
+      "total_price": 4000000000.0,
+      "size_m2": 1094.0,
+      "location": "RW 11, Manyaran, Semarang Barat, Kota Semarang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-646ec59244d3-701c-19c057a-b4df-7f80",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 6926406.9264069265,
+      "total_price": 1600000000.0,
+      "size_m2": 231.0,
+      "location": "RW 02, Pendrikan Kidul, Semarang Tengah, Kota Semarang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-301e40a3a46f-a07a-19aed2a-9c3c-7f9c",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 5284552.845528455,
+      "total_price": 1300000000.0,
+      "size_m2": 246.0,
+      "location": "RW 08, Wonolopo, Mijen, Kota Semarang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-8206efcb1f14-ed8c-19b202e-85d8-7e50",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 1422832.980972516,
+      "total_price": 673000000.0,
+      "size_m2": 473.0,
+      "location": "RW 02, Gondoriyo, Ngaliyan, Kota Semarang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/semarang/tanah-ngaliyan-murah-butuh-uang-175695594020/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 17038327.526132405,
+      "total_price": 4890000000.0,
+      "size_m2": 287.0,
+      "location": "Panorama 2, RW 05, Jangli, Tembalang, Kota Semarang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-cd8839027706-48da-19a9041-831b-7582",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 3385416.6666666665,
+      "total_price": 650000000.0,
+      "size_m2": 192.0,
+      "location": "RW 03, Pedurungan Tengah, Pedurungan, Kota Semarang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/semarang/dijual-tanah-di-mahesa-mukti-pedurungan-tengah-dek-175323872233/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 1111111.111111111,
+      "total_price": 10000000000.0,
+      "size_m2": 9000.0,
+      "location": "Dliwang, Ungaran, Kabupaten Semarang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-1ca5bcedf747-7ae0-199dc1d-9e3e-7230",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 23333333.333333332,
+      "total_price": 17500000000.0,
+      "size_m2": 750.0,
+      "location": "RW 02, Srondol Wetan, Banyumanik, Kota Semarang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/semarang/dijual-tanah-komersil-174186956614/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 274545.45454545453,
+      "total_price": 453000000.0,
+      "size_m2": 1650.0,
+      "location": "Jrukung Satu, Kandangan, Kabupaten Semarang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-edff96f9ad7b-ba65-19c3d6a-84aa-7645",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 2242562.929061785,
+      "total_price": 9800000000.0,
+      "size_m2": 4370.0,
+      "location": "Marakrejo, Bawen, Kabupaten Semarang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-327a3260a3f-64b2-19c2e49-b65b-7071",
       "listing_type": "land"
     }
   ],
   "source": "lamudi",
-  "scraped_at": "2025-10-27T10:00:11.574343",
+  "scraped_at": "2026-04-03T17:12:32.641528",
   "success": true,
   "error_message": null
 }

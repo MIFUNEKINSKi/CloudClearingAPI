@@ -1,39 +1,192 @@
 {
   "region_name": "magelang_borobudur_corridor",
-  "average_price_per_m2": 5500000.0,
-  "median_price_per_m2": 5500000.0,
-  "listing_count": 3,
+  "average_price_per_m2": 2921242.3132910063,
+  "median_price_per_m2": 2350000.0,
+  "listing_count": 20,
   "listings": [
     {
       "price_per_m2": 5500000.0,
       "total_price": 5654000000.0,
       "size_m2": 1028.0,
-      "location": "Land Dijual di Panjang",
+      "location": "Tanah Dijual di Magelang",
       "listing_date": null,
-      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/semarang/termurah-tanah-105m-selatan-kamous-untidar-17227842913/",
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/magelang/termurah-tanah-105m-selatan-kamous-untidar-17227842913/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 1116751.269035533,
+      "total_price": 2200000000.0,
+      "size_m2": 1970.0,
+      "location": "Karanglo, Purwosari, Magelang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/magelang/jual-tanah-lokasi-strategis-cocok-untuk-investasi-172526129320/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 5500000.0,
+      "total_price": 5654000000.0,
+      "size_m2": 1028.0,
+      "location": "Tidardudan, Kota Magelang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/magelang/termurah-tanah-105m-selatan-kamous-untidar-17227842913/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 367567.5675675676,
+      "total_price": 340000000.0,
+      "size_m2": 925.0,
+      "location": "Kalisalak, Magelang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-25ddda065ca1-456a-19cbbf0-88ec-71b5",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 3000000.0,
+      "total_price": 441000000.0,
+      "size_m2": 147.0,
+      "location": "Banyu Temumpang, Krogowanan, Tlatar, Sawangan, Magelang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-4c76c0ba02dc-57cd-1999e2b-b1f9-75a5",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 2200000.0,
+      "total_price": 233200000.0,
+      "size_m2": 106.0,
+      "location": "Mungkid, Magelang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/magelang/tanah-strategis-di-jl-pabelan-magelang-harga-2-jt-174745260749/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 2200000.0,
+      "total_price": 242000000.0,
+      "size_m2": 110.0,
+      "location": "Mungkid, Magelang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/magelang/jual-tanah-murah-jl-borobudur-cocok-untuk-rumah-174710665476/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 2200000.0,
+      "total_price": 356400000.0,
+      "size_m2": 162.0,
+      "location": "Banyu Temumpang, Krogowanan, Tlatar, Sawangan, Magelang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-c7ccb0320af6-75fe-1997f8d-825f-7757",
       "listing_type": "land"
     },
     {
       "price_per_m2": 2500000.0,
-      "total_price": 8250000000.0,
-      "size_m2": 3300.0,
-      "location": "Land Dijual di Magelang",
+      "total_price": 220000000.0,
+      "size_m2": 88.0,
+      "location": "Sawangan, Magelang, Jawa Tengah",
       "listing_date": null,
-      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/magelang/dijual-tanah-di-jalan-menuju-pintu-gate-tol-magela-172613771237/",
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-a6a1c07291de-2c73-19a43db-a86b-71c6",
       "listing_type": "land"
     },
     {
-      "price_per_m2": 8500000.0,
-      "total_price": 4335000000.0,
-      "size_m2": 510.0,
-      "location": "Land Dijual di Borobudur",
+      "price_per_m2": 2200000.0,
+      "total_price": 385000000.0,
+      "size_m2": 175.0,
+      "location": "Banyu Temumpang, Krogowanan, Tlatar, Sawangan, Magelang, Jawa Tengah",
       "listing_date": null,
-      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/magelang/tanah-perumahan-strategis-borobudur-lowokwaru-mala-174427575784/",
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-d5df06ffe364-c0b1-1999516-a60c-762c",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 2200000.0,
+      "total_price": 385000000.0,
+      "size_m2": 175.0,
+      "location": "Banyu Temumpang, Krogowanan, Tlatar, Sawangan, Magelang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-35e1d62cf90b-405b-1997f8a-bce0-77e5",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 2200000.0,
+      "total_price": 193600000.0,
+      "size_m2": 88.0,
+      "location": "Sawangan, Pituruh, Purworejo, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/purworejo/mungkid-indah-tanah-kavling-murah-siap-bangun-deka-175827463690/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 2750000.0,
+      "total_price": 242000000.0,
+      "size_m2": 88.0,
+      "location": "Banyu Temumpang, Krogowanan, Tlatar, Sawangan, Magelang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-91449b5213ca-7dc6-19a76bf-827e-7842",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 1600000.0,
+      "total_price": 3070400000.0,
+      "size_m2": 1919.0,
+      "location": "ngepos, Lumbungrejo, Tempel, Sleman, Daerah Istimewa Yogyakarta",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/yogyakarta/sleman/jual-tanah-cocok-untuk-gudang-di-jumoyo-salam-munt-173136852469/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 6954314.720812183,
+      "total_price": 1370000000.0,
+      "size_m2": 197.0,
+      "location": "Payaman, Magelang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/magelang/tanah-luas-197-meter-persegi-lokasi-jl-a-yani-kota-173485410620/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 3500000.0,
+      "total_price": 18707500000.0,
+      "size_m2": 5345.0,
+      "location": "Magersari, Kota Magelang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/magelang/jual-tanah-di-jl-jendral-gatot-subroto-magelang-ja-173216482323/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 5670103.092783505,
+      "total_price": 2750000000.0,
+      "size_m2": 485.0,
+      "location": "Metro Square, Mertoyudan, Sumberrejo, Magelang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/magelang/tanah-depan-pura-mertoyudan-171877122360/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 2516910.4923706152,
+      "total_price": 16000000000.0,
+      "size_m2": 6357.0,
+      "location": "Mungkid, Magelang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/magelang/jual-tanah-6357m-samping-samsat-mungkid-172716788445/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 1138088.0121396054,
+      "total_price": 1500000000.0,
+      "size_m2": 1318.0,
+      "location": "Metro Square, Mertoyudan, Sumberrejo, Magelang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/magelang/dijual-tanah-depan-perumahan-indrayani-mangunan-me-172716787977/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 3111111.111111111,
+      "total_price": 7000000000.0,
+      "size_m2": 2250.0,
+      "location": "Mungkid, Magelang, Jawa Tengah",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-tengah/magelang/jual-tanah-dan-bangunan-dekat-kampung-ulam-magelan-172802574251/",
       "listing_type": "land"
     }
   ],
   "source": "lamudi",
-  "scraped_at": "2025-10-27T10:00:26.169547",
+  "scraped_at": "2026-04-03T17:13:49.174154",
   "success": true,
   "error_message": null
 }

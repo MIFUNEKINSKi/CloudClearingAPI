@@ -1,30 +1,192 @@
 {
   "region_name": "tangerang_bsd_corridor",
-  "average_price_per_m2": 7500000.0,
-  "median_price_per_m2": 7500000.0,
-  "listing_count": 2,
+  "average_price_per_m2": 6893847.010305509,
+  "median_price_per_m2": 5338172.043010753,
+  "listing_count": 20,
   "listings": [
     {
-      "price_per_m2": 9500000.0,
-      "total_price": 1026000000.0,
-      "size_m2": 108.0,
-      "location": "Land Dijual di Karang Mulya",
+      "price_per_m2": 5300000.0,
+      "total_price": 7075500000.0,
+      "size_m2": 1335.0,
+      "location": "Tanah Dijual di Cisauk",
       "listing_date": null,
-      "source_url": "https://www.lamudi.co.id/jual/banten/tangerang/wilson-dijual-tanah-blok-depan-lokasi-bagus-di-met-175509678762/",
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-a33062c9e22e-1985-19a3397-9f53-7187",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 3750000.0,
+      "total_price": 86250000000.0,
+      "size_m2": 23000.0,
+      "location": "Tanah Dijual di Cikupa",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-fea84237f4cb-b11b-19b2cd9-8eb6-78fd",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 3500000.0,
+      "total_price": 81329500000.0,
+      "size_m2": 23237.0,
+      "location": "Tanah Dijual di Cikupa",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-fba61349c80b-719b-19c041d-b2e1-72e7",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 12000000.0,
+      "total_price": 19200000000.0,
+      "size_m2": 1600.0,
+      "location": "Kenanga, Cipondoh, Tangerang, Banten",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-778989197e81-c791-19c552b-8882-70fc",
       "listing_type": "land"
     },
     {
       "price_per_m2": 5500000.0,
-      "total_price": 385000000.0,
-      "size_m2": 70.0,
-      "location": "Land Dijual di Pondok Aren",
+      "total_price": 77000000000.0,
+      "size_m2": 14000.0,
+      "location": "Buaran Indah, Tangerang, Tangerang, Banten",
       "listing_date": null,
-      "source_url": "https://www.lamudi.co.id/jual/banten/tangerang/dijual-tanah-kavling-atau-rumah-minimalis-172578954220/",
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-6ef0129b2593-9d62-19cb9a4-ae06-7085",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 1350000.0,
+      "total_price": 64800000000.0,
+      "size_m2": 48000.0,
+      "location": "Sodong, Tigaraksa, Kabupaten Tangerang, Banten",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-9d730b8d0246-cbe0-19cb992-9b88-7414",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 8980454.473224217,
+      "total_price": 282570000000.0,
+      "size_m2": 31465.0,
+      "location": "Kamurang Lebak, Pakualam, Serpong Utara, Tangerang Selatan, Banten",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/banten/tangerang-selatan/tanah-serpong-lokasi-strategis-dekat-bsd-tangerang-172196798717/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 6100000.0,
+      "total_price": 4880000000.0,
+      "size_m2": 800.0,
+      "location": "Kenanga, Cipondoh, Tangerang, Banten",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-5669292c74c0-c26c-19b06b8-a297-7185",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 5300000.0,
+      "total_price": 7075500000.0,
+      "size_m2": 1335.0,
+      "location": "Cibadak, Suradita, Cisauk, Kabupaten Tangerang, Banten",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-a33062c9e22e-1985-19a3397-9f53-7187",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 7333333.333333333,
+      "total_price": 22000000000.0,
+      "size_m2": 3000.0,
+      "location": "Karang Tengah, Karang Tengah, Tangerang, Banten",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/banten/tangerang/jual-murah-gudang-karang-tengah-dekat-meruya-tange-174791197183/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 16956521.739130434,
+      "total_price": 4290000000.0,
+      "size_m2": 253.0,
+      "location": "Gading Serpong, Pakulonan Barat, Kelapa Dua, Kabupaten Tangerang, Banten",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-a2e5b697e398-4575-19ca192-bba0-7850",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 4499809.378574152,
+      "total_price": 118030000000.0,
+      "size_m2": 26230.0,
+      "location": "Keroncong, Jatiuwung, Tangerang, Banten",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/banten/tangerang/dijual-tanah-1ha-kawasan-industri-jatiuwung-jl-paj-171533595556/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 798179.0591805766,
+      "total_price": 2630000000.0,
+      "size_m2": 3295.0,
+      "location": "Cileles, Tigaraksa, Kabupaten Tangerang, Banten",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/banten/tangerang/tanah-lokasi-strategis-di-bantar-panjang-tigaraksa-17047897855/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 4000000.0,
+      "total_price": 2400000000.0,
+      "size_m2": 600.0,
+      "location": "Karang Timur, Karang Tengah, Tangerang, Banten",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-e92a30dc7183-a1f4-19c1cc8-9373-72b3",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 22000000.0,
+      "total_price": 9900000000.0,
+      "size_m2": 450.0,
+      "location": "Osaka Riverview Apartment, Pantai Indah Kapuk 2, Salembaran, Kosambi, Kabupaten Tangerang, Banten",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-412b844fa465-8c5a-19b076b-955b-75c2",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 7500000.0,
+      "total_price": 12930000000.0,
+      "size_m2": 1724.0,
+      "location": "Legok Indah, Babakan, Legok, Kabupaten Tangerang, Banten",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-ba96dc9758de-ce77-1998fdf-9ca0-7b24",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 5376344.086021505,
+      "total_price": 25000000000.0,
+      "size_m2": 4650.0,
+      "location": "Serdang Wetan, Legok, Kabupaten Tangerang, Banten",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/banten/tangerang/dijual-tanah-jalan-ry-legok-karawaci-173773750773/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 11428571.42857143,
+      "total_price": 2000000000.0,
+      "size_m2": 175.0,
+      "location": "BSD City, Sampora, Cisauk, Kabupaten Tangerang, Banten",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/banten/tangerang-selatan/jual-cepat-tanah-kosong-depan-jalan-2-mbl-shm-175-17493144245/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 4260869.565217392,
+      "total_price": 98000000000.0,
+      "size_m2": 23000.0,
+      "location": "Cikupa, Kabupaten Tangerang, Banten",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-fea84237f4cb-b11b-19b2cd9-8eb6-78fd",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 1942857.142857143,
+      "total_price": 204000000.0,
+      "size_m2": 105.0,
+      "location": "Cibadak, Suradita, Cisauk, Kabupaten Tangerang, Banten",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-6437f4833e02-b324-19d4773-a09c-70d0",
       "listing_type": "land"
     }
   ],
   "source": "lamudi",
-  "scraped_at": "2025-10-27T09:59:43.610170",
+  "scraped_at": "2026-04-03T17:09:43.836343",
   "success": true,
   "error_message": null
 }

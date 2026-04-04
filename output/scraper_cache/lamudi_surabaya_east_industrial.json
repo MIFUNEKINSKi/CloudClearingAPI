@@ -1,39 +1,192 @@
 {
   "region_name": "surabaya_east_industrial",
-  "average_price_per_m2": 11833333.333333334,
-  "median_price_per_m2": 12500000.0,
-  "listing_count": 3,
+  "average_price_per_m2": 15890633.141576046,
+  "median_price_per_m2": 11500000.0,
+  "listing_count": 20,
   "listings": [
     {
-      "price_per_m2": 4500000.0,
-      "total_price": 900000000.0,
-      "size_m2": 200.0,
-      "location": "Land Dijual di Rungkut",
+      "price_per_m2": 15500000.0,
+      "total_price": 3906000000.0,
+      "size_m2": 252.0,
+      "location": "Tanah Dijual di Klampis Ngasem",
       "listing_date": null,
-      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/surabaya/dijual-murah-tanah-shm-di-rungkut-surabaya-174963316734/",
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/surabaya/jual-murah-kavling-puri-galaxi-lotus-gardens-407-174712421959/",
       "listing_type": "land"
     },
     {
-      "price_per_m2": 12500000.0,
-      "total_price": 4187500000.0,
-      "size_m2": 335.0,
-      "location": "Land Dijual di Mulyorejo",
-      "listing_date": null,
-      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/surabaya/murah-kavling-pakuwon-city-tanah-san-antonio-strat-175713374758/",
-      "listing_type": "land"
-    },
-    {
-      "price_per_m2": 18500000.0,
-      "total_price": 5550000000.0,
+      "price_per_m2": 10750000.0,
+      "total_price": 3225000000.0,
       "size_m2": 300.0,
-      "location": "Land Dijual di Surabaya",
+      "location": "Tanah Dijual di Citraland",
       "listing_date": null,
-      "source_url": "https://www.lamudi.co.id/properti/41032-73-122baaa2ab25-a3d2-19a1040-b223-7673",
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-b3233c3090c6-1cc2-19cd382-8bb6-70c2",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 7499526.066350711,
+      "total_price": 7912000000.0,
+      "size_m2": 1055.0,
+      "location": "Tanah Dijual di Kenjeran",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-afcb2f9aad44-40ee-19b9408-a502-741c",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 15250000.0,
+      "total_price": 6283000000.0,
+      "size_m2": 412.0,
+      "location": "Tanah Dijual di Babatan",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-21bdccbb01f6-8127-199ea95-983c-7870",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 28333333.333333332,
+      "total_price": 8500000000.0,
+      "size_m2": 300.0,
+      "location": "RW 09, Dr. Sutomo, Tegalsari, Surabaya, Jawa Timur",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-b1018e6e7fa6-9d05-19bc14f-9e4b-78fc",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 25000000.0,
+      "total_price": 70275000000.0,
+      "size_m2": 2811.0,
+      "location": "Citraland, RW 03, Made, Sambikerep, Surabaya, Jawa Timur",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-f9961d458508-f8f-19b8844-b9ad-7f23",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 12000000.0,
+      "total_price": 2376000000.0,
+      "size_m2": 198.0,
+      "location": "Citraland, RW 04, Lakarsantri, Lakarsantri, Surabaya, Jawa Timur",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-43ed0fa160a1-26c0-19a86e3-b9f9-7b8d",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 74999398.6770896,
+      "total_price": 623620000000.0,
+      "size_m2": 8315.0,
+      "location": "RW 06, Pradahkali Kendal, Dukuh Pakis, Surabaya, Jawa Timur",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/surabaya/jual-atau-sewa-nol-jalan-raya-hr-muhammad-surabaya-175091635020/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 11000000.0,
+      "total_price": 85250000000.0,
+      "size_m2": 7750.0,
+      "location": "RW 02, Manukan Wetan, Tandes, Surabaya, Jawa Timur",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/surabaya/dijual-tanah-strategis-daerah-pabrik-nol-jalan-ray-175429792448/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 9615384.615384616,
+      "total_price": 9500000000.0,
+      "size_m2": 988.0,
+      "location": "RW 13, Putat Jaya, Sawahan, Surabaya, Jawa Timur",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/surabaya/disewakan-atau-jual-tanah-2-kavling-di-surabaya-ba-17539626408/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 15476190.476190476,
+      "total_price": 3900000000.0,
+      "size_m2": 252.0,
+      "location": "RW 09, Klampis Ngasem, Sukolilo, Surabaya, Jawa Timur",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/surabaya/jual-murah-kavling-puri-galaxi-lotus-gardens-407-174712421959/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 2760416.6666666665,
+      "total_price": 265000000.0,
+      "size_m2": 96.0,
+      "location": "RW 01, Medokan Ayu, Rungkut, Surabaya, Jawa Timur",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-e72115bcc3a3-bd81-19cb9aa-a74c-750b",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 10750000.0,
+      "total_price": 3225000000.0,
+      "size_m2": 300.0,
+      "location": "Citraland, RW 03, Made, Sambikerep, Surabaya, Jawa Timur",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-b3233c3090c6-1cc2-19cd382-8bb6-70c2",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 8765243.902439024,
+      "total_price": 5750000000.0,
+      "size_m2": 656.0,
+      "location": "RW 04, Bongkaran, Pabean Cantian, Surabaya, Jawa Timur",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-8478003107-41fc-19c3267-89fa-73b8",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 4166666.6666666665,
+      "total_price": 400000000.0,
+      "size_m2": 96.0,
+      "location": "Pondok Maritim Indah, RW 08, Balas Klumprik, Wiyung, Surabaya, Jawa Timur",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-2c5f09cbc178-e2be-19ac0bd-83f7-7644",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 7497630.331753555,
+      "total_price": 7910000000.0,
+      "size_m2": 1055.0,
+      "location": "RW 13, Sidotopo Wetan, Kenjeran, Surabaya, Jawa Timur",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-afcb2f9aad44-40ee-19b9408-a502-741c",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 3700000.0,
+      "total_price": 6697000000.0,
+      "size_m2": 1810.0,
+      "location": "RW 04, Airlangga, Gubeng, Surabaya, Jawa Timur",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-5064cb196abc-fa90-19c1722-9c2e-737e",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 24500000.0,
+      "total_price": 22050000000.0,
+      "size_m2": 900.0,
+      "location": "Citraland, RW 03, Made, Sambikerep, Surabaya, Jawa Timur",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-aac1e98728dd-aabe-19c9871-833d-7ae8",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 14998872.095646288,
+      "total_price": 66489999999.99999,
+      "size_m2": 4433.0,
+      "location": "RW 02, Panjang Jiwo, Tenggilis Mejoyo, Surabaya, Jawa Timur",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/surabaya/dijual-tanah-raya-panjang-jiwo-surabaya-175532546474/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 15250000.0,
+      "total_price": 6283000000.0,
+      "size_m2": 412.0,
+      "location": "RW 02, Babatan, Wiyung, Surabaya, Jawa Timur",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-21bdccbb01f6-8127-199ea95-983c-7870",
       "listing_type": "land"
     }
   ],
   "source": "lamudi",
-  "scraped_at": "2025-10-27T10:00:36.505556",
+  "scraped_at": "2026-04-03T17:15:13.675633",
   "success": true,
   "error_message": null
 }

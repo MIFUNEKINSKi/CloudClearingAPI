@@ -1,57 +1,57 @@
 {
   "region_name": "probolinggo_bromo_gateway",
-  "average_price_per_m2": 5385759.885659838,
+  "average_price_per_m2": 4547857.142857143,
   "median_price_per_m2": 1500000.0,
   "listing_count": 5,
   "listings": [
     {
-      "price_per_m2": 5478799.4282991905,
-      "total_price": 11500000000.0,
-      "size_m2": 2099.0,
-      "location": "Land Dijual di Jati",
+      "price_per_m2": 17500000.0,
+      "total_price": 23975000000.0,
+      "size_m2": 1370.0,
+      "location": "Tanah Dijual di Jati",
       "listing_date": null,
-      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/probolinggo/tanah-murah-dr-saleh-probolinggo-173434749996/",
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/probolinggo/raya-panglima-sudirman-kota-probolinggo-172834141051/",
       "listing_type": "land"
     },
     {
-      "price_per_m2": 950000.0,
-      "total_price": 83600000000.0,
-      "size_m2": 88000.0,
-      "location": "Land Dijual di Gending",
+      "price_per_m2": 339285.71428571426,
+      "total_price": 2850000000.0,
+      "size_m2": 8400.0,
+      "location": "Tanah Dijual di Sukapura",
       "listing_date": null,
-      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/probolinggo/tanah-di-raya-gending-probolinggo-173734255760/",
+      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/probolinggo/dijual-tanah-strategis-di-jalan-raya-bromo-sukapur-172810001372/",
       "listing_type": "land"
     },
     {
       "price_per_m2": 1500000.0,
-      "total_price": 7074000000.0,
-      "size_m2": 4716.0,
-      "location": "Land Dijual di Probolinggo",
+      "total_price": 41010000000.0,
+      "size_m2": 27340.0,
+      "location": "Tanah Dijual di Sukapura",
       "listing_date": null,
-      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/probolinggo/tanah-luas-murah-lokasi-strategis-0-jalan-raya-pai-171100748653/",
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-c0fa9f5a7a98-df7f-19d49f1-978b-70d9",
       "listing_type": "land"
     },
     {
-      "price_per_m2": 17500000.0,
-      "total_price": 23975000000.0,
-      "size_m2": 1370.0,
-      "location": "Land Dijual di Jati",
+      "price_per_m2": 1900000.0,
+      "total_price": 4052700000.0,
+      "size_m2": 2133.0,
+      "location": "Tanah Dijual di Probolinggo",
       "listing_date": null,
-      "source_url": "https://www.lamudi.co.id/jual/jawa-timur/probolinggo/raya-panglima-sudirman-kota-probolinggo-172834141051/",
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-fc14ec46620e-6757-19b11cc-b142-7662",
       "listing_type": "land"
     },
     {
       "price_per_m2": 1500000.0,
       "total_price": 1821000000.0,
       "size_m2": 1214.0,
-      "location": "Land Dijual di Probolinggo",
+      "location": "Tanah Dijual di Probolinggo",
       "listing_date": null,
       "source_url": "https://www.lamudi.co.id/jual/jawa-timur/probolinggo/jual-tanah-komersial-sukokerto-pajarakan-proboling-175523189480/",
       "listing_type": "land"
     }
   ],
   "source": "lamudi",
-  "scraped_at": "2025-10-27T10:00:53.720294",
+  "scraped_at": "2026-04-03T17:16:35.168987",
   "success": true,
   "error_message": null
 }

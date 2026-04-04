@@ -1,30 +1,192 @@
 {
   "region_name": "bogor_puncak_highland",
-  "average_price_per_m2": 4650000.0,
-  "median_price_per_m2": 4650000.0,
-  "listing_count": 2,
+  "average_price_per_m2": 2161487.7671744996,
+  "median_price_per_m2": 1700000.0,
+  "listing_count": 20,
   "listings": [
     {
-      "price_per_m2": 5800000.0,
-      "total_price": 49450800000.0,
+      "price_per_m2": 3073770.4918032787,
+      "total_price": 2250000000.0,
+      "size_m2": 732.0,
+      "location": "Tanah Dijual di Cibinong",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-5d4024756c99-9375-19c937e-95b9-7265",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 601527.6893698281,
+      "total_price": 945000000.0,
+      "size_m2": 1571.0,
+      "location": "Klapanunggal, Klapanunggal, Kab Bogor, Jawa Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-c4e757a8e126-8951-19c461c-a29a-7771",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 2000000.0,
+      "total_price": 6400000000.0,
+      "size_m2": 3200.0,
+      "location": "Kota Podomoro Tenjo, Pasarebo Kaler, Babakan, Tenjo, Kab Bogor, Jawa Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-92bd2aabe28e-6f6e-19bb6be-9246-77d5",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 771428.5714285715,
+      "total_price": 27000000000.0,
+      "size_m2": 35000.0,
+      "location": "Kp Curug, Bojong Koneng, Babakan Madang, Kab Bogor, Jawa Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-7bfb4230a871-e571-19cfeb8-94c0-7f67",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 710000.0,
+      "total_price": 101530000.0,
+      "size_m2": 143.0,
+      "location": "Sirnasari, Tanjungsari, Kab Bogor, Jawa Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-c036593f1d54-b1a5-19ae86f-8738-7d8d",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 1500000.0,
+      "total_price": 360000000.0,
+      "size_m2": 240.0,
+      "location": "Sukamakmur, Sukamakmur, Kab Bogor, Jawa Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-46e0f18baabf-6dc3-19a7e59-8d64-75a7",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 1450000.0,
+      "total_price": 313200000.0,
+      "size_m2": 216.0,
+      "location": "Kuta, Megamendung, Kab Bogor, Jawa Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-f5ffb4abeaab-668b-19ced5e-b291-7ab4",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 4899132.066619751,
+      "total_price": 41770000000.0,
       "size_m2": 8526.0,
-      "location": "Land Dijual di Parung",
+      "location": "Waru, Parung, Kab Bogor, Jawa Barat",
       "listing_date": null,
       "source_url": "https://www.lamudi.co.id/jual/jawa-barat/bogor/bu-cepat-tanah-usaha-parung-bonus-gudang-nego-samp-175763997171/",
       "listing_type": "land"
     },
     {
-      "price_per_m2": 3500000.0,
-      "total_price": 21000000000.0,
-      "size_m2": 6000.0,
-      "location": "Land Dijual di Cileungsi",
+      "price_per_m2": 6796941.376380629,
+      "total_price": 8000000000.0,
+      "size_m2": 1177.0,
+      "location": "Sentul, Babakan Madang, Kab Bogor, Jawa Barat",
       "listing_date": null,
-      "source_url": "https://www.lamudi.co.id/properti/41032-73-89833a204af5-8ac9-19961ac-92fa-783f",
+      "source_url": "https://www.lamudi.co.id/jual/jawa-barat/bogor/hot-sale-tanah-kavling-premium-sentul-city-bu-loka-175763982145/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 2291666.6666666665,
+      "total_price": 275000000.0,
+      "size_m2": 120.0,
+      "location": "Babakan Madang, Babakan Madang, Kab Bogor, Jawa Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-d800fb200848-1b8c-19bcc85-a18f-7f52",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 2751.322751322751,
+      "total_price": 520000.0,
+      "size_m2": 189.0,
+      "location": "Sirnasari, Tanjungsari, Kab Bogor, Jawa Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-b83178124eff-55b7-19d2133-9f8d-7d97",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 9300.0,
+      "total_price": 930000.0,
+      "size_m2": 100.0,
+      "location": "Pabuaran, Sukamakmur, Kab Bogor, Jawa Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-barat/bogor/tanah-shm-murah-dekat-jakarta-dijalur-wisata-bogor-175264420890/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 7800.0,
+      "total_price": 780000.0,
+      "size_m2": 100.0,
+      "location": "Sukajaya, Jonggol, Kab Bogor, Jawa Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-barat/bogor/jual-tanah-murah-villa-paket-bundling-bogor-174498306229/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 3073770.4918032787,
+      "total_price": 2250000000.0,
+      "size_m2": 732.0,
+      "location": "Nirwana Golden Park, Pakansari, Cibinong, Kab Bogor, Jawa Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-5d4024756c99-9375-19c937e-95b9-7265",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 1041666.6666666666,
+      "total_price": 750000000.0,
+      "size_m2": 720.0,
+      "location": "Pasirangin, Cileungsi, Kab Bogor, Jawa Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-1af32cab3307-9454-19941bd-9bad-77d7",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 5000000.0,
+      "total_price": 900000000.0,
+      "size_m2": 180.0,
+      "location": "Limusnunggal, Cileungsi, Kab Bogor, Jawa Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/jual/jawa-barat/bogor/jual-rumah-dan-tanah-lokasi-metland-cileungsi-174894032530/",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 5000000.0,
+      "total_price": 1245000000.0,
+      "size_m2": 249.0,
+      "location": "Mekarjaya, Ciomas, Kab Bogor, Jawa Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-d8eb4a183470-25c-19c46db-a271-7a56",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 700000.0,
+      "total_price": 70000000.0,
+      "size_m2": 100.0,
+      "location": "Sukamulya, Sukamakmur, Kab Bogor, Jawa Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-557c1b98ed04-89c9-199e9ba-95e5-7b4b",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 1900000.0,
+      "total_price": 1330000000.0,
+      "size_m2": 700.0,
+      "location": "Kopo, Cisarua, Kab Bogor, Jawa Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-ffbf14547bf6-8311-19cadc6-b17e-7aab",
+      "listing_type": "land"
+    },
+    {
+      "price_per_m2": 2400000.0,
+      "total_price": 1560000000.0,
+      "size_m2": 650.0,
+      "location": "Bukit Serpong Indah, Cidokom, Cidokom, Gunung Sindur, Kab Bogor, Jawa Barat",
+      "listing_date": null,
+      "source_url": "https://www.lamudi.co.id/properti/41032-73-534af4550a7a-62c2-19b986d-89f9-7419",
       "listing_type": "land"
     }
   ],
   "source": "lamudi",
-  "scraped_at": "2025-10-27T10:00:03.619276",
+  "scraped_at": "2026-04-03T17:11:59.589576",
   "success": true,
   "error_message": null
 }
