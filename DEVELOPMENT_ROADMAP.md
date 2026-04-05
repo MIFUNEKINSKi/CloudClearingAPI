@@ -1,6 +1,6 @@
 # CloudClearingAPI Development Roadmap
-**Updated:** April 4, 2026  
-**Current Version:** v2.12.1 (Full 65-Region Coverage + Scoring Fixes)
+**Updated:** April 5, 2026  
+**Current Version:** v2.13.0 (Live Data Pipeline + Full Region Coverage)
 
 ---
 
@@ -24,21 +24,24 @@ CloudClearingAPI is an automated land investment analyst for Indonesia that comb
 |-----------|--------|----------------------|
 | **65-region data pipeline** | ✅ Working | ETL at scale (satellite + market + infra + news → scored output) |
 | **Dual-sensor satellite analysis** | ✅ Working | API integration (Google Earth Engine), data fusion |
-| **Web scraping pipeline** | ⚠️ Partial (40%) | Multi-source ingestion with cascading fallback |
-| **Infrastructure analysis (OSM)** | ✅ Working | API integration, caching (7-day TTL), fallback database |
+| **Web scraping pipeline** | ✅ 94% live | Multi-source ingestion, compound-name matching, cascading fallback |
+| **Infrastructure analysis (OSM)** | ✅ 78% live | Overpass API with retry/backoff, server-side timeout detection, center-mode queries |
+| **Market tier classification** | ✅ 100% | All 65 regions classified (T1: 10, T2: 18, T3: 29, T4: 8) |
 | **Investment scoring engine** | ✅ Working | Multi-factor data transformation pipeline |
 | **PDF report generation** | ✅ Working | Automated reporting, data visualization |
 | **Auto-email delivery** | ✅ Working | Pipeline output delivery |
 | **JSONL price history** | ✅ Working | Append-only data lake pattern |
-| **Benchmark drift monitoring** | ✅ Fixed | Data quality monitoring |
+| **Benchmark drift monitoring** | ✅ Working | Dataclass-aware extraction, consistent alert schema, 65 regions tracked |
 | **Docker containerization** | ✅ Defined | Container orchestration (not yet deployed) |
 | **Terraform IaC** | ✅ Defined | Infrastructure as Code (5 modules, ~70 AWS resources) |
 | **Step Functions orchestration** | ✅ Defined | Workflow orchestration (not yet deployed) |
 
-### Latest Run (April 4, 2026)
-- 65/65 regions analyzed in a single `--all` pass
-- Improved score differentiation via infrastructure fallback and market heat fixes
-- Drift monitoring operational
+### Latest Run (April 5, 2026)
+- **65/65 regions** analyzed in a single `--all` pass
+- **61/65 live market data** (Lamudi scraper with compound-name matching)
+- **51/65 live OSM infrastructure** (up from 0/65 — fixed silent timeouts + query optimization)
+- **65/65 drift monitoring** tracked (fixed dataclass + alert schema bugs)
+- **33 unique scores** across range 16.0 – 66.6 (31 BUY, 31 WATCH, 3 PASS)
 
 ---
 
@@ -155,6 +158,7 @@ How CloudClearingAPI maps to common DE job requirements:
 
 | Version | Date | Key Features |
 |---------|------|-------------|
+| **v2.13.0** | Apr 2026 | Live data pipeline: OSM 0%→78%, Lamudi 85%→94%, 65-region tier config, drift monitoring fixed |
 | **v2.12.1** | Apr 2026 | Full 65-region run, infrastructure fallback expansion, market heat fix, drift monitoring fix |
 | **v2.12** | Mar 2026 | Decision matrix PDF, expanded to 65 regions, news scraper improvements |
 | **v2.11** | Mar 2026 | SAR radar fusion, news catalyst scoring, JSONL price history, momentum analyzer, auto-email |
@@ -169,10 +173,11 @@ How CloudClearingAPI maps to common DE job requirements:
 
 ## 🚨 Known Issues & Limitations
 
-### Broken Scrapers
+### Scraper Coverage Gaps
 - **99.co:** HTTP 429 rate limiting
 - **Rumah.com:** Requires JavaScript rendering (Selenium/Playwright)
-- **Impact:** 60% of regions rely on static benchmark prices
+- **Lamudi coverage:** 94% (61/65 regions) — 4 remote regions (Lake Toba, Lombok x2, Solo) still on benchmarks
+- **OSM coverage:** 78% (51/65 regions) — 14 regions hit transient 504 errors, will resolve on next cached run
 
 ### Infrastructure Not Deployed
 - Docker, Terraform, and Step Functions are fully defined in code but have never been deployed to AWS
