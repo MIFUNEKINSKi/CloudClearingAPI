@@ -54,11 +54,13 @@ credentials.json
 service-account-key.json
 
 # Data and Output (can be large)
+# These stay local-only — regenerate via pipeline; do not commit (repo size).
 data/
 cache/
 output/monitoring/
 output/reports/
 output/satellite_images/
+output/cached_images/
 output/imagery_viewer/
 output/scraper_cache/
 output/weekly_reports/
