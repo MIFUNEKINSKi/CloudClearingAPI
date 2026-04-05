@@ -352,6 +352,8 @@ All IAM roles follow least-privilege principles. Secrets must be added manually 
 
 ## Cost Optimization
 
+**See also:** **[Cost-aware AWS (portfolio dev)](cost-aware-aws.md)** — how `enable_nat_gateway = false` maps to **public subnets + `AssignPublicIp: ENABLED`** for ECS tasks (no NAT hourly charges; suitable for personal/weekly batch workloads).
+
 ### Monthly Cost Estimates
 
 #### Dev Environment (Minimal)
