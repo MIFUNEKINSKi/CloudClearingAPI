@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`change_detector._calculate_statistics`:** `signal.alarm` is always cleared in a `finally` block. Previously, if the wrapped Earth Engine `getInfo()` call raised **any exception other than `TimeoutError`**, the alarm stayed armed and **SIGALRM** could terminate the process tens of seconds later (manifesting as `zsh: alarm` during a later pipeline phase).
+
 ### Added
 
 - **`scripts/prep-aws-zero-cost.sh`:** runs `terraform init`, `validate`, and `plan` (plus optional local `docker build` when Docker is installed) without `terraform apply` or ECR push; documented in [`docs/deployment/cost-aware-aws.md`](docs/deployment/cost-aware-aws.md). `.gitignore` now excludes `infra/terraform/terraform.tfvars`.

@@ -819,13 +819,15 @@ class ChangeDetector:
                     old_handler = signal.signal(signal.SIGALRM, timeout_handler)
                     signal.alarm(seconds)
                     try:
-                        result = func(*args, **kwargs)
-                        signal.alarm(0)
-                        return result
+                        return func(*args, **kwargs)
                     except TimeoutError:
                         logger.warning(f"{func.__name__} timed out after {seconds} seconds")
                         raise
                     finally:
+                        # Always disarm: if func() raised a non-TimeoutError, leaving the alarm
+                        # armed restores SIG_DFL and SIGALRM kills the whole process later
+                        # (often during unrelated work, e.g. parallel OSM scoring).
+                        signal.alarm(0)
                         signal.signal(signal.SIGALRM, old_handler)
                 return wrapper
             return decorator
