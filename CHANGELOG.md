@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- **Terraform (portfolio dev):** When `enable_nat_gateway = false`, Step Functions ECS `RunTask` uses **public subnets** and **`AssignPublicIp: ENABLED`** so the weekly monitor can reach GEE and the internet without NAT charges. When `true`, behavior remains private subnets + `DISABLED` (production-style).
+- **Documentation:** Added [`docs/deployment/cost-aware-aws.md`](docs/deployment/cost-aware-aws.md); updated root `README.md`, `DEVELOPMENT_ROADMAP.md`, `DOCUMENTATION_INDEX.md`, `infra/terraform/README.md`, and `docs/README.md` for cost-aware deployment and module count (6).
+- **Repository layout:** Moved 41 superseded milestone/roadmap markdown files to `archived_bloat/historical_reports/`; restored [`QUICKSTART.md`](QUICKSTART.md) at repo root.
+
+---
+
 ## [2.14.0] - 2026-04-05
 
 ### Added
