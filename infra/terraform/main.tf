@@ -179,8 +179,10 @@ module "step_functions" {
   monitor_task_definition_arn = module.compute.weekly_monitoring_task_definition_arn
   ecs_task_role_arn           = module.security.ecs_task_role_arn
   ecs_execution_role_arn      = module.security.ecs_task_execution_role_arn
-  private_subnet_ids          = module.network.private_subnet_ids
-  ecs_security_group_id       = module.compute.ecs_tasks_security_group_id
+  # No NAT → public subnets + public IP so the task can reach GEE, scrapers, OSM (see docs/deployment/cost-aware-aws.md)
+  ecs_task_subnet_ids    = var.enable_nat_gateway ? module.network.private_subnet_ids : module.network.public_subnet_ids
+  ecs_assign_public_ip   = var.enable_nat_gateway ? "DISABLED" : "ENABLED"
+  ecs_security_group_id  = module.compute.ecs_tasks_security_group_id
   
   # S3 Configuration (bucket id equals global bucket name in AWS)
   s3_reports_bucket = module.data_lake.curated_bucket_id

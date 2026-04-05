@@ -86,19 +86,20 @@ module "step_functions" {
   monitor_task_definition_arn = module.compute.weekly_monitoring_task_definition_arn
   ecs_task_role_arn           = module.security.ecs_task_role_arn
   ecs_execution_role_arn      = module.security.ecs_execution_role_arn
-  private_subnet_ids          = module.network.private_subnet_ids
-  ecs_security_group_id       = module.network.ecs_security_group_id
+  ecs_task_subnet_ids   = var.enable_nat_gateway ? module.network.private_subnet_ids : module.network.public_subnet_ids
+  ecs_assign_public_ip  = var.enable_nat_gateway ? "DISABLED" : "ENABLED"
+  ecs_security_group_id = module.compute.ecs_tasks_security_group_id
 
-  # S3 Configuration
-  s3_reports_bucket = module.data_lake.reports_bucket_name
-  s3_cache_bucket   = module.data_lake.cache_bucket_name
+  # S3 Configuration (bucket id = global bucket name)
+  s3_reports_bucket = module.data_lake.curated_bucket_id
+  s3_cache_bucket   = module.data_lake.staging_bucket_id
 
   # Notifications
   failure_email = "alerts@yourcompany.com"
   success_email = "reports@yourcompany.com"
 
   # Application
-  gee_project_id = var.gee_project_id
+  gee_project_id = var.earthengine_project
   kms_key_id     = module.security.kms_key_id
 
   tags = local.common_tags

@@ -23,28 +23,31 @@ terraform apply
 
 ## What Gets Deployed
 
-- **Network:** VPC with public/private subnets across 2 AZs, NAT Gateways, VPC endpoints
+- **Network:** VPC with public/private subnets across 2 AZs; **NAT Gateways optional** (`enable_nat_gateway`)
 - **Data Lake:** 4 S3 buckets (raw, staging, curated, logs) with lifecycle policies
 - **Security:** IAM roles, KMS encryption keys, Secrets Manager for credentials
 - **Compute:** ECS Fargate cluster, ECR repository, task definitions
 - **Monitoring:** CloudWatch alarms, SNS topics, dashboards, cost budgets
+- **Orchestration (root module):** Step Functions state machine + EventBridge schedule for weekly ECS RunTask
 
-## Cost Estimate
+## Cost estimate
 
-- **Dev (minimal):** ~$23/month
-- **Production (full):** ~$139/month
+- **Dev with NAT (`enable_nat_gateway = true`):** on the order of **~\$35–45+/month** (NAT is the main fixed line item) plus Fargate while tasks run.
+- **Dev without NAT (`enable_nat_gateway = false`):** **no NAT hourly charges**; Step Functions uses **public subnets** and **`AssignPublicIp: ENABLED`** for the monitoring task. Remaining cost is mostly **Fargate (per run)**, S3/ECR/logs — often **low single-digit \$**/month for a weekly job if sized modestly.
+- **\$0:** do not apply, or **`terraform destroy`** when you are not demoing — IaC in Git remains the portfolio artifact.
 
-See `docs/deployment/terraform-guide.md` for cost optimization strategies.
+See **[`docs/deployment/cost-aware-aws.md`](../../docs/deployment/cost-aware-aws.md)** and [`docs/deployment/terraform-guide.md`](../../docs/deployment/terraform-guide.md).
 
-## Module Structure
+## Module structure
 
 ```
 modules/
-├── network/      # VPC, subnets, routing, VPC endpoints
-├── data_lake/    # S3 buckets with intelligent tiering
-├── security/     # IAM, KMS, Secrets Manager
-├── compute/      # ECS Fargate, ECR, task definitions
-└── monitoring/   # CloudWatch, SNS, budgets
+├── network/         # VPC, subnets, routing, optional NAT, VPC endpoints
+├── data_lake/       # S3 buckets with intelligent tiering
+├── security/        # IAM, KMS, Secrets Manager
+├── compute/         # ECS Fargate, ECR, task definitions
+├── monitoring/      # CloudWatch, SNS, budgets
+└── step-functions/  # Weekly pipeline state machine (wired from root main.tf)
 ```
 
 ## Required Variables
@@ -54,6 +57,9 @@ modules/
 ```hcl
 environment         = "dev"
 earthengine_project = "your-gee-project-id"  # REQUIRED
+
+pipeline_success_email = "your-email@example.com"
+pipeline_failure_email = "your-email@example.com"
 
 alarm_email_endpoints = [
   "your-email@example.com"
@@ -102,9 +108,10 @@ Key outputs:
 
 ## Documentation
 
+- **Cost-aware dev (no NAT):** [`docs/deployment/cost-aware-aws.md`](../../docs/deployment/cost-aware-aws.md)
 - **Full Guide:** [`docs/deployment/terraform-guide.md`](../../docs/deployment/terraform-guide.md)
 - **Docker Setup:** [`docs/deployment/docker-setup.md`](../../docs/deployment/docker-setup.md)
-- **Roadmap:** [`docs/roadmap/v2.9-to-v3.0.md`](../../docs/roadmap/v2.9-to-v3.0.md)
+- **Roadmap:** [`DEVELOPMENT_ROADMAP.md`](../../DEVELOPMENT_ROADMAP.md) (canonical) · [`docs/roadmap/v2.9-to-v3.0.md`](../../docs/roadmap/v2.9-to-v3.0.md)
 
 ## Support
 

@@ -12,8 +12,11 @@ aws_region   = "us-east-1"
 # Network Configuration
 # ============================================================================
 vpc_cidr             = "10.0.0.0/16"
-enable_nat_gateway   = true   # Set to false for dev to save costs (~$30/month per NAT)
-enable_vpc_endpoints = true   # Reduces data transfer costs
+# RECOMMENDED for personal/portfolio dev: false — avoids NAT hourly charges; Terraform
+# runs ECS tasks in public subnets with a public IP for GEE/scrapers/OSM.
+# Use true for production-style private subnets + NAT.
+enable_nat_gateway   = false
+enable_vpc_endpoints = true   # Set false in dev to trim interface endpoint hourly cost
 enable_flow_logs     = false  # Set to true for production (increases costs)
 
 # ============================================================================
@@ -34,11 +37,16 @@ ecs_task_cpu    = "2048"  # 2 vCPU
 ecs_task_memory = "8192"  # 8 GB
 
 # ============================================================================
-# Monitoring & Alerts
+# Pipeline email (Step Functions / SNS) — optional but needed for success/failure mail
+# ============================================================================
+pipeline_success_email = "your-email@example.com"
+pipeline_failure_email = "your-email@example.com"
+
+# ============================================================================
+# Monitoring & Alerts (CloudWatch / budgets)
 # ============================================================================
 alarm_email_endpoints = [
   "your-email@example.com"
-  # Add additional emails as needed
 ]
 
 enable_cost_alerts   = true

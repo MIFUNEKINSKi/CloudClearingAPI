@@ -30,6 +30,7 @@ Production validation, monitoring, and troubleshooting.
 
 - **[Docker Setup Guide](deployment/docker-setup.md)** - Complete containerization guide (CCAPI-28.0)
 - **[Terraform Infrastructure Guide](deployment/terraform-guide.md)** - AWS infrastructure as code (CCAPI-28.1)
+- **[Cost-aware AWS (portfolio dev)](deployment/cost-aware-aws.md)** - No NAT, public-subnet ECS pattern, destroy-when-idle
 - **[Step Functions Orchestration Guide](deployment/step-functions-guide.md)** - Automated pipeline with AWS Step Functions (CCAPI-29.0)
 - **[Production Validation Results](deployment/production_validation.md)** - Validation reports
 - **[Weekly Monitoring Guide](deployment/monitoring_guide.md)** - Running `run_weekly_java_monitor.py`

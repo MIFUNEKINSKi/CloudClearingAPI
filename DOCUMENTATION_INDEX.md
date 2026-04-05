@@ -1,6 +1,6 @@
 # CloudClearingAPI Documentation Index
-**Version:** 2.12.1  
-**Last Updated:** April 4, 2026
+**Version:** 2.14.0  
+**Last Updated:** April 5, 2026
 
 ---
 
@@ -30,23 +30,19 @@ CloudClearingAPI Documentation
 │   └── WEB_SCRAPING_DOCUMENTATION.md ....... Multi-source scraping system
 │
 ├── Operational Documentation
-│   ├── CHANGELOG.md ........................ Full version history (v2.0 → v2.12.1)
+│   ├── CHANGELOG.md ........................ Full version history
 │   └── DEVELOPMENT_ROADMAP.md .............. Current priorities and future plans
 │
 ├── docs/ (Modular Documentation Hub)
 │   ├── README.md ........................... Documentation hub with navigation
 │   ├── architecture/ ...................... Scoring, data flow, components, config
 │   ├── api/ ............................... API references for core modules
-│   ├── deployment/ ........................ Docker, Terraform, Step Functions guides
+│   ├── deployment/ ........................ Docker, Terraform, Step Functions, **cost-aware-aws.md**
 │   ├── testing/ ........................... Test strategies and coverage
 │   ├── changelog/ ......................... Detailed release notes
 │   └── roadmap/ ........................... Strategic development plans
 │
-└── Historical Reports (reference only)
-    ├── CCAPI_27_*_COMPLETION.md ............ Feature completion reports
-    ├── VALIDATION_REPORT_*.md .............. Validation analysis reports
-    ├── PHASE_2B*_COMPLETION_REPORT.md ...... Phase 2B milestone reports
-    └── *_OCT*_2025.md ...................... October 2025 bug fix logs
+└── archived_bloat/historical_reports/ ..... Superseded roadmaps + Oct–Nov 2025 milestone reports (see README inside)
 ```
 
 ---
@@ -188,11 +184,11 @@ See **[docs/README.md](docs/README.md)** for the full navigation index covering 
 
 | Document | Update Frequency | Last Updated |
 |----------|------------------|--------------|
-| README.md | After major features | April 4, 2026 |
-| CHANGELOG.md | After each release | April 4, 2026 |
-| DEVELOPMENT_ROADMAP.md | After each development cycle | April 4, 2026 |
-| docs/README.md | After major features | April 4, 2026 |
-| DOCUMENTATION_INDEX.md | After doc structure changes | April 4, 2026 |
+| README.md | After major features | April 5, 2026 |
+| CHANGELOG.md | After each release | April 5, 2026 |
+| DEVELOPMENT_ROADMAP.md | After each development cycle | April 5, 2026 |
+| docs/README.md | After major features | April 5, 2026 |
+| DOCUMENTATION_INDEX.md | After doc structure changes | April 5, 2026 |
 | TECHNICAL_SCORING_DOCUMENTATION.md | After scoring changes | October 25, 2025 |
 | BENCHMARK_UPDATE_PROCEDURE.md | Quarterly reviews | October 25, 2025 |
 | WEB_SCRAPING_DOCUMENTATION.md | After scraper changes | October 25, 2025 |

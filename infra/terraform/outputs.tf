@@ -148,12 +148,12 @@ output "next_steps" {
        docker tag cloudclearing-api:latest ${module.compute.ecr_repository_url}:latest
        docker push ${module.compute.ecr_repository_url}:latest
     
-    3. Test ECS Task:
+    3. Test ECS Task (match enable_nat_gateway: ${var.enable_nat_gateway} → subnets ${var.enable_nat_gateway ? "private" : "public"}, assignPublicIp ${var.enable_nat_gateway ? "DISABLED" : "ENABLED"}):
        aws ecs run-task \
          --cluster ${module.compute.ecs_cluster_name} \
          --task-definition ${module.compute.weekly_monitoring_task_definition_arn} \
          --launch-type FARGATE \
-         --network-configuration "awsvpcConfiguration={subnets=[${join(",", module.network.private_subnet_ids)}],securityGroups=[${module.compute.ecs_tasks_security_group_id}]}"
+         --network-configuration "awsvpcConfiguration={subnets=[${join(",", var.enable_nat_gateway ? module.network.private_subnet_ids : module.network.public_subnet_ids)}],securityGroups=[${module.compute.ecs_tasks_security_group_id}],assignPublicIp=${var.enable_nat_gateway ? "DISABLED" : "ENABLED"}}"
     
     4. View Logs:
        aws logs tail /aws/ecs/${var.project_name}-${var.environment} --follow

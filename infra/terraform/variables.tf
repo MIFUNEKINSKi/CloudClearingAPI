@@ -45,7 +45,7 @@ variable "vpc_cidr" {
 }
 
 variable "enable_nat_gateway" {
-  description = "Enable NAT Gateway for private subnets"
+  description = "If true: ECS tasks use private subnets and no public IP (needs NAT for outbound internet). If false: saves ~$32+/mo per NAT path; Step Functions runs tasks in public subnets with AssignPublicIp ENABLED (see docs/deployment/cost-aware-aws.md)."
   type        = bool
   default     = true
 }

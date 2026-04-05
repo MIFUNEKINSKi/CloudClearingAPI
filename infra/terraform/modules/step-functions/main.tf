@@ -23,7 +23,8 @@ resource "aws_sfn_state_machine" "weekly_monitoring" {
     ecs_cluster_arn           = var.ecs_cluster_arn
     monitor_task_definition   = var.monitor_task_definition_arn
     aws_region                = var.aws_region
-    subnet_ids                = jsonencode(var.private_subnet_ids)
+    subnet_ids                = jsonencode(var.ecs_task_subnet_ids)
+    ecs_assign_public_ip      = var.ecs_assign_public_ip
     security_group_ids        = jsonencode([var.ecs_security_group_id])
     sns_success_topic_arn     = aws_sns_topic.pipeline_success.arn
     sns_failure_topic_arn     = aws_sns_topic.pipeline_failure.arn

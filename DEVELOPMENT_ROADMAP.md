@@ -38,7 +38,7 @@ CloudClearingAPI is an automated land investment analyst for Indonesia that comb
 | **JSONL price history** | ✅ Working | Append-only data lake pattern |
 | **Benchmark drift monitoring** | ✅ Working | Dataclass-aware extraction, consistent alert schema, 65 regions tracked |
 | **Docker containerization** | ✅ Defined | Container orchestration (not yet deployed) |
-| **Terraform IaC** | ✅ Defined | Infrastructure as Code (5 modules, ~70 AWS resources) |
+| **Terraform IaC** | ✅ Defined | Infrastructure as Code (**6 modules**, ~70 AWS resources); **no-NAT dev path** wired (`enable_nat_gateway = false` → public subnets + `AssignPublicIp` for ECS RunTask) |
 | **Step Functions orchestration** | ✅ Defined | Workflow orchestration (not yet deployed) |
 
 ### Latest Run Metrics
@@ -58,6 +58,8 @@ Priorities ordered by what matters most for demonstrating data engineering compe
 ### Phase 1: Deploy to AWS (Highest Impact for Resume)
 
 **Why:** The Docker, Terraform, and Step Functions code exists but has never been deployed. A live AWS deployment is the single highest-impact thing for proving cloud DE skills.
+
+**Cost-conscious default (Apr 2026):** Use `enable_nat_gateway = false` in `terraform.tfvars` for portfolio dev — avoids NAT fees; ECS tasks launched by Step Functions use **public subnets** and **AssignPublicIp: ENABLED** so the weekly job can still reach GEE and the internet. See [`docs/deployment/cost-aware-aws.md`](docs/deployment/cost-aware-aws.md). Destroy the stack (`terraform destroy`) between interview seasons to go to **\$0**.
 
 | Task | Effort | DE Skill | Priority |
 |------|--------|----------|----------|
@@ -142,7 +144,7 @@ How CloudClearingAPI maps to common DE job requirements:
 | **Python** | Core pipeline, scoring engine, scrapers, async processing | ✅ Demonstrated |
 | **SQL** | dbt models, data transformation | 🔲 Phase 2 |
 | **AWS (S3, ECS, Step Functions)** | Full infrastructure defined in Terraform | ⚠️ Defined, not deployed |
-| **Terraform** | 5 modules, ~70 AWS resources, multi-env support | ✅ Code exists |
+| **Terraform** | 6 modules, ~70 AWS resources, multi-env support, no-NAT dev path | ✅ Code exists |
 | **Docker** | Multi-stage build, CI/CD pipeline | ✅ Code exists |
 | **Data pipelines / ETL** | Satellite → scoring → PDF/email pipeline | ✅ Demonstrated |
 | **dbt** | Transformation layer | 🔲 Phase 2 |
@@ -195,8 +197,8 @@ How CloudClearingAPI maps to common DE job requirements:
 - No CI pipeline running
 
 ### Documentation Debt
-- 48 markdown files in repo root — many are historical Oct 2025 completion reports
-- `DEVELOPMENT_ROADMAP_V2.8.2.md` and `docs/roadmap/v2.9-to-v3.0.md` are stale (superseded by this file)
+- Historical Oct–Nov 2025 reports and superseded roadmaps live under **`archived_bloat/historical_reports/`** (see `README.md` there). Root keeps active docs only.
+- `docs/roadmap/v2.9-to-v3.0.md` may lag this file — treat **`DEVELOPMENT_ROADMAP.md`** as canonical for priorities.
 
 ---
 

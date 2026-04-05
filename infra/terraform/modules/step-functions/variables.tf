@@ -49,9 +49,18 @@ variable "ecs_execution_role_arn" {
   type        = string
 }
 
-variable "private_subnet_ids" {
-  description = "List of private subnet IDs for ECS tasks"
+variable "ecs_task_subnet_ids" {
+  description = "Subnets for Step Functions ECS RunTask. Use private subnets when NAT is enabled; use public subnets with ecs_assign_public_ip = ENABLED when NAT is disabled (outbound internet for GEE/scrapers)."
   type        = list(string)
+}
+
+variable "ecs_assign_public_ip" {
+  description = "ENABLED when tasks run in public subnets without NAT; DISABLED with private subnets + NAT"
+  type        = string
+  validation {
+    condition     = contains(["ENABLED", "DISABLED"], var.ecs_assign_public_ip)
+    error_message = "ecs_assign_public_ip must be ENABLED or DISABLED."
+  }
 }
 
 variable "ecs_security_group_id" {

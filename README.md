@@ -18,6 +18,21 @@ The core idea: satellite change detection (SAR radar + optical) identifies *wher
 
 ---
 
+## AWS infrastructure (Terraform) — portfolio / cost-conscious dev
+
+Terraform defines **~70 resources** across **network, data lake, security, compute (ECS/ECR), monitoring, and Step Functions**. Nothing is required to stay running in AWS for you to **demonstrate DE skills** — the code in `infra/terraform/` is the artifact.
+
+**Recommended for personal dev (lower monthly cost):**
+
+- Set `enable_nat_gateway = false` in `terraform.tfvars` (see `infra/terraform/terraform.tfvars.example`). The stack then runs the weekly ECS task in **public subnets** with a **public IP** only while the task runs, avoiding NAT Gateway hourly charges (~\$32+/mo typical).
+- When `enable_nat_gateway = true`, tasks use **private subnets** and `AssignPublicIp: DISABLED` (production-style), which requires NAT for outbound internet (GEE, scrapers, OSM).
+
+**Docs:** [Cost-aware AWS deployment](docs/deployment/cost-aware-aws.md) · [Terraform guide](docs/deployment/terraform-guide.md) · [infra/terraform/README.md](infra/terraform/README.md)
+
+**Local runs:** See [QUICKSTART.md](QUICKSTART.md) — no AWS spend.
+
+---
+
 ## Changelog
 
 ### v2.14.0 (April 2026) — Parallel Scoring + News WoW + Caching + PDF Improvements
