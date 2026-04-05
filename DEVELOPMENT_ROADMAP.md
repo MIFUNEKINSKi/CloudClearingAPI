@@ -1,6 +1,6 @@
 # CloudClearingAPI Development Roadmap
 **Updated:** April 5, 2026  
-**Current Version:** v2.13.0 (Live Data Pipeline + Full Region Coverage)
+**Current Version:** v2.14.0 (Parallel Scoring + News WoW + Caching + PDF Improvements)
 
 ---
 
@@ -12,36 +12,42 @@ CloudClearingAPI is an automated land investment analyst for Indonesia that comb
 - **Data pipeline engineering** — multi-source ingestion (satellite APIs, web scraping, OSM), transformation, and output generation
 - **Cloud infrastructure** — AWS (ECS Fargate, Step Functions, S3, CloudWatch), Terraform IaC, Docker containerization
 - **Data quality engineering** — benchmark drift monitoring, data validation, cascading fallback systems
-- **Python at scale** — async processing, caching layers (GEE 14-day, OSM 7-day, scraper 24h), parallel batch execution
+- **Python at scale** — ThreadPoolExecutor parallel scoring, caching layers (GEE 14-day, OSM 7-day, SAR 14-day, scraper 24h, news 7-day), async batch execution
 - **Orchestration** — Step Functions state machines, scheduled pipelines, error handling with retries
 - **Analytics & reporting** — automated PDF generation, email delivery, investment scoring algorithms
 
 ---
 
-## ✅ What's Working (v2.12.1)
+## ✅ What's Working (v2.14.0)
 
 | Capability | Status | DE Skill Demonstrated |
 |-----------|--------|----------------------|
 | **65-region data pipeline** | ✅ Working | ETL at scale (satellite + market + infra + news → scored output) |
+| **Parallel scoring** | ✅ Working | ThreadPoolExecutor (4 workers), ~4x scoring speedup |
 | **Dual-sensor satellite analysis** | ✅ Working | API integration (Google Earth Engine), data fusion |
-| **Web scraping pipeline** | ✅ 94% live | Multi-source ingestion, compound-name matching, cascading fallback |
+| **GEE optical caching** | ✅ Working | 14-day cache avoids repeat satellite analysis |
+| **Web scraping pipeline** | ✅ 94%+ live | Province-level fallback, compound-name matching, cascading fallback |
 | **Infrastructure analysis (OSM)** | ✅ 78% live | Overpass API with retry/backoff, server-side timeout detection, center-mode queries |
+| **News WoW rate of change** | ✅ Working | Week-over-week article count comparison, momentum boost |
 | **Market tier classification** | ✅ 100% | All 65 regions classified (T1: 10, T2: 18, T3: 29, T4: 8) |
 | **Investment scoring engine** | ✅ Working | Multi-factor data transformation pipeline |
-| **PDF report generation** | ✅ Working | Automated reporting, data visualization |
+| **PDF with decision matrix** | ✅ Working | Market heat, data quality indicators, expanded columns |
+| **Actionable email briefing** | ✅ Working | Portfolio overview, top BUY details with ROI/RVI, recommended actions |
 | **Auto-email delivery** | ✅ Working | Pipeline output delivery |
+| **Multi-layer caching** | ✅ Working | GEE (14d), SAR (14d), OSM (7d), news (7d), scraper (24h) |
 | **JSONL price history** | ✅ Working | Append-only data lake pattern |
 | **Benchmark drift monitoring** | ✅ Working | Dataclass-aware extraction, consistent alert schema, 65 regions tracked |
 | **Docker containerization** | ✅ Defined | Container orchestration (not yet deployed) |
 | **Terraform IaC** | ✅ Defined | Infrastructure as Code (5 modules, ~70 AWS resources) |
 | **Step Functions orchestration** | ✅ Defined | Workflow orchestration (not yet deployed) |
 
-### Latest Run (April 5, 2026)
+### Latest Run Metrics
 - **65/65 regions** analyzed in a single `--all` pass
-- **61/65 live market data** (Lamudi scraper with compound-name matching)
-- **51/65 live OSM infrastructure** (up from 0/65 — fixed silent timeouts + query optimization)
-- **65/65 drift monitoring** tracked (fixed dataclass + alert schema bugs)
-- **33 unique scores** across range 16.0 – 66.6 (31 BUY, 31 WATCH, 3 PASS)
+- **94%+ live market data** (Lamudi with province fallback + compound-name matching)
+- **78% live OSM infrastructure** (silent timeout detection + query optimization)
+- **65/65 drift monitoring** tracked
+- **5 caching layers** active: GEE (14d), SAR (14d), OSM (7d), news (7d), scraper (24h)
+- **~4x scoring speedup** via parallel ThreadPoolExecutor
 
 ---
 
@@ -158,6 +164,7 @@ How CloudClearingAPI maps to common DE job requirements:
 
 | Version | Date | Key Features |
 |---------|------|-------------|
+| **v2.14.0** | Apr 2026 | Parallel scoring (ThreadPoolExecutor), news WoW rate of change, GEE optical cache integration, province-level scraper fallback, expanded PDF decision matrix (market heat + data quality), actionable email briefing |
 | **v2.13.0** | Apr 2026 | Live data pipeline: OSM 0%→78%, Lamudi 85%→94%, 65-region tier config, drift monitoring fixed |
 | **v2.12.1** | Apr 2026 | Full 65-region run, infrastructure fallback expansion, market heat fix, drift monitoring fix |
 | **v2.12** | Mar 2026 | Decision matrix PDF, expanded to 65 regions, news scraper improvements |
@@ -176,7 +183,7 @@ How CloudClearingAPI maps to common DE job requirements:
 ### Scraper Coverage Gaps
 - **99.co:** HTTP 429 rate limiting
 - **Rumah.com:** Requires JavaScript rendering (Selenium/Playwright)
-- **Lamudi coverage:** 94% (61/65 regions) — 4 remote regions (Lake Toba, Lombok x2, Solo) still on benchmarks
+- **Lamudi coverage:** 94%+ (province-level fallback added for Lake Toba, Lombok, Solo — may improve to 97%+)
 - **OSM coverage:** 78% (51/65 regions) — 14 regions hit transient 504 errors, will resolve on next cached run
 
 ### Infrastructure Not Deployed
@@ -195,4 +202,4 @@ How CloudClearingAPI maps to common DE job requirements:
 
 **Roadmap Owner:** Chris Moore  
 **GitHub:** [@MIFUNEKINSKi](https://github.com/MIFUNEKINSKi)  
-**Last Updated:** April 4, 2026
+**Last Updated:** April 5, 2026

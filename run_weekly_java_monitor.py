@@ -173,52 +173,121 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
         logger.warning("GMAIL_APP_PASSWORD not set — skipping email")
         return False
 
-    # Build email body from JSON summary
-    body_lines = [f"CloudClearingAPI Monitoring Report — {datetime.now().strftime('%B %d, %Y')}", ""]
+    # Build actionable investment briefing from JSON
+    body_lines = [
+        f"CLOUDCLEARINGAPI — WEEKLY INVESTMENT BRIEFING",
+        f"Report Date: {datetime.now().strftime('%B %d, %Y')}",
+        "=" * 55,
+        "",
+    ]
     try:
         import json as _json
         with open(json_path) as f:
             data = _json.load(f)
 
-        # Extract recommendations from the actual JSON structure
         yog = data.get('investment_analysis', {}).get('yogyakarta_analysis', {})
         buy = yog.get('buy_recommendations', [])
         watch = yog.get('watch_list', [])
         passes = yog.get('pass_list', [])
         all_recs = buy + watch + passes
 
-        body_lines.append(f"Regions analyzed: {len(all_recs)}")
-        body_lines.append(f"BUY: {len(buy)}, WATCH: {len(watch)}, PASS: {len(passes)}")
+        # --- Portfolio Overview ---
+        body_lines.append(f"PORTFOLIO OVERVIEW")
+        body_lines.append(f"  Regions Scored: {len(all_recs)}")
+        body_lines.append(f"  BUY: {len(buy)} | WATCH: {len(watch)} | PASS: {len(passes)}")
+
+        # Data quality summary
+        live_market = sum(1 for r in all_recs if r.get('data_sources', {}).get('market') not in ('fallback', 'regional_benchmark', None))
+        live_infra = sum(1 for r in all_recs if 'osm_live' in str(r.get('data_sources', {}).get('infrastructure', '')))
+        body_lines.append(f"  Data Quality: {live_market}/{len(all_recs)} live market, {live_infra}/{len(all_recs)} live infrastructure")
         body_lines.append("")
 
+        # --- Top BUY Opportunities ---
         if buy:
-            body_lines.append("Top BUY opportunities:")
-            for r in sorted(buy, key=lambda x: x.get('investment_score', 0), reverse=True)[:5]:
+            body_lines.append("TOP BUY OPPORTUNITIES (sorted by score)")
+            body_lines.append("-" * 55)
+            for i, r in enumerate(sorted(buy, key=lambda x: x.get('investment_score', 0), reverse=True)[:7], 1):
                 name = r.get('region', '?').replace('_', ' ').title()
                 score = r.get('investment_score', 0)
                 conf = r.get('confidence', r.get('confidence_level', 0))
                 price = r.get('current_price_per_m2', 0)
-                rvi = r.get('rvi_data', {}).get('rvi', 0)
-                mom = r.get('momentum', {}).get('trend', 'unknown')
+                rvi_val = r.get('rvi_data', {}).get('rvi', 0) if isinstance(r.get('rvi_data'), dict) else 0
+                rvi_interp = r.get('rvi_data', {}).get('interpretation', '') if isinstance(r.get('rvi_data'), dict) else ''
+                mom = r.get('momentum', {}).get('trend', 'n/a') if isinstance(r.get('momentum'), dict) else 'n/a'
+                heat = r.get('market_heat', 'unknown')
                 fp = r.get('financial_projection', {})
-                land_roi = fp.get('land_only_roi_3yr', fp.get('projected_roi_3yr', 0))
-                body_lines.append(
-                    f"  {name} — Score {score:.1f}/100, {conf*100:.0f}% confidence"
-                )
-                body_lines.append(
-                    f"    Price: Rp {price:,.0f}/m² | RVI: {rvi:.2f} | Momentum: {mom} | 3Y Land ROI: {land_roi*100:.1f}%"
-                )
+                if hasattr(fp, 'projected_roi_3yr'):
+                    land_roi_3y = fp.projected_roi_3yr
+                    land_roi_5y = getattr(fp, 'projected_roi_5yr', 0) or 0
+                    entry_cost = getattr(fp, 'total_acquisition_cost', 0)
+                    future_val = getattr(fp, 'estimated_future_value_per_m2', 0)
+                elif isinstance(fp, dict):
+                    land_roi_3y = fp.get('land_only_roi_3yr', fp.get('projected_roi_3yr', 0))
+                    land_roi_5y = fp.get('projected_roi_5yr', 0) or 0
+                    entry_cost = fp.get('total_acquisition_cost', 0)
+                    future_val = fp.get('estimated_future_value_per_m2', 0)
+                else:
+                    land_roi_3y = land_roi_5y = entry_cost = future_val = 0
 
+                # News WoW
+                nwow = r.get('news_wow', {})
+                wow_str = ''
+                if isinstance(nwow, dict) and nwow.get('trend'):
+                    wow_str = f" | News: {nwow.get('previous_articles', 0)}→{nwow.get('current_articles', 0)} ({nwow['trend']})"
+
+                body_lines.append(f"  {i}. {name}")
+                body_lines.append(f"     Score: {score:.1f}/100 | Confidence: {conf*100:.0f}% | Market: {heat}")
+                body_lines.append(f"     Entry Price: Rp {price:,.0f}/m² → Rp {future_val:,.0f}/m² (projected)")
+                body_lines.append(f"     ROI: 3Y {land_roi_3y*100:.1f}% | 5Y {land_roi_5y*100:.1f}%")
+                if entry_cost:
+                    body_lines.append(f"     Est. Acquisition (500m²): Rp {entry_cost:,.0f}")
+                body_lines.append(f"     RVI: {rvi_val:.2f} ({rvi_interp}) | Momentum: {mom}{wow_str}")
+
+                # Data source warning
+                data_src = r.get('data_sources', {})
+                warnings = []
+                if data_src.get('market') in ('fallback', 'regional_benchmark'):
+                    warnings.append('market=fallback')
+                if 'fallback' in str(data_src.get('infrastructure', '')):
+                    warnings.append('infra=fallback')
+                if warnings:
+                    body_lines.append(f"     ⚠ Data: {', '.join(warnings)} — verify pricing independently")
+                body_lines.append("")
+
+        # --- WATCH List ---
         if watch:
-            body_lines.append("")
-            body_lines.append(f"WATCH list ({len(watch)} regions):")
+            body_lines.append("WATCH LIST (approaching BUY threshold)")
+            body_lines.append("-" * 55)
             for r in sorted(watch, key=lambda x: x.get('investment_score', 0), reverse=True)[:5]:
                 name = r.get('region', '?').replace('_', ' ').title()
                 score = r.get('investment_score', 0)
-                body_lines.append(f"  {name} — Score {score:.1f}/100")
+                price = r.get('current_price_per_m2', 0)
+                heat = r.get('market_heat', 'unknown')
+                headroom = r.get('score_headroom', 0) or 0
+                body_lines.append(f"  {name} — {score:.1f}/100 | Rp {price:,.0f}/m² | {heat} | headroom: {headroom:.1f}pts to BUY")
+            body_lines.append("")
 
+        # --- PASS Summary ---
+        if passes:
+            body_lines.append(f"PASS: {len(passes)} regions below threshold (see PDF for details)")
+            body_lines.append("")
+
+        # --- Actionable Next Steps ---
+        body_lines.append("RECOMMENDED ACTIONS")
+        body_lines.append("-" * 55)
+        if buy:
+            top = sorted(buy, key=lambda x: x.get('investment_score', 0), reverse=True)[0]
+            top_name = top.get('region', '?').replace('_', ' ').title()
+            body_lines.append(f"  1. Priority due diligence: {top_name} (highest score)")
+            body_lines.append(f"  2. Verify land titles and zoning for top 3 BUY regions")
+            body_lines.append(f"  3. Check local notary/PPAT availability for target plot")
+            low_rvi = [r for r in buy if isinstance(r.get('rvi_data'), dict) and r['rvi_data'].get('rvi', 999) < 0.85]
+            if low_rvi:
+                names = [r.get('region', '?').replace('_', ' ').title() for r in low_rvi[:3]]
+                body_lines.append(f"  4. Undervalued (RVI < 0.85): {', '.join(names)} — potential deep value")
         body_lines.append("")
-        body_lines.append("Full PDF report attached with Decision Matrix and regional detail.")
+        body_lines.append("Full PDF report with Decision Matrix, financial projections, and")
+        body_lines.append("risk analysis attached.")
     except Exception as e:
         body_lines.append(f"(Could not parse summary: {e})")
         body_lines.append("See attached PDF for details.")

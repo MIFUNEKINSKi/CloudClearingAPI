@@ -29,39 +29,26 @@ class LamudiScraper(BaseLandPriceScraper):
         return "lamudi"
     
     def _scrape_live(self, region_name: str, max_listings: int) -> ScrapeResult:
-        """
-        Scrape live land prices from Lamudi
-        
-        Args:
-            region_name: Region to search (e.g., "Sleman Yogyakarta")
-            max_listings: Maximum listings to scrape
-            
-        Returns:
-            ScrapeResult with scraped listings
-        """
+        """Scrape live land prices from Lamudi with automatic province-level fallback."""
         logger.info(f"Starting live scrape of Lamudi for {region_name}")
         
-        # Build search URL for land listings
         search_url = self._build_search_url(region_name)
         logger.debug(f"Search URL: {search_url}")
         
-        # Fetch search results page
         soup = self._make_request(search_url)
-        if not soup:
-            return ScrapeResult(
-                region_name=region_name,
-                average_price_per_m2=0,
-                median_price_per_m2=0,
-                listing_count=0,
-                listings=[],
-                source=self.get_source_name(),
-                scraped_at=datetime.now(),
-                success=False,
-                error_message="Failed to fetch search results page"
-            )
+        listings = []
+        if soup:
+            listings = self._parse_search_results(soup, region_name, max_listings)
         
-        # Parse listings from search results
-        listings = self._parse_search_results(soup, region_name, max_listings)
+        # If no listings, try province-level fallback slug
+        if not listings:
+            fallback_slug = self._get_fallback_slug(region_name)
+            if fallback_slug:
+                logger.info(f"  Retrying {region_name} with province slug '{fallback_slug}'")
+                fb_url = self._build_search_url(region_name, slug_override=fallback_slug)
+                fb_soup = self._make_request(fb_url)
+                if fb_soup:
+                    listings = self._parse_search_results(fb_soup, region_name, max_listings)
         
         if not listings:
             logger.warning(f"No listings found for {region_name}")
@@ -77,7 +64,6 @@ class LamudiScraper(BaseLandPriceScraper):
                 error_message="No listings found in search results"
             )
         
-        # Calculate statistics
         stats = self._calculate_statistics(listings)
         
         return ScrapeResult(
@@ -200,13 +186,14 @@ class LamudiScraper(BaseLandPriceScraper):
             'aceh': 'banda-aceh',
             'batam': 'batam',
             'pekanbaru': 'pekanbaru',
-            'toba': 'samosir',
+            'toba': 'toba-samosir',
+            'samosir': 'toba-samosir',
             
-            # Lombok / NTB
-            'lombok': 'lombok',
+            # Lombok / NTB — 'lombok-barat' has more listings than bare 'lombok'
+            'lombok': 'lombok-barat',
             'mataram': 'mataram',
-            'mandalika': 'lombok',
-            'senggigi': 'lombok',
+            'mandalika': 'lombok-tengah',
+            'senggigi': 'lombok-barat',
             
             # Kalimantan
             'nusantara': 'penajam-paser-utara',
@@ -232,8 +219,8 @@ class LamudiScraper(BaseLandPriceScraper):
             'nusa dua': 'badung',
             'banda aceh': 'banda-aceh',
             'bandar lampung': 'lampung',
-            'lake toba': 'samosir',
-            'solo raya': 'solo',
+            'lake toba': 'toba-samosir',
+            'solo raya': 'sukoharjo',
             'kulon progo': 'kulonprogo',
             'labuan bajo': 'manggarai-barat',
         }
@@ -261,32 +248,32 @@ class LamudiScraper(BaseLandPriceScraper):
         logger.warning(f"No location mapping found for '{region_name}', using first word: '{first_word}'")
         return first_word
     
-    def _build_search_url(self, region_name: str) -> str:
-        """
-        Build Lamudi search URL for land in region
-        
-        Args:
-            region_name: Region to search
-            
-        Returns:
-            Full search URL
-        """
-        # Lamudi URL structure: /tanah/jual/{location}/ (Indonesian "jual" = sell/sale)
-        # Fixed Oct 26, 2025: Changed from /buy/ to /jual/ (Indonesian language requirement)
-        # Fixed Oct 26, 2025: Added location mapping to extract city from region identifier
-        
-        # Extract city slug from region name (e.g., "jakarta_north_sprawl" → "jakarta")
-        location_slug = self._extract_city_from_region(region_name)
-        
+    # Province-level fallback slugs for regions with thin or missing Lamudi coverage
+    PROVINCE_FALLBACKS = {
+        'samosir': 'sumatera-utara',
+        'toba-samosir': 'sumatera-utara',
+        'lombok': 'nusa-tenggara-barat',
+        'lombok-barat': 'nusa-tenggara-barat',
+        'lombok-tengah': 'nusa-tenggara-barat',
+        'kupang': 'nusa-tenggara-timur',
+        'manggarai-barat': 'nusa-tenggara-timur',
+        'jayapura': 'papua',
+        'ambon': 'maluku',
+        'bitung': 'sulawesi-utara',
+        'sukoharjo': 'jawa-tengah',
+    }
+
+    def _build_search_url(self, region_name: str, slug_override: str = None) -> str:
+        """Build Lamudi search URL for land in region."""
+        location_slug = slug_override or self._extract_city_from_region(region_name)
         logger.debug(f"Mapped region '{region_name}' → city slug '{location_slug}'")
-        
-        # Search for land (tanah) listings
-        search_url = f"{self.base_url}/tanah/jual/{location_slug}/"
-        
-        # Add filters: sort by newest, land only
-        search_url += "?sort=newest"
-        
+        search_url = f"{self.base_url}/tanah/jual/{location_slug}/?sort=newest"
         return search_url
+
+    def _get_fallback_slug(self, region_name: str) -> Optional[str]:
+        """Return a broader province-level slug when a city slug has no listings."""
+        primary_slug = self._extract_city_from_region(region_name)
+        return self.PROVINCE_FALLBACKS.get(primary_slug)
     
     def _parse_search_results(self, soup, region_name: str, max_listings: int) -> List[ScrapedListing]:
         """

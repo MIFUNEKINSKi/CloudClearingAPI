@@ -7,6 +7,7 @@ with alerting, historical tracking, and comprehensive reporting.
 
 import asyncio
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 import json
@@ -1097,6 +1098,276 @@ class AutomatedMonitor:
         
         return summary
 
+    def _load_previous_news_counts(self) -> Dict[str, int]:
+        """Load per-region news article counts from the most recent prior monitoring run."""
+        import glob as glob_mod
+        monitoring_dir = getattr(self, 'monitoring_dir', './output/monitoring')
+        pattern = os.path.join(monitoring_dir, 'weekly_monitoring_*.json')
+        files = sorted(glob_mod.glob(pattern), reverse=True)
+        
+        # Skip the current run (first file may be in-progress), take the previous one
+        prev_counts = {}
+        for filepath in files[:3]:
+            try:
+                with open(filepath, 'r') as f:
+                    data = json.load(f)
+                regions = data.get('regions_analyzed', [])
+                if not regions:
+                    yog = data.get('investment_analysis', {}).get('yogyakarta_analysis', {})
+                    regions = (yog.get('buy_recommendations', []) +
+                               yog.get('watch_list', []) + yog.get('pass_list', []))
+                for r in regions:
+                    if not isinstance(r, dict):
+                        continue
+                    name = r.get('region_name') or r.get('region', '')
+                    news = r.get('news_catalyst', {})
+                    if isinstance(news, dict) and news.get('articles_found') is not None:
+                        prev_counts[name] = news['articles_found']
+                if prev_counts:
+                    logger.info(f"   📊 Loaded previous news counts for {len(prev_counts)} regions from {os.path.basename(filepath)}")
+                    return prev_counts
+            except Exception:
+                continue
+        return prev_counts
+
+    def _score_single_region(self, region_data: Dict, prev_news_counts: Dict[str, int]) -> Optional[Dict]:
+        """Score a single region. Thread-safe — no signal.alarm, uses only per-call state."""
+        region_name = region_data['region_name']
+        try:
+            region_config = {
+                'name': region_name,
+                'bbox': region_data['bbox'],
+                'center': {
+                    'lat': (region_data['bbox']['north'] + region_data['bbox']['south']) / 2,
+                    'lng': (region_data['bbox']['east'] + region_data['bbox']['west']) / 2
+                }
+            }
+            
+            optical_changes = region_data.get('change_count', 0)
+            area_affected_m2 = region_data.get('total_area', 0)
+            coordinates = region_config['center']
+            bbox = region_config['bbox']
+            
+            # Fuse optical + SAR if available
+            satellite_changes = optical_changes
+            fusion_result = None
+            sar_result = region_data.get('sar_result')
+            if self.sar_detector and sar_result:
+                try:
+                    fusion_result = self.sar_detector.fuse_optical_and_sar(
+                        optical_changes=optical_changes,
+                        sar_result=sar_result
+                    )
+                    satellite_changes = fusion_result['fused_changes']
+                    logger.info(f"   🔗 [{region_name}] Sensor fusion: {optical_changes:,} optical + {sar_result.sar_change_pixels:,} SAR → {satellite_changes:,} fused")
+                except Exception as e:
+                    logger.warning(f"   ⚠️ [{region_name}] SAR fusion failed: {e}")
+            
+            # News catalyst scoring (articles already pre-scraped)
+            news_catalyst_result = None
+            if self.news_scraper and self.news_catalyst and self._cached_news_articles:
+                try:
+                    matched_articles = self.news_scraper.match_articles_to_region(
+                        self._cached_news_articles, region_name
+                    )
+                    news_catalyst_result = self.news_catalyst.calculate_catalyst(region_name, matched_articles)
+                    if news_catalyst_result.articles_found > 0:
+                        logger.info(f"   📰 [{region_name}] News catalyst: {news_catalyst_result.multiplier:.2f}x ({news_catalyst_result.articles_found} articles)")
+                except Exception as e:
+                    logger.warning(f"   ⚠️ [{region_name}] News catalyst failed: {e}")
+            
+            # News week-over-week rate of change
+            news_wow = None
+            if news_catalyst_result and prev_news_counts:
+                current_count = news_catalyst_result.articles_found
+                prev_count = prev_news_counts.get(region_name, 0)
+                if prev_count > 0:
+                    wow_ratio = current_count / prev_count
+                    news_wow = {
+                        'current_articles': current_count,
+                        'previous_articles': prev_count,
+                        'ratio': round(wow_ratio, 2),
+                        'delta': current_count - prev_count,
+                        'trend': 'surging' if wow_ratio >= 2.0 else 'increasing' if wow_ratio > 1.2 else 'stable' if wow_ratio >= 0.8 else 'declining'
+                    }
+                elif current_count > 0:
+                    news_wow = {
+                        'current_articles': current_count,
+                        'previous_articles': 0,
+                        'ratio': float(current_count),
+                        'delta': current_count,
+                        'trend': 'new_coverage'
+                    }
+            
+            # Calculate CORRECTED score (satellite is PRIMARY)
+            corrected_result = self.corrected_scorer.calculate_investment_score(
+                region_name=region_name,
+                satellite_changes=satellite_changes,
+                area_affected_m2=area_affected_m2,
+                region_config=region_config,
+                coordinates=coordinates,
+                bbox=bbox,
+                sar_confidence_boost=fusion_result['confidence_boost'] if fusion_result else 0.0,
+                news_catalyst_multiplier=news_catalyst_result.multiplier if news_catalyst_result else 1.0
+            )
+            
+            # Financial Projection
+            financial_projection = None
+            if self.financial_engine:
+                try:
+                    satellite_data = {
+                        'vegetation_loss_pixels': region_data.get('change_count', 0) // 2,
+                        'total_pixels': 10000,
+                        'construction_activity_pct': corrected_result.development_score * 0.2
+                    }
+                    infrastructure_data = {
+                        'infrastructure_score': corrected_result.infrastructure_score,
+                        'major_features': corrected_result.data_sources.get('infrastructure', []),
+                        'data_confidence': corrected_result.confidence_level,
+                        'data_source': 'osm_live' if corrected_result.data_availability.get('infrastructure', False) else 'fallback'
+                    }
+                    market_data = {
+                        'price_trend_30d': corrected_result.price_trend_30d,
+                        'market_heat': corrected_result.market_heat,
+                        'data_confidence': corrected_result.confidence_level
+                    }
+                    financial_projection = self.financial_engine.calculate_financial_projection(
+                        region_name=region_name,
+                        satellite_data=satellite_data,
+                        infrastructure_data=infrastructure_data,
+                        market_data=market_data,
+                        scoring_result=corrected_result
+                    )
+                    logger.info(f"   💰 [{region_name}] Financial: Rp {financial_projection.current_land_value_per_m2:,.0f}/m² "
+                              f"→ Rp {financial_projection.estimated_future_value_per_m2:,.0f}/m² "
+                              f"(ROI: {financial_projection.projected_roi_3yr:.1%})")
+                except Exception as e:
+                    logger.warning(f"   ⚠️ [{region_name}] Financial projection failed: {e}")
+            
+            # RVI calculation
+            rvi_data = None
+            if financial_projection and self.financial_engine:
+                try:
+                    satellite_data_for_rvi = {
+                        'vegetation_loss_pixels': corrected_result.satellite_changes // 2,
+                        'construction_activity_pct': corrected_result.development_score / 200.0
+                    }
+                    rvi_result = self.financial_engine.calculate_relative_value_index(
+                        region_name=region_name,
+                        actual_price_m2=financial_projection.current_land_value_per_m2,
+                        infrastructure_score=corrected_result.infrastructure_score,
+                        satellite_data=satellite_data_for_rvi
+                    )
+                    if rvi_result.get('rvi') is not None:
+                        rvi_data = {
+                            'rvi': rvi_result['rvi'],
+                            'expected_price_m2': rvi_result['expected_price_m2'],
+                            'interpretation': rvi_result['interpretation'],
+                            'breakdown': rvi_result['breakdown']
+                        }
+                        logger.info(f"   📊 [{region_name}] RVI: {rvi_data['rvi']:.3f} ({rvi_data['interpretation']})")
+                except Exception as e:
+                    logger.warning(f"   ⚠️ [{region_name}] RVI calculation failed: {e}")
+            
+            # Momentum analysis
+            momentum_data = None
+            if self.momentum_analyzer:
+                try:
+                    momentum_data = self.momentum_analyzer.calculate_momentum(region_name)
+                    if momentum_data and momentum_data.get('trend') not in ('insufficient_data', 'new_region'):
+                        momentum_mult = momentum_data['multiplier']
+                        # Apply news WoW boost to momentum if news is surging
+                        if news_wow and news_wow['trend'] in ('surging', 'increasing'):
+                            news_momentum_boost = min(1.08, 1.0 + (news_wow['ratio'] - 1.0) * 0.05)
+                            momentum_mult *= news_momentum_boost
+                            logger.info(f"   📰 [{region_name}] News WoW: {news_wow['previous_articles']}→{news_wow['current_articles']} ({news_wow['trend']}, {news_momentum_boost:.3f}x boost)")
+                        corrected_result.final_investment_score = min(100,
+                            corrected_result.final_investment_score * momentum_mult)
+                        logger.info(f"   📈 [{region_name}] Momentum: {momentum_data['momentum_ratio']:.2f}x → "
+                                  f"{momentum_mult:.2f}x multiplier ({momentum_data['trend']})")
+                except Exception as e:
+                    logger.warning(f"   ⚠️ [{region_name}] Momentum analysis failed: {e}")
+            
+            dynamic_score = {
+                'region_name': region_name,
+                'satellite_changes': corrected_result.satellite_changes,
+                'change_percentage': region_data.get('change_percentage', 0),
+                'development_score': corrected_result.development_score,
+                'current_price_per_m2': financial_projection.current_land_value_per_m2 if financial_projection else 0,
+                'price_trend_30d': corrected_result.price_trend_30d,
+                'market_heat': corrected_result.market_heat,
+                'infrastructure_score': corrected_result.infrastructure_score,
+                'infrastructure_multiplier': corrected_result.infrastructure_multiplier,
+                'infrastructure_details': corrected_result.infrastructure_details,
+                'market_multiplier': corrected_result.market_multiplier,
+                'speculative_score': corrected_result.development_score,
+                'final_investment_score': corrected_result.final_investment_score,
+                'overall_confidence': corrected_result.confidence_level,
+                'recommendation': corrected_result.recommendation,
+                'rationale': corrected_result.rationale,
+                'data_sources': {
+                    **corrected_result.data_sources,
+                    'availability': corrected_result.data_availability
+                },
+                'analysis_type': 'corrected_satellite_centric',
+                'financial_projection': financial_projection,
+                'rvi_data': rvi_data,
+                'sensitivity_flag': corrected_result.sensitivity_flag,
+                'sensitivity_detail': corrected_result.sensitivity_detail,
+                'score_headroom': corrected_result.score_headroom,
+                'sar_data': {
+                    'available': fusion_result is not None,
+                    'source': fusion_result['source'] if fusion_result else 'optical_only',
+                    'sar_changes': fusion_result['sar_changes'] if fusion_result else 0,
+                    'sar_construction': fusion_result['sar_construction'] if fusion_result else 0,
+                    'sar_clearing': fusion_result['sar_clearing'] if fusion_result else 0,
+                    'confidence_boost': fusion_result['confidence_boost'] if fusion_result else 0,
+                    'mean_vv_change_db': fusion_result['mean_vv_change_db'] if fusion_result else 0,
+                    'mean_vh_change_db': fusion_result['mean_vh_change_db'] if fusion_result else 0,
+                    'optical_changes': optical_changes,
+                    'fused_changes': satellite_changes,
+                } if fusion_result else None,
+                'news_catalyst': {
+                    'multiplier': news_catalyst_result.multiplier,
+                    'articles_found': news_catalyst_result.articles_found,
+                    'positive_count': news_catalyst_result.positive_count,
+                    'negative_count': news_catalyst_result.negative_count,
+                    'top_keywords': news_catalyst_result.top_keywords,
+                    'top_article_title': news_catalyst_result.top_article_title,
+                    'summary': news_catalyst_result.summary,
+                    'article_links': news_catalyst_result.article_links,
+                } if news_catalyst_result else None,
+                'news_wow': news_wow,
+                'momentum': {
+                    'multiplier': momentum_data['multiplier'],
+                    'momentum_ratio': momentum_data['momentum_ratio'],
+                    'trend': momentum_data['trend'],
+                    'description': momentum_data['description'],
+                    'recent_velocity': momentum_data['recent_velocity'],
+                    'baseline_velocity': momentum_data['baseline_velocity'],
+                    'data_points_recent': momentum_data.get('data_points_recent', 0),
+                    'data_points_baseline': momentum_data.get('data_points_baseline', 0),
+                } if momentum_data and momentum_data.get('trend') not in ('insufficient_data', 'new_region') else None,
+            }
+            
+            logger.info(
+                f"✅ {region_name}: Score {corrected_result.final_investment_score:.1f}/100 "
+                f"({corrected_result.confidence_level:.0%} confidence) - "
+                f"{corrected_result.satellite_changes:,} changes - "
+                f"{corrected_result.recommendation}"
+            )
+            
+            available = [k for k, v in corrected_result.data_availability.items() if v]
+            if len(available) < 3:
+                missing = [k for k, v in corrected_result.data_availability.items() if not v]
+                logger.info(f"   ⚠️ [{region_name}] Missing data: {', '.join(missing)}")
+            
+            return dynamic_score
+            
+        except Exception as e:
+            logger.error(f"❌ Scoring failed for {region_name}: {e}")
+            return None
+
     def _generate_investment_analysis(self, results: Dict[str, Any]) -> Dict[str, Any]:
         """Generate comprehensive real estate investment analysis combining regional and strategic analysis"""
         regions_analyzed = results['regions_analyzed']
@@ -1122,262 +1393,45 @@ class AutomatedMonitor:
             'executive_summary': {}
         }
         
-        # 🚀 NEW: Analyze Yogyakarta regions using 100% DYNAMIC real-time scoring
+        # 🚀 Parallel dynamic scoring with ThreadPoolExecutor
         if yogyakarta_regions:
             try:
-                logger.info("🔄 Running DYNAMIC scoring analysis (no more static assumptions)...")
-                dynamic_scored_regions = []
+                logger.info("🔄 Running DYNAMIC scoring analysis (parallel, no static assumptions)...")
                 
-                for region_data in yogyakarta_regions:
+                # Pre-scrape news once before parallel scoring
+                if self.news_scraper and self.news_catalyst and self._cached_news_articles is None:
                     try:
-                        # Convert region data to format needed by dynamic scorer
-                        region_name = region_data['region_name']
-                        region_config = {
-                            'name': region_name,
-                            'bbox': region_data['bbox'],
-                            'center': {
-                                'lat': (region_data['bbox']['north'] + region_data['bbox']['south']) / 2,
-                                'lng': (region_data['bbox']['east'] + region_data['bbox']['west']) / 2
-                            }
-                        }
-                        
-                        # ✅ CORRECTED SCORING: Satellite-centric with infrastructure/market multipliers
-                        # Wrap with timeout to prevent hanging on external API calls (OSM, etc)
-                        import signal
-                        
-                        def timeout_handler(signum, frame):
-                            raise TimeoutError("Corrected scoring exceeded timeout")
-
-                        signal.signal(signal.SIGALRM, timeout_handler)
-                        signal.alarm(180)  # 180s timeout for full scoring pipeline (OSM + financial + RVI)
-
-                        try:
-                            # Get satellite data from change detection
-                            optical_changes = region_data.get('change_count', 0)
-                            area_affected_m2 = region_data.get('total_area', 0)
-                            coordinates = region_config['center']
-                            bbox = region_config['bbox']
-
-                            # Fuse optical + SAR if available
-                            satellite_changes = optical_changes
-                            fusion_result = None
-                            sar_result = region_data.get('sar_result')
-                            if self.sar_detector and sar_result:
-                                try:
-                                    fusion_result = self.sar_detector.fuse_optical_and_sar(
-                                        optical_changes=optical_changes,
-                                        sar_result=sar_result
-                                    )
-                                    satellite_changes = fusion_result['fused_changes']
-                                    logger.info(f"   🔗 Sensor fusion: {optical_changes:,} optical + {sar_result.sar_change_pixels:,} SAR → {satellite_changes:,} fused")
-                                except Exception as e:
-                                    logger.warning(f"   ⚠️ SAR fusion failed for {region_name}: {e}")
-
-                            # News catalyst scoring
-                            news_catalyst_result = None
-                            if self.news_scraper and self.news_catalyst:
-                                try:
-                                    # Cache articles across regions (scrape once per monitoring run)
-                                    if self._cached_news_articles is None:
-                                        self._cached_news_articles = self.news_scraper.scrape_all_sources()
-                                    matched_articles = self.news_scraper.match_articles_to_region(
-                                        self._cached_news_articles, region_name
-                                    )
-                                    news_catalyst_result = self.news_catalyst.calculate_catalyst(region_name, matched_articles)
-                                    if news_catalyst_result.articles_found > 0:
-                                        logger.info(f"   📰 News catalyst: {news_catalyst_result.multiplier:.2f}x ({news_catalyst_result.articles_found} articles)")
-                                except Exception as e:
-                                    logger.warning(f"   ⚠️ News catalyst failed for {region_name}: {e}")
-
-                            # Calculate CORRECTED score (satellite is PRIMARY!)
-                            corrected_result = self.corrected_scorer.calculate_investment_score(
-                                region_name=region_name,
-                                satellite_changes=satellite_changes,
-                                area_affected_m2=area_affected_m2,
-                                region_config=region_config,
-                                coordinates=coordinates,
-                                bbox=bbox,
-                                sar_confidence_boost=fusion_result['confidence_boost'] if fusion_result else 0.0,
-                                news_catalyst_multiplier=news_catalyst_result.multiplier if news_catalyst_result else 1.0
-                            )
-                            # (alarm cancelled after financial + RVI block below)
-                        except TimeoutError as te:
-                            signal.alarm(0)  # Cancel on timeout
-                            raise Exception(f"Corrected scoring timeout: {te}")
-
-                        # --- NEW: Calculate Financial Projection ---
-                        financial_projection = None
-                        if self.financial_engine:
-                            try:
-                                # Prepare data for financial engine
-                                satellite_data = {
-                                    'vegetation_loss_pixels': region_data.get('change_count', 0) // 2,  # Estimate
-                                    'total_pixels': 10000,  # Estimate
-                                    'construction_activity_pct': corrected_result.development_score * 0.2  # Estimate
-                                }
-                                
-                                infrastructure_data = {
-                                    'infrastructure_score': corrected_result.infrastructure_score,
-                                    'major_features': corrected_result.data_sources.get('infrastructure', []),
-                                    'data_confidence': corrected_result.confidence_level,
-                                    'data_source': 'osm_live' if corrected_result.data_availability.get('infrastructure', False) else 'fallback'
-                                }
-                                
-                                market_data = {
-                                    'price_trend_30d': corrected_result.price_trend_30d,
-                                    'market_heat': corrected_result.market_heat,
-                                    'data_confidence': corrected_result.confidence_level
-                                }
-                                
-                                financial_projection = self.financial_engine.calculate_financial_projection(
-                                    region_name=region_name,
-                                    satellite_data=satellite_data,
-                                    infrastructure_data=infrastructure_data,
-                                    market_data=market_data,
-                                    scoring_result=corrected_result
-                                )
-                                
-                                logger.info(f"   💰 Financial: Rp {financial_projection.current_land_value_per_m2:,.0f}/m² "
-                                          f"→ Rp {financial_projection.estimated_future_value_per_m2:,.0f}/m² "
-                                          f"(ROI: {financial_projection.projected_roi_3yr:.1%})")
-                                
-                            except Exception as e:
-                                logger.warning(f"   ⚠️ Financial projection failed for {region_name}: {e}")
-                                financial_projection = None
-                        # -------------------------------------------
-                        
-                        # NEW (v2.6-alpha): Calculate RVI if financial projection available
-                        rvi_data = None
-                        if financial_projection and self.financial_engine:
-                            try:
-                                satellite_data_for_rvi = {
-                                    'vegetation_loss_pixels': corrected_result.satellite_changes // 2,
-                                    'construction_activity_pct': corrected_result.development_score / 200.0
-                                }
-                                
-                                rvi_result = self.financial_engine.calculate_relative_value_index(
-                                    region_name=region_name,
-                                    actual_price_m2=financial_projection.current_land_value_per_m2,
-                                    infrastructure_score=corrected_result.infrastructure_score,
-                                    satellite_data=satellite_data_for_rvi
-                                )
-                                
-                                if rvi_result.get('rvi') is not None:
-                                    rvi_data = {
-                                        'rvi': rvi_result['rvi'],
-                                        'expected_price_m2': rvi_result['expected_price_m2'],
-                                        'interpretation': rvi_result['interpretation'],
-                                        'breakdown': rvi_result['breakdown']
-                                    }
-                                    logger.info(f"   📊 RVI: {rvi_data['rvi']:.3f} ({rvi_data['interpretation']})")
-                                    
-                            except Exception as e:
-                                logger.warning(f"   ⚠️ RVI calculation failed for {region_name}: {e}")
-                        # -------------------------------------------
-                        
-                        # Calculate development momentum (historical acceleration)
-                        momentum_data = None
-                        if self.momentum_analyzer:
-                            try:
-                                momentum_data = self.momentum_analyzer.calculate_momentum(region_name)
-                                if momentum_data and momentum_data.get('trend') not in ('insufficient_data', 'new_region'):
-                                    # Apply momentum multiplier to the final score
-                                    momentum_mult = momentum_data['multiplier']
-                                    corrected_result.final_investment_score = min(100,
-                                        corrected_result.final_investment_score * momentum_mult)
-                                    logger.info(f"   📈 Momentum: {momentum_data['momentum_ratio']:.2f}x → "
-                                              f"{momentum_mult:.2f}x multiplier ({momentum_data['trend']})")
-                            except Exception as e:
-                                logger.warning(f"   ⚠️ Momentum analysis failed for {region_name}: {e}")
-
-                        signal.alarm(0)  # Cancel the timeout — scoring + financial + RVI + momentum complete
-
-                        # Convert to format compatible with reporting system
-                        dynamic_score = {
-                            'region_name': region_name,
-                            'satellite_changes': corrected_result.satellite_changes,
-                            'change_percentage': region_data.get('change_percentage', 0),
-                            'development_score': corrected_result.development_score,  # NEW: Base score from satellite
-                            'current_price_per_m2': financial_projection.current_land_value_per_m2 if financial_projection else 0,
-                            'price_trend_30d': corrected_result.price_trend_30d,
-                            'market_heat': corrected_result.market_heat,
-                            'infrastructure_score': corrected_result.infrastructure_score,
-                            'infrastructure_multiplier': corrected_result.infrastructure_multiplier,  # NEW
-                            'infrastructure_details': corrected_result.infrastructure_details,  # ✅ FIX: Include detailed breakdown
-                            'market_multiplier': corrected_result.market_multiplier,  # NEW
-                            'speculative_score': corrected_result.development_score,  # Map to development score
-                            'final_investment_score': corrected_result.final_investment_score,
-                            'overall_confidence': corrected_result.confidence_level,
-                            'recommendation': corrected_result.recommendation,  # NEW
-                            'rationale': corrected_result.rationale,  # NEW
-                            'data_sources': {
-                                **corrected_result.data_sources,  # Original string values (e.g., 'osm_live', 'live')
-                                'availability': corrected_result.data_availability  # Add boolean availability for PDF generator
-                            },
-                            'analysis_type': 'corrected_satellite_centric',  # Mark as corrected!
-                            'financial_projection': financial_projection,  # NEW: Financial metrics
-                            'rvi_data': rvi_data,  # NEW (v2.6-alpha): Relative Value Index
-                            # Sensitivity analysis — borderline detection
-                            'sensitivity_flag': corrected_result.sensitivity_flag,
-                            'sensitivity_detail': corrected_result.sensitivity_detail,
-                            'score_headroom': corrected_result.score_headroom,
-                            # SAR radar fusion data (v2.10)
-                            'sar_data': {
-                                'available': fusion_result is not None,
-                                'source': fusion_result['source'] if fusion_result else 'optical_only',
-                                'sar_changes': fusion_result['sar_changes'] if fusion_result else 0,
-                                'sar_construction': fusion_result['sar_construction'] if fusion_result else 0,
-                                'sar_clearing': fusion_result['sar_clearing'] if fusion_result else 0,
-                                'confidence_boost': fusion_result['confidence_boost'] if fusion_result else 0,
-                                'mean_vv_change_db': fusion_result['mean_vv_change_db'] if fusion_result else 0,
-                                'mean_vh_change_db': fusion_result['mean_vh_change_db'] if fusion_result else 0,
-                                'optical_changes': optical_changes,
-                                'fused_changes': satellite_changes,
-                            } if fusion_result else None,
-                            # News catalyst data (v2.10)
-                            'news_catalyst': {
-                                'multiplier': news_catalyst_result.multiplier,
-                                'articles_found': news_catalyst_result.articles_found,
-                                'positive_count': news_catalyst_result.positive_count,
-                                'negative_count': news_catalyst_result.negative_count,
-                                'top_keywords': news_catalyst_result.top_keywords,
-                                'top_article_title': news_catalyst_result.top_article_title,
-                                'summary': news_catalyst_result.summary,
-                                'article_links': news_catalyst_result.article_links,
-                            } if news_catalyst_result else None,
-                            # Development momentum (historical acceleration) (v2.11)
-                            'momentum': {
-                                'multiplier': momentum_data['multiplier'],
-                                'momentum_ratio': momentum_data['momentum_ratio'],
-                                'trend': momentum_data['trend'],
-                                'description': momentum_data['description'],
-                                'recent_velocity': momentum_data['recent_velocity'],
-                                'baseline_velocity': momentum_data['baseline_velocity'],
-                                'data_points_recent': momentum_data.get('data_points_recent', 0),
-                                'data_points_baseline': momentum_data.get('data_points_baseline', 0),
-                            } if momentum_data and momentum_data.get('trend') not in ('insufficient_data', 'new_region') else None,
-                        }
-                        
-                        dynamic_scored_regions.append(dynamic_score)
-                        
-                        # Log scoring results with satellite changes
-                        logger.info(
-                            f"✅ {region_name}: Score {corrected_result.final_investment_score:.1f}/100 "
-                            f"({corrected_result.confidence_level:.0%} confidence) - "
-                            f"{corrected_result.satellite_changes:,} changes detected - "
-                            f"{corrected_result.recommendation}"
-                        )
-                        
-                        # Log data availability
-                        available = [k for k, v in corrected_result.data_availability.items() if v]
-                        if len(available) < 3:
-                            missing = [k for k, v in corrected_result.data_availability.items() if not v]
-                            logger.info(f"   ⚠️ Missing data: {', '.join(missing)}")
-                        
+                        self._cached_news_articles = self.news_scraper.scrape_all_sources()
+                        logger.info(f"   📰 Pre-scraped {len(self._cached_news_articles)} news articles for scoring")
                     except Exception as e:
-                        logger.error(f"❌ Scoring failed completely for {region_data['region_name']}: {e}")
-                        logger.error(f"   This should not happen as dynamic scorer handles missing data gracefully")
-                        # Don't add to scored regions if completely failed
+                        logger.warning(f"   ⚠️ News pre-scrape failed: {e}")
+                        self._cached_news_articles = []
+                
+                # Load previous run's news counts for week-over-week comparison
+                prev_news_counts = self._load_previous_news_counts()
+                
+                from concurrent.futures import ThreadPoolExecutor, as_completed
+                
+                dynamic_scored_regions = []
+                max_workers = min(4, len(yogyakarta_regions))
+                logger.info(f"   ⚡ Scoring {len(yogyakarta_regions)} regions with {max_workers} parallel workers")
+                
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    future_to_region = {}
+                    for region_data in yogyakarta_regions:
+                        future = executor.submit(
+                            self._score_single_region, region_data, prev_news_counts
+                        )
+                        future_to_region[future] = region_data['region_name']
+                    
+                    for future in as_completed(future_to_region):
+                        region_name = future_to_region[future]
+                        try:
+                            result = future.result(timeout=180)
+                            if result:
+                                dynamic_scored_regions.append(result)
+                        except Exception as e:
+                            logger.error(f"❌ Scoring failed for {region_name}: {e}")
                 
                 if dynamic_scored_regions:
                     # Generate investment report using dynamic scores

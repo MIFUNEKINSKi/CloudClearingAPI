@@ -1,7 +1,7 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.12.1 (Full 65-Region Coverage + Scoring Fixes)
-**Status:** ✅ Production Ready | 65 Regions (31 Java + 11 Sumatra + 6 Bali + 4 Lombok/NTT + 6 Kalimantan + 4 Sulawesi + 3 Eastern Indonesia) | Weekly Automated Reports with Email Delivery
+**Version:** 2.14.0 (Parallel Scoring + News WoW + Caching + PDF Improvements)
+**Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
 
@@ -19,6 +19,18 @@ The core idea: satellite change detection (SAR radar + optical) identifies *wher
 ---
 
 ## Changelog
+
+### v2.14.0 (April 2026) — Parallel Scoring + News WoW + Caching + PDF Improvements
+
+- **Parallel scoring with ThreadPoolExecutor** — scoring phase runs 4 regions concurrently; reduces total scoring time from ~50 min to ~15 min by overlapping OSM + scraper I/O across regions
+- **News week-over-week rate of change** — compares article counts per region between current and previous run; feeds a 1.0-1.08x multiplier into momentum when news coverage is surging or increasing
+- **GEE optical cache wired in** — `GEEImageCache` (14-day TTL) now integrated into `ChangeDetector.detect_weekly_changes`; subsequent runs skip expensive Google Earth Engine satellite analysis for cached regions
+- **Lamudi province-level fallback** — when a city slug returns no listings, automatically retries with broader province slug (e.g., `toba-samosir` → `sumatera-utara`); improved slug mappings for Lombok, Lake Toba, Solo Raya
+- **PDF decision matrix expanded** — added Market Heat and Data Quality columns; data quality shows ●● (both live), ●○ (partial), ○○ (fallback) at a glance
+- **Email investment briefing upgraded** — now a full actionable briefing with portfolio overview, top 7 BUY details (entry price, ROI, RVI, momentum, news WoW, data source warnings), WATCH list with headroom, recommended next actions
+- **Fixed corrupted PDF section header** encoding
+- **Pre-scraped news** — news articles fetched once before parallel scoring loop (thread-safe)
+- **Removed signal.alarm** — replaced process-global timeout with per-future timeout (thread-safe for parallel execution)
 
 ### v2.12.1 (April 2026) — Full 65-Region Run + Scoring & Market Fixes
 

@@ -432,28 +432,33 @@ class PDFReportGenerator:
             Paragraph('<b>Score</b>', header_style),
             Paragraph('<b>Action</b>', header_style),
             Paragraph('<b>Price/m²</b>', header_style),
+            Paragraph('<b>Heat</b>', header_style),
             Paragraph('<b>RVI</b>', header_style),
-            Paragraph('<b>Momentum</b>', header_style),
-            Paragraph('<b>3Y Land</b>', header_style),
-            Paragraph('<b>Conf.</b>', header_style),
+            Paragraph('<b>Mom.</b>', header_style),
+            Paragraph('<b>3Y ROI</b>', header_style),
+            Paragraph('<b>Data</b>', header_style),
         ]]
 
         for r in all_regions:
             score = r.get('investment_score', 0)
             rec = r.get('recommendation', 'PASS')
             price = r.get('current_price_per_m2', 0)
+            heat = r.get('market_heat', 'unknown')
             rvi_data = r.get('rvi_data') or {}
             rvi = rvi_data.get('rvi', 0)
-            rvi_interp = rvi_data.get('interpretation', '')
             mom = r.get('momentum') or {}
             mom_mult = mom.get('multiplier', 1.0)
             mom_trend = mom.get('trend', '')
             fp = r.get('financial_projection') or {}
-            roi_3yr = fp.get('land_only_roi_3yr', fp.get('projected_roi_3yr', 0))
+            if hasattr(fp, 'land_only_roi_3yr'):
+                roi_3yr = getattr(fp, 'land_only_roi_3yr', 0) or getattr(fp, 'projected_roi_3yr', 0)
+            elif isinstance(fp, dict):
+                roi_3yr = fp.get('land_only_roi_3yr', fp.get('projected_roi_3yr', 0))
+            else:
+                roi_3yr = 0
             confidence = r.get('confidence', r.get('confidence_level', 0))
             region_name = r.get('region', '').replace('_', ' ').title()
 
-            # Color-code action
             if rec == 'BUY':
                 action_str = '<font color="green"><b>BUY</b></font>'
             elif rec == 'WATCH':
@@ -461,10 +466,15 @@ class PDFReportGenerator:
             else:
                 action_str = '<font color="red"><b>PASS</b></font>'
 
-            # RVI interpretation shorthand
-            if rvi < 0.7:
-                rvi_str = f'<font color="green">{rvi:.2f}</font>'
-            elif rvi < 0.9:
+            # Market heat color
+            if heat in ('booming', 'strong'):
+                heat_str = f'<font color="green"><b>{heat}</b></font>'
+            elif heat == 'stable':
+                heat_str = f'{heat}'
+            else:
+                heat_str = f'<font color="red">{heat}</font>'
+
+            if rvi < 0.9:
                 rvi_str = f'<font color="green">{rvi:.2f}</font>'
             elif rvi < 1.1:
                 rvi_str = f'{rvi:.2f}'
@@ -473,7 +483,6 @@ class PDFReportGenerator:
             else:
                 rvi_str = f'<font color="red">{rvi:.2f}</font>'
 
-            # Momentum shorthand
             if mom_trend == 'accelerating':
                 mom_str = f'<font color="green">{mom_mult:.2f}x</font>'
             elif mom_trend == 'decelerating':
@@ -481,18 +490,35 @@ class PDFReportGenerator:
             else:
                 mom_str = f'{mom_mult:.2f}x'
 
+            # Data quality indicator
+            ds = r.get('data_sources', {})
+            mkt_src = str(ds.get('market', ''))
+            infra_src = str(ds.get('infrastructure', ''))
+            live_count = 0
+            if 'live' in mkt_src or mkt_src not in ('fallback', 'regional_benchmark', ''):
+                live_count += 1
+            if 'osm_live' in infra_src or 'osm_cached' in infra_src:
+                live_count += 1
+            if live_count == 2:
+                data_str = '<font color="green">●●</font>'
+            elif live_count == 1:
+                data_str = '<font color="#CC8800">●○</font>'
+            else:
+                data_str = '<font color="red">○○</font>'
+
             table_data.append([
                 Paragraph(region_name, cell_style),
                 Paragraph(f'<b>{score:.1f}</b>', cell_style),
                 Paragraph(action_str, cell_style),
                 Paragraph(f'Rp {price/1e6:.1f}M' if price else '-', cell_style),
+                Paragraph(heat_str, cell_style),
                 Paragraph(rvi_str, cell_style),
                 Paragraph(mom_str, cell_style),
                 Paragraph(f'{roi_3yr*100:.1f}%' if roi_3yr else '-', cell_style),
-                Paragraph(f'{confidence:.0%}', cell_style),
+                Paragraph(data_str, cell_style),
             ])
 
-        col_widths = [1.5*inch, 0.5*inch, 0.5*inch, 0.8*inch, 0.5*inch, 0.65*inch, 0.55*inch, 0.45*inch]
+        col_widths = [1.35*inch, 0.45*inch, 0.45*inch, 0.7*inch, 0.55*inch, 0.4*inch, 0.5*inch, 0.5*inch, 0.35*inch]
         table = Table(table_data, colWidths=col_widths, repeatRows=1)
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E86AB')),
@@ -511,20 +537,22 @@ class PDFReportGenerator:
         story.append(table)
         story.append(Spacer(1, 10))
 
-        # RVI legend
         story.append(Paragraph(
-            '<font size="7"><b>RVI (Relative Value Index):</b> '
-            '<font color="green">&lt;0.9 = Undervalued</font> | '
-            '0.9-1.1 = Fair Value | '
-            '<font color="#CC8800">1.1-1.3 = Overvalued</font> | '
-            '<font color="red">&gt;1.3 = Significantly Overvalued</font></font>',
+            '<font size="7"><b>RVI:</b> '
+            '<font color="green">&lt;0.9 Undervalued</font> | 0.9-1.1 Fair | '
+            '<font color="#CC8800">1.1-1.3 Overvalued</font> | '
+            '<font color="red">&gt;1.3 Very Overvalued</font> &nbsp; '
+            '<b>Heat:</b> <font color="green">booming/strong</font> | stable | '
+            '<font color="red">cooling/cold</font></font>',
             self.styles['Normal']
         ))
         story.append(Paragraph(
-            '<font size="7"><b>Momentum:</b> '
-            '<font color="green">Accelerating = rising activity</font> | '
-            'Steady | '
-            '<font color="red">Decelerating = slowing activity</font></font>',
+            '<font size="7"><b>Mom.:</b> '
+            '<font color="green">Accelerating</font> | Steady | '
+            '<font color="red">Decelerating</font> &nbsp; '
+            '<b>Data:</b> <font color="green">●●</font> = both live | '
+            '<font color="#CC8800">●○</font> = partial | '
+            '<font color="red">○○</font> = fallback only</font>',
             self.styles['Normal']
         ))
 
@@ -748,7 +776,7 @@ class PDFReportGenerator:
         if not regions_to_show:
             return story
         
-        story.append(Paragraph("� INVESTMENT OPPORTUNITIES / SATELLITE IMAGERY", self.styles['SectionHeader']))
+        story.append(Paragraph("INVESTMENT OPPORTUNITIES / SATELLITE IMAGERY", self.styles['SectionHeader']))
         
         # ✅ Add methodology explanation FIRST (before showing regions)
         story.append(Paragraph(

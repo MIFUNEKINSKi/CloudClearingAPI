@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.14.0] - 2026-04-05
+
+### Added
+
+#### Parallel Scoring with ThreadPoolExecutor
+- Scoring phase now runs 4 regions concurrently via `ThreadPoolExecutor(max_workers=4)`
+- Reduces total scoring time from ~50 min to ~15 min for 65 regions
+- Pre-scrapes news articles once before parallel loop (thread-safe)
+- Replaced `signal.alarm` (not thread-safe) with per-future timeout
+- Files modified: `src/core/automated_monitor.py`
+
+#### News Week-over-Week Rate of Change
+- Loads previous run's per-region news article counts from `output/monitoring/weekly_monitoring_*.json`
+- Computes `news_wow` ratio (current vs previous articles), classifies as surging/increasing/stable/declining
+- Feeds a 1.0–1.08x multiplier into momentum when news coverage is surging or increasing
+- New field `news_wow` in scored region output (current_articles, previous_articles, ratio, delta, trend)
+- Files modified: `src/core/automated_monitor.py`
+
+#### GEE Optical Cache Integration
+- Wired existing `GEEImageCache` (14-day TTL) into `ChangeDetector.detect_weekly_changes`
+- Cache check before expensive GEE satellite analysis; cache save after successful analysis
+- Subsequent runs skip satellite processing for cached regions, saving significant GEE API quota
+- Files modified: `src/core/change_detector.py`
+
+#### Lamudi Province-Level Fallback
+- When a city slug returns no listings, automatically retries with broader province slug
+- `PROVINCE_FALLBACKS` maps sparse-listing cities to their province (e.g., `toba-samosir` → `sumatera-utara`)
+- Improved slug mappings: Lombok → `lombok-barat`/`lombok-tengah`, Lake Toba → `toba-samosir`, Solo Raya → `sukoharjo`
+- Files modified: `src/scrapers/lamudi_scraper.py`
+
+### Changed
+
+#### PDF Decision Matrix Expanded
+- Added Market Heat column (color-coded: booming/strong green, stable black, cooling/cold red)
+- Added Data Quality column (●● both live, ●○ partial, ○○ fallback)
+- Updated legend to explain new columns
+- Fixed corrupted section header encoding
+- Files modified: `src/core/pdf_report_generator.py`
+
+#### Email Upgraded to Actionable Investment Briefing
+- Portfolio overview with BUY/WATCH/PASS counts + data quality summary
+- Top 7 BUY opportunities with: entry price, projected value, 3Y/5Y ROI, acquisition cost, RVI, momentum, news WoW, data source warnings
+- WATCH list with score headroom to BUY threshold
+- Recommended actions section (priority due diligence, title verification, undervalued region callouts)
+- Files modified: `run_weekly_java_monitor.py`
+
+---
+
 ## [2.12.1] - 2026-04-04
 
 ### Fixed

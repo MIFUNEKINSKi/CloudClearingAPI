@@ -19,6 +19,7 @@ from shapely.geometry import shape, Polygon
 from dataclasses import dataclass
 from pathlib import Path
 from .satellite_image_saver import SatelliteImageSaver
+from .gee_cache import GEEImageCache
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -383,6 +384,7 @@ class ChangeDetector:
         self.config = config or ChangeDetectionConfig()
         self.processor = SentinelProcessor(self.config)
         self.indices = SpectralIndices()
+        self.gee_cache = GEEImageCache()
         
     def detect_weekly_changes(self,
                             week_a_start: Optional[str] = None,
@@ -411,7 +413,33 @@ class ChangeDetector:
         else:
             bbox_ee = bbox
             bbox_dict = bbox.getInfo() if bbox else None
-            
+        
+        # Check GEE cache before running expensive satellite analysis
+        if region_name and week_a_start and week_b_start:
+            cached = self.gee_cache.check_cache(
+                region_name, week_a_start, week_b_start, ['NDVI', 'NDBI', 'BSI']
+            )
+            if cached:
+                logger.info(f"⚡ Using cached GEE result for {region_name} ({week_a_start} → {week_b_start})")
+                week_a_end = (datetime.strptime(week_a_start, '%Y-%m-%d') + timedelta(days=7)).strftime('%Y-%m-%d')
+                week_b_end = (datetime.strptime(week_b_start, '%Y-%m-%d') + timedelta(days=7)).strftime('%Y-%m-%d')
+                return {
+                    'change_count': cached.total_changes,
+                    'total_area': cached.area_affected_m2,
+                    'change_types': {
+                        'vegetation_loss': cached.vegetation_loss_pixels,
+                        'construction_activity': cached.construction_activity_pixels,
+                        'bare_soil': cached.bare_soil_pixels,
+                    },
+                    'week_a': f"{week_a_start} to {week_a_end}",
+                    'week_b': f"{week_b_start} to {week_b_end}",
+                    'bbox': bbox_dict,
+                    'vectors': [],
+                    'satellite_images': {},
+                    'saved_images': {},
+                    'from_cache': True,
+                }
+
         # Auto-find best available dates if requested
         if auto_find_dates and (not week_a_start or not week_b_start):
             if bbox_ee is None:
@@ -497,7 +525,7 @@ class ChangeDetector:
         elif region_name and not self.image_saver:
             logger.warning(f"Image saver not available, skipping image saving for {region_name}")
         
-        return {
+        result = {
             'change_count': stats['polygon_count'],
             'total_area': stats['total_area_m2'],
             'change_types': stats['change_types'],
@@ -506,8 +534,31 @@ class ChangeDetector:
             'bbox': bbox_dict,
             'vectors': change_vectors,
             'satellite_images': satellite_images,
-            'saved_images': saved_images  # Local file paths for PDF integration
+            'saved_images': saved_images,
         }
+        
+        # Save to GEE cache for future runs
+        if region_name:
+            try:
+                ct = stats.get('change_types', {})
+                self.gee_cache.save_cache(
+                    region_name=region_name,
+                    date_range_start=week_a_start,
+                    date_range_end=week_b_start,
+                    indices=['NDVI', 'NDBI', 'BSI'],
+                    change_detection_result={
+                        'total_changes': stats['polygon_count'],
+                        'vegetation_loss_pixels': ct.get('vegetation_loss', 0),
+                        'construction_activity_pixels': ct.get('construction_activity', 0),
+                        'bare_soil_pixels': ct.get('bare_soil', 0),
+                        'area_affected_m2': stats['total_area_m2'],
+                        'confidence': 1.0,
+                    }
+                )
+            except Exception as e:
+                logger.warning(f"Failed to save GEE cache for {region_name}: {e}")
+        
+        return result
     
     def _generate_satellite_image_urls(self, composite_a, composite_b, bbox, week_a: str, week_b: str):
         """Generate satellite image visualization URLs for investment analysis"""
