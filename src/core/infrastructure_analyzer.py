@@ -286,20 +286,21 @@ class InfrastructureAnalyzer:
             
             logger.info(f"✅ OSM infrastructure analysis complete for {region_name} (score: {analysis['infrastructure_score']})")
             
-            # Sanity check: if OSM score is implausibly low for a known region,
-            # use the higher of OSM live vs regional fallback.  This catches cases
-            # where Overpass returns partial data (e.g. roads query times out but
-            # airports succeed, yielding a score of ~20 for a major metro).
+            # Sanity check: only override if OSM score is implausibly low
+            # (< 30% of fallback) — otherwise prefer the live data even if lower
             fallback = self._get_regional_infrastructure_fallback(region_name)
             fallback_score = fallback.get('infrastructure_score', 0)
             osm_score = analysis['infrastructure_score']
-            if fallback_score > 0 and osm_score < fallback_score * 0.6:
+            if fallback_score > 0 and osm_score < fallback_score * 0.3:
                 logger.warning(
-                    f"⚠️ OSM score ({osm_score}) is <60% of fallback ({fallback_score}) "
-                    f"for {region_name} — likely incomplete OSM data, using fallback"
+                    f"⚠️ OSM score ({osm_score}) is <30% of fallback ({fallback_score}) "
+                    f"for {region_name} — blending with fallback"
                 )
-                analysis.update(fallback)
-                analysis['data_source'] = 'regional_fallback_sanity'
+                blended = max(osm_score, int(fallback_score * 0.8))
+                analysis['infrastructure_score'] = blended
+                analysis['data_source'] = 'osm_live_blended'
+            else:
+                analysis['data_source'] = 'osm_live'
             
         except Exception as e:
             logger.warning(f"Infrastructure analysis failed for {region_name}: {e}")
@@ -355,17 +356,23 @@ class InfrastructureAnalyzer:
             
             logger.info(f"✅ Processed cached infrastructure for {region_name} (score: {analysis['infrastructure_score']})")
             
-            # Sanity check: prefer fallback when cached OSM is implausibly low
+            # Check if cache has incomplete data (e.g. roads timed out)
+            has_roads = bool(roads_data)
+            has_airports = bool(airports_data)
+            has_railways = bool(railways_data)
+            if not has_roads and (has_airports or has_railways):
+                logger.info(f"  ⚠️ Cached data incomplete for {region_name} (roads missing) — invalidating cache")
+                self.osm_cache.invalidate(region_name)
+            
             fallback = self._get_regional_infrastructure_fallback(region_name)
             fallback_score = fallback.get('infrastructure_score', 0)
             osm_score = analysis['infrastructure_score']
-            if fallback_score > 0 and osm_score < fallback_score * 0.6:
-                logger.warning(
-                    f"⚠️ Cached OSM score ({osm_score}) is <60% of fallback ({fallback_score}) "
-                    f"for {region_name} — likely incomplete data, using fallback"
-                )
-                analysis.update(fallback)
-                analysis['data_source'] = 'regional_fallback_sanity'
+            if fallback_score > 0 and osm_score < fallback_score * 0.3:
+                blended = max(osm_score, int(fallback_score * 0.8))
+                analysis['infrastructure_score'] = blended
+                analysis['data_source'] = 'osm_cached_blended'
+            else:
+                analysis['data_source'] = 'osm_cached'
             
         except Exception as e:
             logger.warning(f"Failed to process cached infrastructure for {region_name}: {e}")
@@ -390,12 +397,12 @@ class InfrastructureAnalyzer:
         """Query OpenStreetMap for road infrastructure with retry logic and failover"""
         
         overpass_query = f"""
-        [out:json][timeout:10];
+        [out:json][timeout:25];
         (
           way["highway"~"^(motorway|trunk|primary|secondary)$"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
           way["highway"~"^(motorway|trunk|primary)_construction$"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
         );
-        out geom;
+        out center;
         """
         
         return self._query_overpass_with_retry(overpass_query, "roads")
@@ -404,13 +411,13 @@ class InfrastructureAnalyzer:
         """Query OpenStreetMap for airports with retry logic and failover"""
         
         overpass_query = f"""
-        [out:json][timeout:10];
+        [out:json][timeout:25];
         (
           way["aeroway"="aerodrome"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
           node["aeroway"="aerodrome"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
           way["aeroway"="airport"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
         );
-        out geom;
+        out center;
         """
         
         return self._query_overpass_with_retry(overpass_query, "airports")
@@ -419,13 +426,13 @@ class InfrastructureAnalyzer:
         """Query OpenStreetMap for railway infrastructure with retry logic and failover"""
         
         overpass_query = f"""
-        [out:json][timeout:10];
+        [out:json][timeout:25];
         (
           way["railway"="rail"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
           way["railway"="light_rail"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
           way["railway"="construction"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
         );
-        out geom;
+        out center;
         """
         
         return self._query_overpass_with_retry(overpass_query, "railways")
@@ -433,33 +440,29 @@ class InfrastructureAnalyzer:
     def _query_overpass_with_retry(self, query: str, feature_type: str, 
                                    max_retries: int = 3) -> List[Dict]:
         """
-        🆕 IMPROVED: Query Overpass API with aggressive timeouts
+        Query Overpass API with server-side timeout detection and backoff.
 
-        Retry strategy (fail-fast, we have regional fallbacks):
-        - Attempt 1: Primary server, 10s timeout
-        - Attempt 2: Primary server, 15s timeout, 1s delay
-        Total worst-case per feature: ~26s. All 3 features run in parallel.
+        Retry strategy:
+        - Attempt 1: 30s HTTP timeout
+        - Attempt 2: 35s HTTP timeout, 3s delay
+        - Attempt 3: 40s HTTP timeout, 5s delay
         """
         import time
 
-        # Build list of (url, timeout) pairs to try — aggressive timeouts
-        # We have regional fallbacks, so failing fast is better than blocking the pipeline
         attempts = [
-            (self.osm_base_url, 10),
-            (self.osm_base_url, 15),
+            (self.osm_base_url, 30),
+            (self.osm_base_url, 35),
+            (self.osm_base_url, 40),
         ]
         
         last_error = None
         
         for attempt_num, (api_url, timeout) in enumerate(attempts, 1):
             try:
-                # Apply short backoff delay (skip on first attempt)
                 if attempt_num > 1:
-                    delay = attempt_num - 1  # 1s, 2s (linear, not exponential)
+                    delay = attempt_num * 2 + 1  # 5s, 7s
                     logger.info(f"  Retry {attempt_num}/{len(attempts)} for {feature_type} after {delay}s delay...")
                     time.sleep(delay)
-                
-                logger.debug(f"Querying {api_url} for {feature_type} (timeout: {timeout}s)")
                 
                 response = requests.post(
                     api_url, 
@@ -468,14 +471,19 @@ class InfrastructureAnalyzer:
                     headers={'User-Agent': 'CloudClearingAPI/2.0'}
                 )
                 
-                # Check for HTTP errors
                 response.raise_for_status()
                 
-                # Parse response
                 data = response.json()
+                
+                # Detect server-side timeout (Overpass returns 200 with remark)
+                remark = data.get('remark', '')
+                if 'timeout' in remark.lower() or 'runtime' in remark.lower():
+                    last_error = f"Overpass server-side timeout: {remark[:80]}"
+                    logger.warning(f"  ⏱️ OSM {feature_type} server-side timeout (attempt {attempt_num}/{len(attempts)})")
+                    continue
+                
                 elements = data.get('elements', [])
                 
-                # Success!
                 if attempt_num > 1:
                     logger.info(f"  ✅ {feature_type} query succeeded on attempt {attempt_num}")
                 
@@ -536,32 +544,38 @@ class InfrastructureAnalyzer:
                 highway_type = road.get('tags', {}).get('highway', '')
                 road_name = road.get('tags', {}).get('name', f'Unnamed {highway_type}')
                 
-                # Calculate distance to target region
-                if road.get('geometry'):
+                # Get road location (supports both out center and out geom)
+                road_point = None
+                if road.get('center'):
+                    road_point = Point(road['center']['lon'], road['center']['lat'])
+                elif road.get('geometry'):
                     coords = [(node['lon'], node['lat']) for node in road['geometry']]
                     if len(coords) >= 2:
-                        road_line = LineString(coords)
-                        distance_km = target_center.distance(road_line) * 111  # Rough km conversion
+                        road_point = LineString(coords).centroid
+                    elif coords:
+                        road_point = Point(coords[0])
+                
+                if road_point:
+                    distance_km = target_center.distance(road_point) * 111
+                    
+                    base_weight = self.infrastructure_weights.get(highway_type, 0)
+                    if distance_km <= self.distance_decay.get('motorway', {}).get('max_distance', 10):
+                        decay = np.exp(-distance_km / self.distance_decay.get('motorway', {}).get('half_life', 3))
+                        weighted_score = base_weight * decay
                         
-                        # Apply distance decay
-                        base_weight = self.infrastructure_weights.get(highway_type, 0)
-                        if distance_km <= self.distance_decay.get('motorway', {}).get('max_distance', 10):
-                            decay = np.exp(-distance_km / self.distance_decay.get('motorway', {}).get('half_life', 3))
-                            weighted_score = base_weight * decay
-                            
-                            analysis['score'] += weighted_score
-                            
-                            feature_info = {
-                                'name': road_name,
-                                'type': highway_type,
-                                'distance_km': round(distance_km, 1),
-                                'impact_score': round(weighted_score, 1)
-                            }
-                            
-                            if 'construction' in highway_type:
-                                analysis['construction_roads'].append(feature_info)
-                            else:
-                                analysis['major_roads'].append(feature_info)
+                        analysis['score'] += weighted_score
+                        
+                        feature_info = {
+                            'name': road_name,
+                            'type': highway_type,
+                            'distance_km': round(distance_km, 1),
+                            'impact_score': round(weighted_score, 1)
+                        }
+                        
+                        if 'construction' in highway_type:
+                            analysis['construction_roads'].append(feature_info)
+                        else:
+                            analysis['major_roads'].append(feature_info)
                 
             except Exception as e:
                 logger.debug(f"Error processing road: {e}")
@@ -596,18 +610,19 @@ class InfrastructureAnalyzer:
                 airport_name = airport.get('tags', {}).get('name', 'Unnamed Airport')
                 airport_type = airport.get('tags', {}).get('aeroway', 'aerodrome')
                 
-                # Get airport location
+                # Get airport location (supports node, out center, and out geom)
+                airport_point = None
                 if airport['type'] == 'node':
                     airport_point = Point(airport['lon'], airport['lat'])
+                elif airport.get('center'):
+                    airport_point = Point(airport['center']['lon'], airport['center']['lat'])
                 elif airport.get('geometry'):
-                    # For ways, use centroid
                     coords = [(node['lon'], node['lat']) for node in airport['geometry']]
                     if coords:
                         airport_polygon = Polygon(coords) if len(coords) > 2 else Point(coords[0])
                         airport_point = airport_polygon.centroid
-                    else:
-                        continue
-                else:
+                
+                if not airport_point:
                     continue
                 
                 distance_km = target_center.distance(airport_point) * 111
@@ -657,24 +672,31 @@ class InfrastructureAnalyzer:
                 railway_type = railway.get('tags', {}).get('railway', 'rail')
                 railway_name = railway.get('tags', {}).get('name', f'Railway {railway_type}')
                 
-                if railway.get('geometry'):
+                railway_point = None
+                if railway.get('center'):
+                    railway_point = Point(railway['center']['lon'], railway['center']['lat'])
+                elif railway.get('geometry'):
                     coords = [(node['lon'], node['lat']) for node in railway['geometry']]
                     if len(coords) >= 2:
-                        railway_line = LineString(coords)
-                        distance_km = target_center.distance(railway_line) * 111
+                        railway_point = LineString(coords).centroid
+                    elif coords:
+                        railway_point = Point(coords[0])
+                
+                if railway_point:
+                    distance_km = target_center.distance(railway_point) * 111
+                    
+                    if distance_km <= self.distance_decay.get('railway', {}).get('max_distance', 5):
+                        base_weight = self.infrastructure_weights.get(railway_type, 75)
+                        decay = np.exp(-distance_km / self.distance_decay.get('railway', {}).get('half_life', 2))
+                        weighted_score = base_weight * decay
                         
-                        if distance_km <= self.distance_decay.get('railway', {}).get('max_distance', 5):
-                            base_weight = self.infrastructure_weights.get(railway_type, 75)
-                            decay = np.exp(-distance_km / self.distance_decay.get('railway', {}).get('half_life', 2))
-                            weighted_score = base_weight * decay
-                            
-                            analysis['score'] += weighted_score
-                            analysis['railways'].append({
-                                'name': railway_name,
-                                'type': railway_type,
-                                'distance_km': round(distance_km, 1),
-                                'impact_score': round(weighted_score, 1)
-                            })
+                        analysis['score'] += weighted_score
+                        analysis['railways'].append({
+                            'name': railway_name,
+                            'type': railway_type,
+                            'distance_km': round(distance_km, 1),
+                            'impact_score': round(weighted_score, 1)
+                        })
                 
             except Exception as e:
                 logger.debug(f"Error processing railway: {e}")
@@ -717,14 +739,11 @@ class InfrastructureAnalyzer:
         # Raw scores already include distance weighting from component analyzers
         # Now we just need to cap them to prevent accumulation
         
-        # Roads: Cap at 35 points (typically ~20 major roads = full allocation)
-        road_score = min(MAX_ROAD_POINTS, road_score_raw * 0.35)  # Scale down from raw accumulation
-        
-        # Aviation: Cap at 20 points (1-2 airports = full allocation)
-        aviation_score = min(MAX_AVIATION_POINTS, airport_score_raw * 0.20)  # Scale down
-        
-        # Railways: Cap at 20 points (typically ~10 rail lines = full allocation)
-        railway_score = min(MAX_RAILWAY_POINTS, railway_score_raw * 0.20)  # Scale down
+        # Scale raw accumulations to fit within caps
+        # Higher factors since out center yields lower per-element scores than out geom
+        road_score = min(MAX_ROAD_POINTS, road_score_raw * 0.7)
+        aviation_score = min(MAX_AVIATION_POINTS, airport_score_raw * 0.5)
+        railway_score = min(MAX_RAILWAY_POINTS, railway_score_raw * 0.5)
         
         # Construction bonus: Cap at 10 points based on construction activity
         construction_roads = road_analysis.get('construction_roads', [])

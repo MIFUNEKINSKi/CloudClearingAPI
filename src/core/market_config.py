@@ -32,7 +32,7 @@ REGIONAL_HIERARCHY = {
     # Characteristics: Established urban centers, highest infrastructure scores,
     # proven land markets, high liquidity, GDP >$10B metropolitan area
     'tier_1_metros': {
-        'description': 'Major metropolitan areas - Jakarta & Surabaya metros',
+        'description': 'Major metropolitan areas - Jakarta, Surabaya, Medan metros',
         'regions': [
             # Jakarta Metropolitan Area (Jabodetabek)
             'jakarta_north_sprawl',
@@ -40,6 +40,7 @@ REGIONAL_HIERARCHY = {
             'tangerang_bsd_corridor',
             'bekasi_industrial_belt',
             'cikarang_mega_industrial',
+            'karawang_industrial_corridor',
             
             # Surabaya Metropolitan Area (Gerbangkertosusila)
             'surabaya_west_expansion',
@@ -73,20 +74,39 @@ REGIONAL_HIERARCHY = {
     'tier_2_secondary': {
         'description': 'Secondary cities and provincial capitals',
         'regions': [
-            # West Java Provincial Centers
+            # West Java
             'bandung_north_expansion',
-            'subang_patimban_megaport',  # New mega-port elevates to Tier 2
+            'subang_patimban_megaport',
             
-            # Central Java Provincial Centers
+            # Central Java
             'semarang_port_expansion',
             'semarang_south_urban',
             'solo_raya_expansion',
+            'batang_industrial_sez',
             
-            # DIY Yogyakarta (Special Region Capital)
+            # DIY Yogyakarta
             'yogyakarta_urban_core',
             
-            # Banten Industrial Centers
-            'serang_cilegon_industrial',  # Major industrial complex
+            # Banten
+            'serang_cilegon_industrial',
+            
+            # Sumatra
+            'medan_kuala_namu_corridor',
+            'medan_belawan_port',
+            'palembang_boom_baru_port',
+            'batam_industrial_expansion',
+            
+            # Bali (international tourism premium)
+            'denpasar_north_expansion',
+            'canggu_seminyak_corridor',
+            'nusa_dua_bukit_peninsula',
+            
+            # Kalimantan (IKN national capital)
+            'nusantara_capital_core',
+            'nusantara_balikpapan_corridor',
+            
+            # Sulawesi
+            'makassar_urban_expansion',
         ],
         'benchmarks': {
             'avg_price_m2': 5_000_000,   # IDR per m² (±Rp 3-7M range)
@@ -114,25 +134,48 @@ REGIONAL_HIERARCHY = {
     'tier_3_emerging': {
         'description': 'Emerging development corridors and growth zones',
         'regions': [
-            # Technology & Periurban Corridors
+            # Java - Tech & Industrial Corridors
             'bandung_east_tech_corridor',
-            
-            # Industrial Corridors
             'cirebon_port_industrial',
-            
-            # Tourism & Highland Zones
-            'bogor_puncak_highland',
-            'yogyakarta_kulon_progo_airport',  # New airport catalyst
-            'magelang_borobudur_corridor',
-            'malang_south_highland',
-            
-            # Coastal Development Zones
-            'banyuwangi_ferry_corridor',
             'merak_port_corridor',
-            
-            # Emerging Urban Zones
             'purwokerto_south_expansion',
             'probolinggo_bromo_gateway',
+            
+            # Java - Tourism & Highland
+            'bogor_puncak_highland',
+            'yogyakarta_kulon_progo_airport',
+            'magelang_borobudur_corridor',
+            'malang_south_highland',
+            'banyuwangi_ferry_corridor',
+            
+            # Sumatra
+            'palembang_jakabaring_expansion',
+            'bandar_lampung_south_expansion',
+            'bakauheni_ferry_corridor',
+            'padang_urban_coastal',
+            'pekanbaru_urban_growth',
+            'lake_toba_tourism_zone',
+            
+            # Bali
+            'sanur_beach_resort',
+            'ubud_north_highland',
+            'tabanan_west_coast',
+            
+            # Lombok / NTB
+            'mataram_urban_expansion',
+            'lombok_mandalika_resort',
+            'lombok_senggigi_coast',
+            'labuan_bajo_komodo_gateway',
+            
+            # Kalimantan
+            'balikpapan_port_industrial',
+            'samarinda_urban_expansion',
+            'banjarmasin_port_development',
+            
+            # Sulawesi
+            'makassar_port_corridor',
+            'manado_tourism_expansion',
+            'bitung_port_industrial',
         ],
         'benchmarks': {
             'avg_price_m2': 3_000_000,   # IDR per m² (±Rp 1.5-4.5M range)
@@ -160,15 +203,21 @@ REGIONAL_HIERARCHY = {
     'tier_4_frontier': {
         'description': 'Frontier and early-stage development regions',
         'regions': [
-            # Remote Coastal Zones
+            # Java - Remote Coastal
             'tegal_brebes_coastal',
             'jember_southern_coast',
             'anyer_carita_coastal',
             
-            # NOTE: Gunungkidul regions are actually part of DIY Yogyakarta
-            # but classified as Tier 4 due to remote/karst geography
-            # They are NOT included in java_regions list, so omitted here
-            # If you add them later, they belong in this tier
+            # Sumatra - Remote
+            'banda_aceh_reconstruction',
+            
+            # Kalimantan - Remote
+            'pontianak_urban_growth',
+            
+            # NTT / Papua / Maluku
+            'kupang_urban_development',
+            'jayapura_urban_development',
+            'ambon_tourism_expansion',
         ],
         'benchmarks': {
             'avg_price_m2': 1_500_000,   # IDR per m² (±Rp 750K-2.5M range)
@@ -199,19 +248,17 @@ REGIONAL_HIERARCHY = {
 
 TIER_1_PLUS_REGIONS = [
     # Jakarta Ultra-Premium Corridors
-    'jakarta_south_suburbs',        # Senopati, Cipete - lifestyle corridor
-    'jakarta_central_scbd',         # SCBD business district (if exists in regions)
-    'jakarta_south_pondok_indah',   # Pondok Indah - established luxury
-    'jakarta_south_kemang',         # Kemang - expat/lifestyle district
+    'jakarta_south_suburbs',
+    'jakarta_central_scbd',
+    'jakarta_south_pondok_indah',
+    'jakarta_south_kemang',
     
-    # Tangerang BSD - Established new city
-    'tangerang_bsd_corridor',       # BSD City - master-planned ultra-premium
+    # Tangerang BSD
+    'tangerang_bsd_corridor',
     
-    # Bekasi Premium Zones (if applicable)
-    'bekasi_summarecon',            # Summarecon Bekasi (if exists)
-    
-    # Cikarang Silicon Valley
-    'cikarang_delta_silicon',       # Delta Silicon industrial park (if exists)
+    # Bali International Tourism Premium
+    'canggu_seminyak_corridor',
+    'nusa_dua_bukit_peninsula',
 ]
 
 

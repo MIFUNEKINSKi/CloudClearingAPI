@@ -124,7 +124,7 @@ class LamudiScraper(BaseLandPriceScraper):
             'semarang': 'semarang',
             'yogyakarta': 'yogyakarta',
             'solo': 'solo',
-            'surakarta': 'solo',  # Solo is also known as Surakarta
+            'surakarta': 'solo',
             'malang': 'malang',
             'bogor': 'bogor',
             'depok': 'depok',
@@ -133,7 +133,8 @@ class LamudiScraper(BaseLandPriceScraper):
             'cirebon': 'cirebon',
             'tegal': 'tegal',
             'pekalongan': 'pekalongan',
-            'purwokerto': 'purwokerto',
+            'purwokerto': 'banyumas',
+            'batang': 'batang',
             
             # Yogyakarta Special Region
             'sleman': 'sleman',
@@ -145,7 +146,6 @@ class LamudiScraper(BaseLandPriceScraper):
             # Central Java
             'magelang': 'magelang',
             'salatiga': 'salatiga',
-            'purwokerto': 'purwokerto',
             'cilacap': 'cilacap',
             'brebes': 'brebes',
             
@@ -162,8 +162,9 @@ class LamudiScraper(BaseLandPriceScraper):
             # Banten
             'serang': 'serang',
             'cilegon': 'cilegon',
-            'merak': 'serang',       # Merak is in Cilegon/Serang regency
-            'anyer': 'serang',       # Anyer is in Serang regency
+            'merak': 'serang',
+            'anyer': 'serang',
+            'bakauheni': 'lampung',
             
             # East Java
             'gresik': 'gresik',
@@ -179,25 +180,76 @@ class LamudiScraper(BaseLandPriceScraper):
             
             # Bali
             'denpasar': 'denpasar',
-            'bali': 'denpasar',  # Bali region defaults to Denpasar
+            'bali': 'denpasar',
             'badung': 'badung',
             'gianyar': 'gianyar',
             'tabanan': 'tabanan',
-            'sanur': 'sanur',
-            'ubud': 'ubud',
-            'seminyak': 'seminyak',
+            'sanur': 'badung',
+            'ubud': 'gianyar',
+            'seminyak': 'badung',
+            'canggu': 'badung',
             'kuta': 'kuta',
+            
+            # Sumatra
+            'medan': 'medan',
+            'belawan': 'medan',
+            'palembang': 'palembang',
+            'jakabaring': 'palembang',
+            'lampung': 'lampung',
+            'padang': 'padang',
+            'aceh': 'banda-aceh',
+            'batam': 'batam',
+            'pekanbaru': 'pekanbaru',
+            'toba': 'samosir',
+            
+            # Lombok / NTB
+            'lombok': 'lombok',
+            'mataram': 'mataram',
+            'mandalika': 'lombok',
+            'senggigi': 'lombok',
+            
+            # Kalimantan
+            'nusantara': 'penajam-paser-utara',
+            'balikpapan': 'balikpapan',
+            'samarinda': 'samarinda',
+            'banjarmasin': 'banjarmasin',
+            'pontianak': 'pontianak',
+            
+            # Sulawesi
+            'makassar': 'makassar',
+            'manado': 'manado',
+            'bitung': 'bitung',
+            
+            # NTT / Papua / Maluku
+            'labuan': 'manggarai-barat',
+            'kupang': 'kupang',
+            'jayapura': 'jayapura',
+            'ambon': 'ambon',
         }
         
-        # Try exact match first (for simple region names)
+        # Compound name mappings (checked before single-word)
+        compound_map = {
+            'nusa dua': 'badung',
+            'banda aceh': 'banda-aceh',
+            'bandar lampung': 'lampung',
+            'lake toba': 'samosir',
+            'solo raya': 'solo',
+            'kulon progo': 'kulonprogo',
+            'labuan bajo': 'manggarai-barat',
+        }
+        
         if normalized in location_map:
             return location_map[normalized]
         
-        # Extract first meaningful word from region identifier
-        # Handle both underscore format (jakarta_north_sprawl) and space format (Jakarta North)
         parts = normalized.replace('_', ' ').split()
         
-        # Try each part starting from the beginning
+        # Try compound name matches (2-word combinations)
+        for i in range(len(parts) - 1):
+            compound = parts[i] + ' ' + parts[i + 1]
+            if compound in compound_map:
+                return compound_map[compound]
+        
+        # Try each single word
         for part in parts:
             if part in location_map:
                 return location_map[part]
