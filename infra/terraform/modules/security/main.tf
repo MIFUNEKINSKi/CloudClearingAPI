@@ -13,6 +13,16 @@ terraform {
   }
 }
 
+# S3 ARNs derived from the same naming convention as modules/data_lake (avoids security↔data_lake cycle)
+locals {
+  data_lake_bucket_arns = [
+    "arn:aws:s3:::${var.project_name}-${var.environment}-raw-${var.aws_account_id}",
+    "arn:aws:s3:::${var.project_name}-${var.environment}-staging-${var.aws_account_id}",
+    "arn:aws:s3:::${var.project_name}-${var.environment}-curated-${var.aws_account_id}",
+    "arn:aws:s3:::${var.project_name}-${var.environment}-logs-${var.aws_account_id}",
+  ]
+}
+
 # ============================================================================
 # KMS Key for Data Encryption
 # ============================================================================
@@ -202,8 +212,8 @@ resource "aws_iam_role_policy" "ecs_task_s3_access" {
           "s3:ListBucket"
         ]
         Resource = concat(
-          var.s3_bucket_arns,
-          [for arn in var.s3_bucket_arns : "${arn}/*"]
+          local.data_lake_bucket_arns,
+          [for arn in local.data_lake_bucket_arns : "${arn}/*"]
         )
       },
       {
@@ -283,8 +293,8 @@ resource "aws_iam_role_policy" "lambda_s3_access" {
           "s3:ListBucket"
         ]
         Resource = concat(
-          var.s3_bucket_arns,
-          [for arn in var.s3_bucket_arns : "${arn}/*"]
+          local.data_lake_bucket_arns,
+          [for arn in local.data_lake_bucket_arns : "${arn}/*"]
         )
       },
       {
@@ -375,44 +385,3 @@ resource "aws_iam_role_policy" "step_functions_execution" {
   })
 }
 
-# ============================================================================
-# IAM Policy - Least Privilege for CI/CD
-# ============================================================================
-resource "aws_iam_policy" "cicd_ecr_push" {
-  name        = "${var.project_name}-${var.environment}-cicd-ecr-push"
-  description = "Allow CI/CD to push Docker images to ECR"
-  
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "ecr:GetAuthorizationToken"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:BatchGetImage",
-          "ecr:PutImage",
-          "ecr:InitiateLayerUpload",
-          "ecr:UploadLayerPart",
-          "ecr:CompleteLayerUpload"
-        ]
-        Resource = var.ecr_repository_arn
-      }
-    ]
-  })
-  
-  tags = merge(
-    var.common_tags,
-    {
-      Name        = "${var.project_name}-cicd-ecr-push-policy"
-      Environment = var.environment
-    }
-  )
-}

@@ -12,6 +12,8 @@ import sys
 import logging
 from pathlib import Path
 
+import pytest
+
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -27,6 +29,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.live
 def test_99co_scraper():
     """
     Test 99.co scraper against multiple Indonesian regions

@@ -88,3 +88,9 @@ coverage.xml
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Terraform (keep .terraform.lock.hcl in git)
+infra/terraform/.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info

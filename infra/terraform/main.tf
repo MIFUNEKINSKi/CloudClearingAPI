@@ -92,15 +92,7 @@ module "security" {
   environment    = var.environment
   aws_region     = var.aws_region
   aws_account_id = local.aws_account_id
-  
-  s3_bucket_arns      = [
-    module.data_lake.raw_bucket_arn,
-    module.data_lake.staging_bucket_arn,
-    module.data_lake.curated_bucket_arn,
-    module.data_lake.logs_bucket_arn
-  ]
-  ecr_repository_arn = module.compute.ecr_repository_arn
-  
+
   common_tags = local.common_tags
 }
 
@@ -179,19 +171,20 @@ module "step_functions" {
   
   project_name = var.project_name
   environment  = var.environment
+  aws_region   = var.aws_region
   
   # ECS Configuration
   ecs_cluster_arn             = module.compute.ecs_cluster_arn
   ecs_cluster_name            = module.compute.ecs_cluster_name
-  monitor_task_definition_arn = module.compute.monitor_task_definition_arn
+  monitor_task_definition_arn = module.compute.weekly_monitoring_task_definition_arn
   ecs_task_role_arn           = module.security.ecs_task_role_arn
   ecs_execution_role_arn      = module.security.ecs_task_execution_role_arn
   private_subnet_ids          = module.network.private_subnet_ids
-  ecs_security_group_id       = module.network.ecs_security_group_id
+  ecs_security_group_id       = module.compute.ecs_tasks_security_group_id
   
-  # S3 Configuration
-  s3_reports_bucket = module.data_lake.curated_bucket_name
-  s3_cache_bucket   = module.data_lake.staging_bucket_name
+  # S3 Configuration (bucket id equals global bucket name in AWS)
+  s3_reports_bucket = module.data_lake.curated_bucket_id
+  s3_cache_bucket   = module.data_lake.staging_bucket_id
   
   # Scheduler Configuration
   schedule_expression    = var.step_functions_schedule

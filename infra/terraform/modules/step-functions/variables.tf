@@ -15,6 +15,11 @@ variable "environment" {
   }
 }
 
+variable "aws_region" {
+  description = "AWS region (for console URLs in state machine output)"
+  type        = string
+}
+
 # ============================================================================
 # ECS Configuration
 # ============================================================================

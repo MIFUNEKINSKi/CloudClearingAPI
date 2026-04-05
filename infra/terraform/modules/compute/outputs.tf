@@ -45,3 +45,8 @@ output "ecs_tasks_log_group_name" {
   description = "Name of ECS tasks CloudWatch log group"
   value       = aws_cloudwatch_log_group.ecs_tasks.name
 }
+
+output "cicd_ecr_push_policy_arn" {
+  description = "ARN of IAM policy for CI/CD to push images to this ECR repository"
+  value       = aws_iam_policy.cicd_ecr_push.arn
+}

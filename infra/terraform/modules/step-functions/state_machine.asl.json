@@ -20,7 +20,7 @@
         "Overrides": {
           "ContainerOverrides": [
             {
-              "Name": "monitor",
+              "Name": "cloudclearing-monitor",
               "Command": [
                 "python",
                 "-c",
@@ -83,7 +83,7 @@
         "Overrides": {
           "ContainerOverrides": [
             {
-              "Name": "monitor",
+              "Name": "cloudclearing-monitor",
               "Command": [
                 "python",
                 "run_weekly_java_monitor.py",

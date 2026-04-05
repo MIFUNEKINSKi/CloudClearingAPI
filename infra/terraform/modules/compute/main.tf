@@ -178,7 +178,7 @@ resource "aws_ecs_task_definition" "weekly_monitoring" {
       volumesFrom = []
       
       healthCheck = {
-        command     = ["CMD-SHELL", "python -c 'import earthengine as ee; import src.core.automated_monitor; print(\"OK\")'"]
+        command     = ["CMD-SHELL", "python -c 'import ee; import src.core.automated_monitor; print(\"OK\")'"]
         interval    = 30
         timeout     = 10
         retries     = 3
@@ -216,6 +216,48 @@ resource "aws_security_group" "ecs_tasks" {
     var.common_tags,
     {
       Name        = "${var.project_name}-ecs-tasks-sg"
+      Environment = var.environment
+    }
+  )
+}
+
+# ============================================================================
+# IAM Policy - CI/CD push to this ECR repository (avoids security↔compute cycle)
+# ============================================================================
+resource "aws_iam_policy" "cicd_ecr_push" {
+  name        = "${var.project_name}-${var.environment}-cicd-ecr-push"
+  description = "Allow CI/CD to push Docker images to ECR"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:PutImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload"
+        ]
+        Resource = aws_ecr_repository.main.arn
+      }
+    ]
+  })
+
+  tags = merge(
+    var.common_tags,
+    {
+      Name        = "${var.project_name}-cicd-ecr-push-policy"
       Environment = var.environment
     }
   )

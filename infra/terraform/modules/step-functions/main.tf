@@ -22,6 +22,7 @@ resource "aws_sfn_state_machine" "weekly_monitoring" {
   definition = templatefile("${path.module}/state_machine.asl.json", {
     ecs_cluster_arn           = var.ecs_cluster_arn
     monitor_task_definition   = var.monitor_task_definition_arn
+    aws_region                = var.aws_region
     subnet_ids                = jsonencode(var.private_subnet_ids)
     security_group_ids        = jsonencode([var.ecs_security_group_id])
     sns_success_topic_arn     = aws_sns_topic.pipeline_success.arn
@@ -78,8 +79,8 @@ resource "aws_cloudwatch_event_target" "step_functions" {
   })
 
   retry_policy {
-    maximum_event_age       = 3600  # 1 hour
-    maximum_retry_attempts  = 2
+    maximum_event_age_in_seconds = 3600
+    maximum_retry_attempts         = 2
   }
 
   dead_letter_config {

@@ -39,18 +39,6 @@ variable "secret_recovery_window_days" {
   default     = 30
 }
 
-variable "s3_bucket_arns" {
-  description = "List of S3 bucket ARNs for IAM policies"
-  type        = list(string)
-  default     = []
-}
-
-variable "ecr_repository_arn" {
-  description = "ARN of ECR repository"
-  type        = string
-  default     = ""
-}
-
 variable "common_tags" {
   description = "Common tags to apply to all resources"
   type        = map(string)

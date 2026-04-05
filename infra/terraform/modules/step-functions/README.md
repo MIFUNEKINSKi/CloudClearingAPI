@@ -83,7 +83,7 @@ module "step_functions" {
   # ECS Configuration
   ecs_cluster_arn             = module.compute.ecs_cluster_arn
   ecs_cluster_name            = module.compute.ecs_cluster_name
-  monitor_task_definition_arn = module.compute.monitor_task_definition_arn
+  monitor_task_definition_arn = module.compute.weekly_monitoring_task_definition_arn
   ecs_task_role_arn           = module.security.ecs_task_role_arn
   ecs_execution_role_arn      = module.security.ecs_execution_role_arn
   private_subnet_ids          = module.network.private_subnet_ids

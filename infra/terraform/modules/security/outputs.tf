@@ -40,8 +40,3 @@ output "step_functions_role_arn" {
   description = "ARN of Step Functions role"
   value       = aws_iam_role.step_functions.arn
 }
-
-output "cicd_ecr_push_policy_arn" {
-  description = "ARN of CI/CD ECR push policy"
-  value       = aws_iam_policy.cicd_ecr_push.arn
-}
