@@ -499,6 +499,13 @@ async def main(all_regions: bool = False, auto_confirm: bool = False):
         # Generate investment analysis
         print()
         print("💰 Generating investment analysis...")
+        print(
+            "   ℹ️  Batch progress / ETA above applies to satellite processing only — not this phase."
+        )
+        print(
+            "   Dynamic scoring hits Overpass per region; watch logs for "
+            "'Overpass 1/2/3' and 'Scoring [n/N]' lines."
+        )
         investment_analysis = monitor._generate_investment_analysis(monitoring_results)
         
         # Add investment analysis to final results

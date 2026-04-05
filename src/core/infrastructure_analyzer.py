@@ -8,10 +8,14 @@ Author: CloudClearingAPI Team
 Date: September 2025
 """
 
-import requests
 import json
 import logging
+import os
+import threading
+import time
 from typing import Dict, List, Tuple, Optional, Any
+
+import requests
 from dataclasses import dataclass
 import geopandas as gpd
 from shapely.geometry import Point, LineString, Polygon, box
@@ -23,6 +27,102 @@ import ee
 from src.core.osm_cache import OSMInfrastructureCache
 
 logger = logging.getLogger(__name__)
+
+# Process-wide Overpass throttling: parallel scoring + 3× concurrent queries per region
+# was tripping HTTP 429 on public instances. Serialize POSTs and space them out.
+_overpass_lock = threading.Lock()
+_last_overpass_end = 0.0
+_CC_OVERPASS_MIN_GAP = float(os.environ.get("CC_OVERPASS_MIN_GAP_SEC", "1.25"))
+# Skip all live Overpass calls (regional fallback only) — for unstable public instances
+_CC_OS_SKIP_LIVE_OVERPASS = os.environ.get("CC_OS_SKIP_LIVE_OVERPASS", "").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
+
+def _overpass_connect_timeout_sec() -> float:
+    return float(os.environ.get("CC_OVERPASS_CONNECT_TIMEOUT_SEC", "12"))
+
+
+def _overpass_stall_log_interval_sec() -> float:
+    """Log while HTTP is in-flight so multi-minute hangs are visible in the log."""
+    return float(os.environ.get("CC_OVERPASS_STALL_LOG_SEC", "45"))
+
+
+def _requests_post_overpass(
+    url: str,
+    query: str,
+    timeout_tuple: Tuple[float, float],
+    log_label: str,
+) -> requests.Response:
+    """
+    Run requests.post in a worker thread and log periodically if still waiting.
+    Bounds connect vs read explicitly (single float timeout can still wedge on some stacks).
+    """
+    headers = {"User-Agent": "CloudClearingAPI/2.0 (research; contact via repo)"}
+    result: Dict[str, Any] = {}
+    error: Dict[str, Exception] = {}
+
+    def _worker() -> None:
+        try:
+            result["response"] = requests.post(
+                url,
+                data={"data": query},
+                timeout=timeout_tuple,
+                headers=headers,
+            )
+        except Exception as e:
+            error["e"] = e
+
+    th = threading.Thread(target=_worker, daemon=True, name="overpass-http")
+    th.start()
+    t0 = time.monotonic()
+    interval = max(15.0, _overpass_stall_log_interval_sec())
+    while th.is_alive():
+        th.join(timeout=interval)
+        if th.is_alive():
+            elapsed = time.monotonic() - t0
+            logger.warning(
+                f"  … {log_label}: still waiting on Overpass HTTP "
+                f"({elapsed:.0f}s elapsed, connect/read timeout={timeout_tuple})"
+            )
+    if error:
+        raise error["e"]
+    if "response" not in result:
+        raise RuntimeError(f"{log_label}: Overpass worker exited without response or error")
+    return result["response"]
+
+
+def _overpass_post_throttled(
+    url: str,
+    query: str, read_timeout: float, log_label: str = "Overpass"
+) -> requests.Response:
+    """Single global Overpass POST with minimum spacing between calls."""
+    global _last_overpass_end
+    try:
+        host = url.split("//", 1)[1].split("/", 1)[0]
+    except (IndexError, ValueError):
+        host = url
+    connect_t = _overpass_connect_timeout_sec()
+    timeout_tuple = (connect_t, float(read_timeout))
+    # Log outside the lock so a blocked thread still shows *something* while another holds the slot.
+    logger.info(
+        f"  ⏳ {log_label}: waiting for shared Overpass slot (another region may be querying)…"
+    )
+    with _overpass_lock:
+        gap = time.monotonic() - _last_overpass_end
+        if gap < _CC_OVERPASS_MIN_GAP:
+            time.sleep(_CC_OVERPASS_MIN_GAP - gap)
+        logger.info(
+            f"  📤 {log_label}: HTTP POST → {host} "
+            f"(connect {connect_t}s, read up to {read_timeout}s; "
+            f"stall log every {_overpass_stall_log_interval_sec():.0f}s if slow)"
+        )
+        try:
+            return _requests_post_overpass(url, query, timeout_tuple, log_label)
+        finally:
+            _last_overpass_end = time.monotonic()
 
 @dataclass
 class InfrastructureFeature:
@@ -44,8 +144,9 @@ class InfrastructureAnalyzer:
         self.osm_base_url = "https://overpass-api.de/api/interpreter"
         # Alternative Overpass API endpoints for failover
         self.osm_fallback_urls = [
+            "https://lz4.overpass-api.de/api/interpreter",
             "https://overpass.kumi.systems/api/interpreter",
-            "https://overpass.openstreetmap.ru/api/interpreter"
+            "https://overpass.openstreetmap.ru/api/interpreter",
         ]
         
         # 🆕 v2.8: Initialize OSM Infrastructure Cache (7-day expiry)
@@ -222,37 +323,59 @@ class InfrastructureAnalyzer:
                 logger.info(f"✅ Using cached infrastructure for {region_name}")
                 return self._process_cached_infrastructure(cached_data, bbox, region_name)
             
-            # Cache miss - query OSM API
+            # Cache miss - query OSM API (or skip when public Overpass is unstable)
+            if _CC_OS_SKIP_LIVE_OVERPASS:
+                logger.warning(
+                    f"⚠️ CC_OS_SKIP_LIVE_OVERPASS set — skipping Overpass for {region_name}, using regional fallback"
+                )
+                analysis["reasoning"].append(
+                    "⚠️ Live Overpass disabled (CC_OS_SKIP_LIVE_OVERPASS) — regional knowledge base"
+                )
+                analysis.update(self._get_regional_infrastructure_fallback(region_name))
+                return analysis
+
             logger.info(f"🔴 Cache miss for {region_name} - querying OSM API")
-            
-            # 🆕 IMPROVED: Expand bbox for infrastructure search (look 50km beyond region for rural areas)
-            expanded_bbox = self._expand_bbox(bbox, expansion_km=50)
-            
+
+            expand_km = float(os.environ.get("CC_OSM_BBOX_EXPAND_KM", "40"))
+            expanded_bbox = self._expand_bbox(bbox, expansion_km=expand_km)
+
             logger.info(f"📡 Querying OSM infrastructure for {region_name}...")
 
-            # Query OpenStreetMap for infrastructure with retry logic
-            # Use concurrent.futures to run all 3 queries in parallel with a hard 30s ceiling
-            from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
-            with ThreadPoolExecutor(max_workers=3) as executor:
-                roads_future = executor.submit(self._query_osm_roads, expanded_bbox)
-                airports_future = executor.submit(self._query_osm_airports, expanded_bbox)
-                railways_future = executor.submit(self._query_osm_railways, expanded_bbox)
-
-                try:
-                    roads_data = roads_future.result(timeout=30)
-                except Exception:
-                    roads_data = []
-                    logger.warning(f"  ⚠️ Roads query failed/timed out for {region_name}")
-                try:
-                    airports_data = airports_future.result(timeout=30)
-                except Exception:
-                    airports_data = []
-                    logger.warning(f"  ⚠️ Airports query failed/timed out for {region_name}")
-                try:
-                    railways_data = railways_future.result(timeout=30)
-                except Exception:
-                    railways_data = []
-                    logger.warning(f"  ⚠️ Railways query failed/timed out for {region_name}")
+            # Sequential Overpass queries (roads → airports → railways). Global throttle in
+            # _query_overpass_with_retry avoids 429 when many regions score in parallel.
+            try:
+                t0 = time.monotonic()
+                logger.info(f"   🛣️  [{region_name}] Overpass 1/3: major roads (may take minutes if overloaded)...")
+                roads_data = self._query_osm_roads(expanded_bbox, region_name)
+                logger.info(
+                    f"   🛣️  [{region_name}] roads done: {len(roads_data)} elements in "
+                    f"{time.monotonic() - t0:.1f}s → airports"
+                )
+            except Exception:
+                roads_data = []
+                logger.warning(f"  ⚠️ Roads query failed for {region_name}")
+            try:
+                t0 = time.monotonic()
+                logger.info(f"   ✈️  [{region_name}] Overpass 2/3: airports...")
+                airports_data = self._query_osm_airports(expanded_bbox, region_name)
+                logger.info(
+                    f"   ✈️  [{region_name}] airports done: {len(airports_data)} elements in "
+                    f"{time.monotonic() - t0:.1f}s → railways"
+                )
+            except Exception:
+                airports_data = []
+                logger.warning(f"  ⚠️ Airports query failed for {region_name}")
+            try:
+                t0 = time.monotonic()
+                logger.info(f"   🚆 [{region_name}] Overpass 3/3: railways...")
+                railways_data = self._query_osm_railways(expanded_bbox, region_name)
+                logger.info(
+                    f"   🚆 [{region_name}] railways done: {len(railways_data)} elements in "
+                    f"{time.monotonic() - t0:.1f}s"
+                )
+            except Exception:
+                railways_data = []
+                logger.warning(f"  ⚠️ Railways query failed for {region_name}")
             
             # Check if we got ANY data
             has_any_data = bool(roads_data or airports_data or railways_data)
@@ -381,6 +504,10 @@ class InfrastructureAnalyzer:
         
         return analysis
 
+    def _overpass_server_timeout_sec(self) -> int:
+        """Overpass QL [timeout:N] — server-side query budget (seconds)."""
+        return int(os.environ.get("CC_OVERPASS_SERVER_TIMEOUT_SEC", "55"))
+
     def _expand_bbox(self, bbox: Dict[str, float], expansion_km: float) -> Dict[str, float]:
         """Expand bounding box by specified kilometers"""
         # Rough conversion: 1 degree ≈ 111km
@@ -393,11 +520,11 @@ class InfrastructureAnalyzer:
             'north': bbox['north'] + expansion_deg
         }
 
-    def _query_osm_roads(self, bbox: Dict[str, float]) -> List[Dict]:
+    def _query_osm_roads(self, bbox: Dict[str, float], region_name: Optional[str] = None) -> List[Dict]:
         """Query OpenStreetMap for road infrastructure with retry logic and failover"""
-        
+        _ot = self._overpass_server_timeout_sec()
         overpass_query = f"""
-        [out:json][timeout:25];
+        [out:json][timeout:{_ot}];
         (
           way["highway"~"^(motorway|trunk|primary|secondary)$"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
           way["highway"~"^(motorway|trunk|primary)_construction$"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
@@ -405,13 +532,13 @@ class InfrastructureAnalyzer:
         out center;
         """
         
-        return self._query_overpass_with_retry(overpass_query, "roads")
+        return self._query_overpass_with_retry(overpass_query, "roads", region_name=region_name)
 
-    def _query_osm_airports(self, bbox: Dict[str, float]) -> List[Dict]:
+    def _query_osm_airports(self, bbox: Dict[str, float], region_name: Optional[str] = None) -> List[Dict]:
         """Query OpenStreetMap for airports with retry logic and failover"""
-        
+        _ot = self._overpass_server_timeout_sec()
         overpass_query = f"""
-        [out:json][timeout:25];
+        [out:json][timeout:{_ot}];
         (
           way["aeroway"="aerodrome"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
           node["aeroway"="aerodrome"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
@@ -420,13 +547,13 @@ class InfrastructureAnalyzer:
         out center;
         """
         
-        return self._query_overpass_with_retry(overpass_query, "airports")
+        return self._query_overpass_with_retry(overpass_query, "airports", region_name=region_name)
 
-    def _query_osm_railways(self, bbox: Dict[str, float]) -> List[Dict]:
+    def _query_osm_railways(self, bbox: Dict[str, float], region_name: Optional[str] = None) -> List[Dict]:
         """Query OpenStreetMap for railway infrastructure with retry logic and failover"""
-        
+        _ot = self._overpass_server_timeout_sec()
         overpass_query = f"""
-        [out:json][timeout:25];
+        [out:json][timeout:{_ot}];
         (
           way["railway"="rail"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
           way["railway"="light_rail"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']});
@@ -435,93 +562,158 @@ class InfrastructureAnalyzer:
         out center;
         """
         
-        return self._query_overpass_with_retry(overpass_query, "railways")
+        return self._query_overpass_with_retry(overpass_query, "railways", region_name=region_name)
     
-    def _query_overpass_with_retry(self, query: str, feature_type: str, 
-                                   max_retries: int = 3) -> List[Dict]:
+    def _query_overpass_with_retry(
+        self,
+        query: str,
+        feature_type: str,
+        max_retries: int = None,
+        region_name: Optional[str] = None,
+    ) -> List[Dict]:
         """
-        Query Overpass API with server-side timeout detection and backoff.
-
-        Retry strategy:
-        - Attempt 1: 30s HTTP timeout
-        - Attempt 2: 35s HTTP timeout, 3s delay
-        - Attempt 3: 40s HTTP timeout, 5s delay
+        Query Overpass with rotation, throttling, and bounded wall time.
+        Fails open to [] so callers can use regional fallback when all legs miss.
         """
-        import time
+        if max_retries is None:
+            max_retries = int(os.environ.get("CC_OVERPASS_MAX_RETRIES", "3"))
 
-        attempts = [
-            (self.osm_base_url, 30),
-            (self.osm_base_url, 35),
-            (self.osm_base_url, 40),
-        ]
-        
+        # Shorter defaults fail faster to the next mirror / empty+fallback instead of wedging the run.
+        t_min = int(os.environ.get("CC_OVERPASS_HTTP_TIMEOUT_MIN_SEC", "45"))
+        t_max = int(os.environ.get("CC_OVERPASS_HTTP_TIMEOUT_MAX_SEC", "90"))
+
+        api_urls = [self.osm_base_url] + [u for u in self.osm_fallback_urls if u]
+        api_urls = list(dict.fromkeys(api_urls))
+
         last_error = None
-        
-        for attempt_num, (api_url, timeout) in enumerate(attempts, 1):
-            try:
-                if attempt_num > 1:
-                    delay = attempt_num * 2 + 1  # 5s, 7s
-                    logger.info(f"  Retry {attempt_num}/{len(attempts)} for {feature_type} after {delay}s delay...")
-                    time.sleep(delay)
-                
-                response = requests.post(
-                    api_url, 
-                    data={'data': query}, 
-                    timeout=timeout,
-                    headers={'User-Agent': 'CloudClearingAPI/2.0'}
+        prev_gateway_or_timeout = False
+        log_label = f"OSM {feature_type}"
+        if region_name:
+            log_label = f"{log_label} [{region_name}]"
+
+        for attempt_num in range(1, max_retries + 1):
+            api_url = api_urls[(attempt_num - 1) % len(api_urls)]
+            host = api_url.split("/")[2]
+            read_timeout = min(t_min + (attempt_num - 1) * 20, t_max)
+
+            if attempt_num > 1:
+                delay = 2 if prev_gateway_or_timeout else min(5 + attempt_num * 3, 22)
+                prev_gateway_or_timeout = False
+                logger.info(
+                    f"  Retry {attempt_num}/{max_retries} for {feature_type} "
+                    f"({host}) after {delay}s delay "
+                    f"(read timeout={read_timeout}s, connect={_overpass_connect_timeout_sec():.0f}s)..."
                 )
-                
-                response.raise_for_status()
-                
-                data = response.json()
-                
-                # Detect server-side timeout (Overpass returns 200 with remark)
-                remark = data.get('remark', '')
-                if 'timeout' in remark.lower() or 'runtime' in remark.lower():
-                    last_error = f"Overpass server-side timeout: {remark[:80]}"
-                    logger.warning(f"  ⏱️ OSM {feature_type} server-side timeout (attempt {attempt_num}/{len(attempts)})")
+                time.sleep(delay)
+
+            try:
+                response = _overpass_post_throttled(
+                    api_url,
+                    query,
+                    read_timeout,
+                    log_label=f"{log_label} try{attempt_num}/{max_retries}",
+                )
+
+                if response.status_code == 429:
+                    last_error = "HTTP 429 Too Many Requests"
+                    retry_after = response.headers.get("Retry-After")
+                    try:
+                        sleep_s = min(int(retry_after), 90) if retry_after else 20
+                    except (TypeError, ValueError):
+                        sleep_s = 20
+                    logger.warning(
+                        f"  ❌ OSM {feature_type} HTTP 429 ({host}) attempt {attempt_num}/{max_retries} — "
+                        f"sleeping {sleep_s}s"
+                    )
+                    time.sleep(sleep_s)
+                    prev_gateway_or_timeout = True
                     continue
-                
-                elements = data.get('elements', [])
-                
+
+                if response.status_code in (500, 502, 503, 504):
+                    last_error = f"HTTP {response.status_code}"
+                    logger.warning(
+                        f"  ❌ OSM {feature_type} HTTP {response.status_code} ({host}) "
+                        f"(attempt {attempt_num}/{max_retries})"
+                    )
+                    prev_gateway_or_timeout = True
+                    continue
+
+                response.raise_for_status()
+
+                data = response.json()
+
+                remark = data.get("remark", "")
+                if "timeout" in remark.lower() or "runtime" in remark.lower():
+                    last_error = f"Overpass server-side timeout: {remark[:80]}"
+                    logger.warning(
+                        f"  ⏱️ OSM {feature_type} server-side timeout ({host}) "
+                        f"(attempt {attempt_num}/{max_retries})"
+                    )
+                    prev_gateway_or_timeout = True
+                    continue
+
+                elements = data.get("elements", [])
+
                 if attempt_num > 1:
                     logger.info(f"  ✅ {feature_type} query succeeded on attempt {attempt_num}")
-                
+
                 return elements
-                
-            except requests.exceptions.Timeout as e:
-                last_error = f"Timeout after {timeout}s"
-                logger.warning(f"  ⏱️ OSM {feature_type} query timeout (attempt {attempt_num}/{len(attempts)})")
+
+            except requests.exceptions.Timeout:
+                last_error = (
+                    f"Timeout (connect/read {_overpass_connect_timeout_sec():.0f}s / {read_timeout}s)"
+                )
+                logger.warning(
+                    f"  ⏱️ OSM {feature_type} query timeout ({host}) (attempt {attempt_num}/{max_retries})"
+                )
+                prev_gateway_or_timeout = True
                 continue
-                
+
             except requests.exceptions.HTTPError as e:
-                last_error = f"HTTP error: {e.response.status_code}"
-                logger.warning(f"  ❌ OSM {feature_type} HTTP error: {e.response.status_code} (attempt {attempt_num}/{len(attempts)})")
-                
-                # Rate limit (429) or server error (5xx) - worth retrying
-                if e.response.status_code in [429, 500, 502, 503, 504]:
+                code = e.response.status_code if e.response is not None else 0
+                last_error = f"HTTP error: {code}"
+                logger.warning(
+                    f"  ❌ OSM {feature_type} HTTP error: {code} ({host}) "
+                    f"(attempt {attempt_num}/{max_retries})"
+                )
+                if code == 429:
+                    time.sleep(min(20 + attempt_num * 8, 75))
+                    prev_gateway_or_timeout = True
                     continue
-                else:
-                    # Client error (4xx) - don't retry
-                    break
-                    
+                if code in (500, 502, 503, 504):
+                    prev_gateway_or_timeout = True
+                    continue
+                break
+
             except requests.exceptions.RequestException as e:
                 last_error = f"Request error: {str(e)}"
-                logger.warning(f"  ❌ OSM {feature_type} request error: {e} (attempt {attempt_num}/{len(attempts)})")
+                logger.warning(
+                    f"  ❌ OSM {feature_type} request error: {e} ({host}) "
+                    f"(attempt {attempt_num}/{max_retries})"
+                )
+                prev_gateway_or_timeout = True
                 continue
-                
-            except json.JSONDecodeError as e:
-                last_error = f"Invalid JSON response"
-                logger.warning(f"  ❌ OSM {feature_type} invalid JSON (attempt {attempt_num}/{len(attempts)})")
+
+            except json.JSONDecodeError:
+                last_error = "Invalid JSON response"
+                logger.warning(
+                    f"  ❌ OSM {feature_type} invalid JSON ({host}) (attempt {attempt_num}/{max_retries})"
+                )
+                prev_gateway_or_timeout = True
                 continue
-                
+
             except Exception as e:
                 last_error = f"Unexpected error: {str(e)}"
-                logger.warning(f"  ❌ OSM {feature_type} unexpected error: {e} (attempt {attempt_num}/{len(attempts)})")
+                logger.warning(
+                    f"  ❌ OSM {feature_type} unexpected error: {e} ({host}) "
+                    f"(attempt {attempt_num}/{max_retries})"
+                )
+                prev_gateway_or_timeout = True
                 continue
-        
-        # All attempts failed
-        logger.error(f"❌ All {len(attempts)} attempts failed for {feature_type} query. Last error: {last_error}")
+
+        logger.error(
+            f"❌ All {max_retries} attempts failed for {feature_type} query. Last error: {last_error}"
+        )
         return []
 
     def _analyze_road_infrastructure(self, roads_data: List[Dict], target_bbox: Dict[str, float]) -> Dict[str, Any]:

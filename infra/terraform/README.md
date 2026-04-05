@@ -6,6 +6,10 @@ Production-ready AWS infrastructure for the CloudClearingAPI satellite monitorin
 
 ## Quick Start
 
+**Zero-cost prep (no `apply`):** from repo root, run [`scripts/prep-aws-zero-cost.sh`](../../scripts/prep-aws-zero-cost.sh) — init, validate, `plan`, and optional local Docker build only.
+
+When you are ready to spend on AWS:
+
 ```bash
 # 1. Initialize Terraform
 terraform init

@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`scripts/prep-aws-zero-cost.sh`:** runs `terraform init`, `validate`, and `plan` (plus optional local `docker build` when Docker is installed) without `terraform apply` or ECR push; documented in [`docs/deployment/cost-aware-aws.md`](docs/deployment/cost-aware-aws.md). `.gitignore` now excludes `infra/terraform/terraform.tfvars`.
+- **Observability (weekly run):** dynamic scoring logs a separate-phase note plus per-region **`Scoring [i/N]`** lines with rolling ETA; OSM cache misses log **Overpass 1/3 → 3/3** legs with timings and element counts; each Overpass attempt logs **waiting for shared slot** then **HTTP POST**; while the request is in flight, **stall warnings** every 45s (`CC_OVERPASS_STALL_LOG_SEC`) and **`(connect, read)` timeouts** (`CC_OVERPASS_CONNECT_TIMEOUT_SEC` + read caps, default read max 90s) reduce silent multi-minute wedges. `run_weekly_java_monitor.py` prints that batch ETA does not apply during investment analysis.
+
 ### Changed
 
 - **Terraform (portfolio dev):** When `enable_nat_gateway = false`, Step Functions ECS `RunTask` uses **public subnets** and **`AssignPublicIp: ENABLED`** so the weekly monitor can reach GEE and the internet without NAT charges. When `true`, behavior remains private subnets + `DISABLED` (production-style).

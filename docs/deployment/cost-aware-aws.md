@@ -35,8 +35,27 @@ NAT Gateway **hourly charges stop** when `enable_nat_gateway = false`.
 
 ---
 
+## Zero-cost prep (get ready without a bill)
+
+These steps **do not create** AWS resources (no `terraform apply`, no ECR push, no running tasks):
+
+1. **Optional:** copy variables for when you eventually apply:
+   `cp infra/terraform/terraform.tfvars.example infra/terraform/terraform.tfvars`  
+   Edit `terraform.tfvars` locally; it is **gitignored** and must not be committed.
+2. From the repo root, run:
+   ```bash
+   chmod +x scripts/prep-aws-zero-cost.sh
+   ./scripts/prep-aws-zero-cost.sh
+   ```
+   This runs `terraform init`, `validate`, and `plan` (and a **local** `docker build` if Docker is installed).  
+   `terraform plan` uses the AWS API for **read-only** data sources (caller identity, AZs, etc.); it does not provision infrastructure.
+3. **Do not run** `terraform apply` until you intentionally want resources live. **Do not** `docker push` to ECR until after apply creates the repository (or you create one manually).
+
+---
+
 ## Related files
 
+- `scripts/prep-aws-zero-cost.sh` — one-shot init / validate / plan / optional local Docker build.
 - `infra/terraform/terraform.tfvars.example` — copy to `terraform.tfvars` and set `earthengine_project`, emails, and `enable_nat_gateway`.
 - `docs/deployment/terraform-guide.md` — full module and workflow reference.
 - `infra/terraform/README.md` — quick commands and post-deploy steps.

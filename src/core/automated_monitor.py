@@ -8,6 +8,7 @@ with alerting, historical tracking, and comprehensive reporting.
 import asyncio
 import logging
 import os
+import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 import json
@@ -1397,7 +1398,12 @@ class AutomatedMonitor:
         if yogyakarta_regions:
             try:
                 logger.info("🔄 Running DYNAMIC scoring analysis (parallel, no static assumptions)...")
-                
+                logger.info(
+                    "   ⏳ Scoring phase timing is separate from satellite batch progress: "
+                    "each region may call Overpass (roads → airports → railways) with global throttling; "
+                    "a cold OSM cache often means tens of minutes to well over an hour for many regions."
+                )
+
                 # Pre-scrape news once before parallel scoring
                 if self.news_scraper and self.news_catalyst and self._cached_news_articles is None:
                     try:
@@ -1411,11 +1417,16 @@ class AutomatedMonitor:
                 prev_news_counts = self._load_previous_news_counts()
                 
                 from concurrent.futures import ThreadPoolExecutor, as_completed
-                
+
                 dynamic_scored_regions = []
-                max_workers = min(4, len(yogyakarta_regions))
-                logger.info(f"   ⚡ Scoring {len(yogyakarta_regions)} regions with {max_workers} parallel workers")
-                
+                # Default 2: Overpass is throttled globally, but fewer concurrent scorers
+                # reduces memory pressure and scraper/API contention during full runs.
+                _mw = int(os.environ.get("CC_SCORING_MAX_WORKERS", "2"))
+                max_workers = max(1, min(_mw, len(yogyakarta_regions)))
+                n_score = len(yogyakarta_regions)
+                logger.info(f"   ⚡ Scoring {n_score} regions with {max_workers} parallel workers")
+                _region_timeout = int(os.environ.get("CC_SCORE_REGION_TIMEOUT_SEC", "1200"))
+
                 with ThreadPoolExecutor(max_workers=max_workers) as executor:
                     future_to_region = {}
                     for region_data in yogyakarta_regions:
@@ -1423,15 +1434,35 @@ class AutomatedMonitor:
                             self._score_single_region, region_data, prev_news_counts
                         )
                         future_to_region[future] = region_data['region_name']
-                    
+
+                    scoring_t0 = time.monotonic()
+                    completed_score = 0
                     for future in as_completed(future_to_region):
                         region_name = future_to_region[future]
+                        ok = False
                         try:
-                            result = future.result(timeout=180)
+                            result = future.result(timeout=_region_timeout)
                             if result:
                                 dynamic_scored_regions.append(result)
+                                ok = True
                         except Exception as e:
                             logger.error(f"❌ Scoring failed for {region_name}: {e}")
+
+                        completed_score += 1
+                        elapsed_min = (time.monotonic() - scoring_t0) / 60.0
+                        remaining = n_score - completed_score
+                        if completed_score > 0 and remaining > 0:
+                            eta_min = (elapsed_min / completed_score) * remaining
+                            eta_part = f" | scoring ETA ~{eta_min:.1f} min ({remaining} left)"
+                        elif remaining == 0:
+                            eta_part = " | scoring phase complete"
+                        else:
+                            eta_part = ""
+                        status = "ok" if ok else "failed"
+                        logger.info(
+                            f"   📈 Scoring [{completed_score}/{n_score}] {region_name} ({status}) — "
+                            f"{elapsed_min:.1f} min in scoring phase{eta_part}"
+                        )
                 
                 if dynamic_scored_regions:
                     # Generate investment report using dynamic scores

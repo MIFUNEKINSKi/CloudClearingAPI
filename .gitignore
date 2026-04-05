@@ -28,6 +28,7 @@ ENV/
 env/
 
 # IDEs
+.cursor/
 .vscode/
 .idea/
 *.swp
@@ -91,6 +92,7 @@ dmypy.json
 
 # Terraform (keep .terraform.lock.hcl in git)
 infra/terraform/.terraform/
+infra/terraform/terraform.tfvars
 *.tfstate
 *.tfstate.*
 .terraform.tfstate.lock.info
