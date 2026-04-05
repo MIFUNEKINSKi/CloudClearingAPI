@@ -438,7 +438,7 @@ class BenchmarkDriftMonitor:
             return {
                 'status': 'no_data',
                 'message': 'No drift data to summarize',
-                'alerts': []
+                'alerts': {'total': 0, 'critical': 0, 'warning': 0, 'details': []}
             }
         
         # Per-tier statistics
@@ -615,22 +615,27 @@ class BenchmarkDriftMonitor:
     
     def _extract_live_price(self, region_data: Any) -> Optional[float]:
         """Extract live price from region analysis data"""
-        # Handle direct numeric value (for testing)
         if isinstance(region_data, (int, float)):
             return float(region_data) if region_data > 0 else None
         
-        # Handle dict input (production usage)
         if not isinstance(region_data, dict):
             return None
         
-        # Try financial projection first
         financial = region_data.get('financial_projection')
-        if financial and isinstance(financial, dict):
-            live_price = financial.get('current_land_value_per_m2')
+        if financial:
+            live_price = None
+            if isinstance(financial, dict):
+                live_price = financial.get('current_land_value_per_m2')
+            elif hasattr(financial, 'current_land_value_per_m2'):
+                live_price = financial.current_land_value_per_m2
             if live_price and live_price > 0:
                 return float(live_price)
         
-        # Try dynamic score breakdown
+        # Try top-level current_price_per_m2 (present in recommendation dicts)
+        top_price = region_data.get('current_price_per_m2')
+        if top_price and top_price > 0:
+            return float(top_price)
+        
         dynamic_score = region_data.get('dynamic_score', {})
         if isinstance(dynamic_score, dict):
             financial_data = dynamic_score.get('financial_projection', {})
@@ -643,44 +648,49 @@ class BenchmarkDriftMonitor:
     
     def _extract_data_source(self, region_data: Any) -> str:
         """Extract data source from region analysis data"""
-        # Handle direct string value (for testing)
         if isinstance(region_data, str):
             return region_data
         
-        # Handle dict input (production usage)
         if not isinstance(region_data, dict):
             return "unknown"
         
-        financial = region_data.get('financial_projection', {})
+        financial = region_data.get('financial_projection')
+        sources = None
         if isinstance(financial, dict):
             sources = financial.get('data_sources', [])
-            if sources:
-                return sources[0] if isinstance(sources, list) else str(sources)
+        elif financial and hasattr(financial, 'data_sources'):
+            sources = financial.data_sources
+        
+        if sources:
+            return sources[0] if isinstance(sources, list) else str(sources)
         
         return "unknown"
     
     def _extract_confidence(self, region_data: Any) -> float:
         """Extract confidence from region analysis data"""
-        # Handle direct numeric value (for testing)
         if isinstance(region_data, (int, float)):
             return float(region_data) if 0 <= region_data <= 1 else 0.75
         
-        # Handle dict input (production usage)
         if not isinstance(region_data, dict):
-            return 0.75  # Default confidence
+            return 0.75
         
-        # Try dynamic score confidence
+        # Try top-level confidence (present in recommendation dicts)
+        top_conf = region_data.get('confidence') or region_data.get('confidence_level')
+        if top_conf and 0 < top_conf <= 1:
+            return float(top_conf)
+        
         dynamic_score = region_data.get('dynamic_score', {})
         if isinstance(dynamic_score, dict):
             confidence = dynamic_score.get('dynamic_confidence')
             if confidence:
                 return float(confidence)
         
-        # Try financial projection confidence
-        financial = region_data.get('financial_projection', {})
+        financial = region_data.get('financial_projection')
         if isinstance(financial, dict):
             confidence = financial.get('confidence_level')
             if confidence:
                 return float(confidence)
+        elif financial and hasattr(financial, 'projection_confidence'):
+            return float(financial.projection_confidence)
         
-        return 0.75  # Default moderate confidence
+        return 0.75

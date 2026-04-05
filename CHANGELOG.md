@@ -7,6 +7,186 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.12.1] - 2026-04-04
+
+### Fixed
+
+#### Infrastructure Scoring: OSM Sanity Check + 65-Region Fallback Database
+- **Issue**: OSM Overpass API returned empty road/railway data for major regions (e.g., Jakarta, Cikarang), producing implausibly low infrastructure scores (e.g., 20 for a metro area)
+- **Impact**: Score clustering — many regions scored identically because they all received the same low default infrastructure multiplier
+- **Fix**: Added sanity check in `infrastructure_analyzer.py`: if OSM score is < 60% of the curated regional fallback, the fallback is used instead. Expanded the regional fallback database from 29 Java regions to all 65 monitored regions across Indonesia
+- **Result**: Each region now gets a differentiated infrastructure multiplier reflecting its actual transport connectivity
+- Files modified: `src/core/infrastructure_analyzer.py`
+
+#### Market Heat: Benchmark Appreciation Values
+- **Issue**: `historical_appreciation` values in `regional_benchmarks` were stored as decimals (e.g., `0.15` for 15%) but interpreted as raw percentages — resulting in all regions showing "stable" market heat and ~0.01% trend
+- **Impact**: All 65 regions had identical "stable" market classification; market multiplier provided no differentiation
+- **Fix**: Corrected values to actual percentages (e.g., `15.0` for 15%). Added regional benchmarks for Sumatra, Bali, Kalimantan, Sulawesi, Lombok/NTT, and Eastern Indonesia. Improved `_find_nearest_benchmark` with island-level matching
+- **Result**: Regions now show varied market heat (Booming / Strong / Stable / Stagnant / Declining)
+- Files modified: `src/scrapers/scraper_orchestrator.py`
+
+#### Benchmark Drift Monitoring
+- **Issue**: `BenchmarkDriftMonitor.track_drift()` received raw satellite analysis results (no financial projections), causing `'list' object has no attribute 'get'` error
+- **Impact**: Drift monitoring failed on every run
+- **Fix**: Modified `run_weekly_java_monitor.py` to extract scored regions (which include `financial_projection`) from `investment_analysis` and pass those to the drift monitor. Normalized the `region` key to `region_name`
+- **Result**: Drift monitoring now completes successfully
+- Files modified: `run_weekly_java_monitor.py`
+
+#### Region Method Call Fix
+- **Issue**: `run_weekly_java_monitor.py` called non-existent `expansion_manager.get_monitoring_regions()`
+- **Fix**: Changed to `expansion_manager.get_java_regions()`
+- Files modified: `run_weekly_java_monitor.py`
+
+#### Test Import Fix
+- **Issue**: `tests/test_core.py` imported `ChangeDetectionConfig` from `core.config` instead of `core.change_detector`
+- **Fix**: Corrected the import path
+- Files modified: `tests/test_core.py`
+
+### Added
+
+#### First Full 65-Region Analysis Run
+- Executed `run_weekly_java_monitor.py --all --yes` to analyze all 65 regions in a single pass
+- Covers Java (31), Bali (6), Sumatra (11), Kalimantan (6), Sulawesi (4), Lombok/NTT (4), Eastern Indonesia (3)
+
+---
+
+## [2.12] - 2026-03
+
+### Added
+
+#### Decision Matrix Page in PDF
+- All regions ranked in a single table with Score, BUY/WATCH/PASS action, Price/m², RVI, Momentum, 3Y ROI, and Confidence
+- Color-coded rows for quick visual scanning
+
+#### Expanded Region Coverage (51 → 65 Regions)
+- Added: Labuan Bajo (Komodo gateway), Nusa Dua/Bukit (Bali luxury), Senggigi (Lombok), Kupang (NTT), Karawang industrial corridor, Batang SEZ, Padang, Banda Aceh
+- Total coverage: 31 Java + 6 Bali + 11 Sumatra + 6 Kalimantan + 4 Sulawesi + 4 Lombok/NTT + 3 Eastern Indonesia
+
+#### News Scraper Improvements
+- Added Kompas regional sections (Jawa Barat/Tengah/Timur)
+- Province-level article matching
+- Fixed Antara relative URL handling
+
+---
+
+## [2.11] - 2026-03
+
+### Added
+
+#### Sentinel-1 SAR Radar Fusion
+- Cloud-penetrating SAR radar complements Sentinel-2 optical imagery
+- 60/40 weighted fusion with +10% confidence boost when both sensors available
+- SAR-only fallback critical for Indonesia's rainy season
+
+#### News Catalyst Scoring (0.95x-1.20x)
+- Scrapes Jakarta Post, Kompas, and Antara News
+- Word-boundary region matching to avoid false positives
+- Clickable article links in PDF reports
+
+#### Live Market Scrapers Repaired
+- Lamudi returns 20+ real listings per region
+- 99.co rewritten for `__NEXT_DATA__` JSON parsing (rate-limited but functional)
+
+#### JSONL Price History Archive
+- Each scrape appends timestamped snapshot to per-region JSONL files
+- Enables 14-60 day price trend calculation across successive weekly runs
+
+#### Momentum Analyzer
+- Compares 4-week recent velocity vs 8-16 week baseline from historical monitoring JSONs
+- Multiplier range: 0.85x (stalling) to 1.30x (surging)
+
+#### Auto-Email After Every Run
+- Gmail SMTP with PDF attachment sent automatically after each monitoring run
+
+### Fixed
+- `calculate_relative_value_index` now correctly calls `FinancialMetricsEngine`
+- OSM queries parallelized with 30s hard timeout
+
+---
+
+## [2.10] - 2026-02
+
+### Added
+- Indonesia expansion: 39 → 51 monitored regions
+- Bali (6): Denpasar, Sanur, Canggu, Ubud, Tabanan
+- Sumatra (8): Medan (2), Palembang (2), Lampung (2), Batam, Pekanbaru
+- Kalimantan (5): Nusantara/IKN (2), Balikpapan, Samarinda, Banjarmasin
+- Sulawesi (3): Makassar (2), Manado
+
+---
+
+## [2.9.1] - 2025-11-02
+
+### Added
+
+#### CCAPI-29.0: AWS Step Functions Orchestration
+- 10-state workflow with validation, execution, and error handling
+- ECS Fargate task execution (2 vCPU, 4GB memory)
+- EventBridge rule for weekly trigger (Mondays 6am UTC)
+- CloudWatch metrics, alarms, and X-Ray tracing
+- SNS notifications for success/failure/partial failure
+- Dead letter queue for failed EventBridge events
+- ~$0.71/month incremental cost
+
+#### CCAPI-28.0: Docker Containerization
+- Multi-stage build, final image 1.19GB (50% reduction from initial 2.36GB)
+- Non-root user (UID 1000) for security
+- CI/CD pipeline with Trivy security scanning
+- Health checks for all core Python modules
+
+#### CCAPI-28.1: Terraform Infrastructure-as-Code
+- 5 reusable modules (~1,570 lines): network, data_lake, security, compute, monitoring
+- ~70 AWS resources defined
+- Cost-optimized: $23/mo (dev) to $139/mo (prod)
+- Multi-environment support (dev/staging/prod)
+
+#### CCAPI-27.5: GEE Caching + Async Processing
+- 82-97% faster monitoring (16 min cold, 0.9 min warm vs 87 min baseline)
+- 14-day GEE image cache
+- Async parallel processing for regions
+
+#### CCAPI-27.4: Modular Documentation Refactor
+- 76% size reduction via modular structure under `docs/`
+
+#### CCAPI-27.3: Property-Based Testing
+- 9 Hypothesis tests, 416 examples, all passing
+
+#### CCAPI-27.2: Benchmark Drift Monitoring
+- 608-line production-ready drift monitor
+
+#### CCAPI-27.1: Full End-to-End Validation
+- 12 regions, 100/100 improvement score
+
+### Fixed
+- Market data restoration: 4 root causes fixed, 100% Lamudi success rate
+
+---
+
+## [2.8.2] - 2025-10-27
+
+### Fixed
+- Location slug mapping (70+ city mappings) for Lamudi scraper
+- JSON-LD structured data parsing for JavaScript-rendered Lamudi pages
+- Market data availability restored to ~40% (Lamudi-only)
+
+---
+
+## [2.8.1] - 2025-10-26
+
+### Fixed
+- Lamudi scraper URL fix (`/buy/` → `/jual/`) — Indonesian language requirement
+
+---
+
+## [2.8.0] - 2025-10-20
+
+### Added
+- OSM infrastructure caching (7-day expiry)
+- Performance: 48% faster monitoring (87 → 45 min projected)
+- 162x speedup per cached region, 86% reduction in API calls
+
+---
+
 ## [2.7.0] - 2025-10-26
 
 ### Added

@@ -1,7 +1,7 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.12 (Decision Matrix + Expanded Coverage)
-**Status:** ✅ Production Ready | 65 Regions (31 Java + 11 Sumatra + 10 Bali/Lombok/NTT + 13 Eastern Indonesia) | Weekly Automated Reports with Email Delivery
+**Version:** 2.12.1 (Full 65-Region Coverage + Scoring Fixes)
+**Status:** ✅ Production Ready | 65 Regions (31 Java + 11 Sumatra + 6 Bali + 4 Lombok/NTT + 6 Kalimantan + 4 Sulawesi + 3 Eastern Indonesia) | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
 
@@ -19,6 +19,15 @@ The core idea: satellite change detection (SAR radar + optical) identifies *wher
 ---
 
 ## Changelog
+
+### v2.12.1 (April 2026) — Full 65-Region Run + Scoring & Market Fixes
+
+- **First complete 65-region run** — all Java, Bali, Sumatra, Kalimantan, Sulawesi, Lombok/NTT, and Eastern Indonesia regions analyzed in a single `--all` pass
+- **Infrastructure fallback database expanded to all 65 regions** — every monitored region now has a curated fallback score when OSM data is incomplete; sanity check rejects implausibly low OSM scores (< 60% of fallback) and substitutes the fallback automatically
+- **Market heat differentiation fixed** — `historical_appreciation` benchmark values corrected from decimals to percentages (e.g., `0.15` -> `15.0`), producing accurate "Booming / Strong / Stable / Stagnant / Declining" classifications instead of uniform "stable"
+- **Benchmark drift monitoring fixed** — drift monitor now receives scored regions (with financial projections) rather than raw satellite data, resolving the `'list' object has no attribute 'get'` error
+- **Regional benchmark coverage expanded** — added price benchmarks for Medan, Palembang, Lampung, Batam, Makassar, Balikpapan, Nusantara/IKN, Lombok, and Denpasar with island-level nearest-benchmark fallback logic
+- **Score clustering reduced** — improved infrastructure multiplier differentiation via the 65-region fallback database, giving each region a distinct infra multiplier rather than identical low-OSM defaults
 
 ### v2.12 (March 2026) — Decision Matrix + Expanded Coverage
 
@@ -258,7 +267,7 @@ OUTPUT
 
 ### Prerequisites
 
-1. **Python 3.8+** - [Download here](https://www.python.org/downloads/)
+1. **Python 3.10+** - [Download here](https://www.python.org/downloads/)
 2. **Google Earth Engine Account** - [Sign up here](https://earthengine.google.com/signup/)
 3. **Google Cloud Project** with Earth Engine API enabled
 
@@ -279,8 +288,11 @@ earthengine authenticate
 cp config/config.example.yaml config/config.yaml
 # Edit config.yaml with your GCP project ID
 
-# 5. Run investment analysis
+# 5. Run investment analysis (Java regions only, default)
 python run_weekly_java_monitor.py
+
+# Or run all 65 regions across Indonesia
+python run_weekly_java_monitor.py --all --yes
 ```
 
 ### Expected Outputs
@@ -300,7 +312,7 @@ CloudClearingAPI/
 ├── src/
 │   ├── core/
 │   │   ├── corrected_scoring.py       # Main scoring engine (Activity × Infra × Market × News × Confidence)
-│   │   ├── automated_monitor.py       # Orchestrates full 29-region pipeline
+│   │   ├── automated_monitor.py       # Orchestrates full 65-region pipeline
 │   │   ├── sar_change_detector.py     # Sentinel-1 SAR radar change detection
 │   │   ├── change_detector.py         # Sentinel-2 optical change detection
 │   │   ├── infrastructure_analyzer.py # OSM Overpass API infrastructure scoring
@@ -328,7 +340,7 @@ CloudClearingAPI/
 │   ├── monitoring/                    # Weekly monitoring JSON (used by momentum analyzer)
 │   └── scraper_cache/                 # Market price cache (24h) + price_history/ JSONL archive
 │
-├── run_weekly_java_monitor.py         # Main entry point — runs all 29 regions + emails report
+├── run_weekly_java_monitor.py         # Main entry point — runs 31 Java (default) or all 65 regions (--all) + emails report
 ├── run_weekly_cron.py                 # Cron wrapper with email and error handling
 ├── .env                              # GMAIL_APP_PASSWORD, GEE project ID (not in git)
 └── config/config.yaml                # System configuration
@@ -346,7 +358,7 @@ This repository includes comprehensive documentation organized hierarchically:
 2. **[QUICKSTART.md](QUICKSTART.md)** - Step-by-step setup and usage guide
 3. **[TECHNICAL_SCORING_DOCUMENTATION.md](TECHNICAL_SCORING_DOCUMENTATION.md)** - Single source of truth for all technical details
 
-### Feature-Specific Documentation (v2.6-alpha)
+### Feature-Specific Documentation
 
 4. **[BENCHMARK_UPDATE_PROCEDURE.md](BENCHMARK_UPDATE_PROCEDURE.md)** - Quarterly benchmark maintenance guide
    - 4-week timeline for BPS/BI data integration

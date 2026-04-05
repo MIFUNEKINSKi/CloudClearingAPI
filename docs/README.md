@@ -1,8 +1,8 @@
 # CloudClearingAPI Documentation
 
-**Version:** 2.9.1-tier3 (Step Functions + Docker + Terraform + GEE Caching + Async Processing)  
-**Last Updated:** November 2, 2025  
-**Project Status:** Production (29 regions, automated orchestration, containerized, cloud-ready)
+**Version:** 2.12.1 (Full 65-Region Coverage + Scoring Fixes)  
+**Last Updated:** April 4, 2026  
+**Project Status:** Production (65 regions across Indonesia, weekly automated reports with email delivery)
 
 ---
 
@@ -12,7 +12,7 @@
 Core system design, data flow, and component responsibilities.
 
 - **[Scoring System](architecture/scoring_system.md)** - Investment scoring algorithm (satellite-centric, 0-100 scale)
-- **[Data Flow Pipeline](architecture/data_flow.md)** - 3-stage pipeline: Scoring → Financial → PDF
+- **[Data Flow Pipeline](architecture/data_flow.md)** - Multi-stage pipeline: Scoring → Financial → PDF
 - **[Component Overview](architecture/components.md)** - Module responsibilities and interfaces
 - **[Configuration Guide](architecture/configuration.md)** - config.yaml structure and settings
 
@@ -31,7 +31,7 @@ Production validation, monitoring, and troubleshooting.
 - **[Docker Setup Guide](deployment/docker-setup.md)** - Complete containerization guide (CCAPI-28.0)
 - **[Terraform Infrastructure Guide](deployment/terraform-guide.md)** - AWS infrastructure as code (CCAPI-28.1)
 - **[Step Functions Orchestration Guide](deployment/step-functions-guide.md)** - Automated pipeline with AWS Step Functions (CCAPI-29.0)
-- **[Production Validation Results](deployment/production_validation.md)** - v2.8.2 validation (5 regions, 100% success)
+- **[Production Validation Results](deployment/production_validation.md)** - Validation reports
 - **[Weekly Monitoring Guide](deployment/monitoring_guide.md)** - Running `run_weekly_java_monitor.py`
 - **[Troubleshooting Guide](deployment/troubleshooting.md)** - Common issues and solutions
 - **[Performance Benchmarks](deployment/performance.md)** - Runtime metrics and optimization
@@ -40,29 +40,21 @@ Production validation, monitoring, and troubleshooting.
 Test strategies, coverage reports, and validation procedures.
 
 - **[Testing Strategy](testing/strategy.md)** - Unit, integration, property-based, and end-to-end tests
-- **[Property-Based Tests](testing/property_based.md)** - Hypothesis invariant validation (9 tests, 416 examples)
+- **[Property-Based Tests](testing/property_based.md)** - Hypothesis invariant validation
 - **[Coverage Reports](testing/coverage.md)** - Current coverage metrics and gaps
-- **[Validation Procedures](testing/validation.md)** - CCAPI-27.1 12-region validation workflow
+- **[Validation Procedures](testing/validation.md)** - Region validation workflow
 
 ### 📝 Changelog & Version History
 Release notes, bug fixes, and feature additions.
 
-- **[Version History](changelog/VERSION_HISTORY.md)** - Complete release timeline (v2.0 → v2.9.1)
-- **[Bug Fix Log](changelog/BUG_FIXES.md)** - Critical bug resolutions with root cause analysis
-- **[Roadmap](changelog/ROADMAP.md)** - Planned features (v2.7-v2.9 tiers)
-- **[CCAPI-29.0: Step Functions Orchestration](changelog/CCAPI-29-0-Step-Functions-Orchestration.md)** - Automated pipeline execution (Tier 3 Phase 1)
-- **[CCAPI-28: DE Foundation Complete](changelog/CCAPI-28-DE-Foundation-Complete.md)** - Docker + Terraform (Tier 2 complete)
-- **[CCAPI-27.5: GEE Cache + Async Processing + Bugfixes](changelog/CCAPI-27.5-Production-Validation.md)** - v2.9.1 complete (Tasks 1-5 + 3 critical hotfixes)
-- **[CCAPI-27.5: GEE Cache Integration (Original Spec)](changelog/CCAPI-27.5-GEE-Cache-Integration.md)** - Satellite data caching design doc
+- **[CHANGELOG.md](../CHANGELOG.md)** - Complete release timeline (v2.0 → v2.12.1)
+- **[CCAPI-29.0: Step Functions Orchestration](changelog/CCAPI-29-0-Step-Functions-Orchestration.md)** - Automated pipeline execution
+- **[CCAPI-28: DE Foundation Complete](changelog/CCAPI-28-DE-Foundation-Complete.md)** - Docker + Terraform
 
 ### 🗺️ Roadmap
 Strategic development plan and future features.
 
-- **[v2.9 → v3.0 Development Roadmap](roadmap/v2.9-to-v3.0.md)** - DE-focused approach (10-16 weeks)
-  - ✅ Tier 1: Enhanced testing (property-based, integration) - COMPLETE
-  - ✅ Tier 2: Docker + Terraform + CI/CD - COMPLETE
-  - 🔄 Tier 3: Step Functions + dbt + Great Expectations (CCAPI-29.0 ✅, CCAPI-29.1-29.2 in progress)
-  - 🔲 Tier 4: CloudWatch + MkDocs + demo video (2-3 weeks)
+- **[Development Roadmap](../DEVELOPMENT_ROADMAP.md)** - Current priorities and future plans
 
 ---
 
@@ -73,94 +65,78 @@ Strategic development plan and future features.
 2. **Read:** [Data Flow Pipeline](architecture/data_flow.md)  
 3. **Read:** [Scoring System](architecture/scoring_system.md)
 4. **Review:** [API Documentation](api/corrected_scoring.md)
-5. **Try:** Run validation: `python run_ccapi_27_1_validation.py`
+5. **Try:** Run monitoring: `python run_weekly_java_monitor.py`
 
 ### Common Tasks
-- **Add new region:** Edit `src/indonesia_expansion_regions.py`
-- **Modify scoring thresholds:** See [Scoring System](architecture/scoring_system.md) §3.2
-- **Update benchmarks:** Use `tools/recalibrate_benchmarks.py` (see [Benchmark Drift API](api/benchmark_drift_monitor.md))
-- **Debug market data:** See [Troubleshooting](deployment/troubleshooting.md) §2.3
+- **Add new region:** Edit `src/indonesia_expansion_regions.py` and add entries to `infrastructure_analyzer.py` regional fallback + `scraper_orchestrator.py` regional benchmarks
+- **Modify scoring thresholds:** See [Scoring System](architecture/scoring_system.md)
+- **Update benchmarks:** See [Benchmark Update Procedure](../BENCHMARK_UPDATE_PROCEDURE.md)
+- **Debug market data:** See [Troubleshooting](deployment/troubleshooting.md)
 
-### Running Weekly Monitoring (v2.9.1)
+### Running Weekly Monitoring (v2.12.1)
 ```bash
 # Authenticate Google Earth Engine (one-time)
 earthengine authenticate
 
-# Run weekly monitoring with GEE caching + async parallel processing
-# Duration: 0.9-16 min (cache-dependent, 82-97% faster than baseline)
+# Run Java regions only (31 regions, default)
 python run_weekly_java_monitor.py
 
-# Outputs:
-# - PDF: output/reports/executive_summary_YYYYMMDD_HHMMSS.pdf (130KB)
-# - JSON: output/monitoring/weekly_monitoring_YYYYMMDD_HHMMSS.json (25MB)
-# - Cache: cache/gee/ (400MB) + cache/osm/ (30MB)
-```
+# Run ALL 65 regions across Indonesia
+python run_weekly_java_monitor.py --all --yes
 
-**Performance:**
-- **Baseline (v2.8):** 87 minutes
-- **Cold cache (v2.9.1):** 16 minutes (82% faster)
-- **Warm cache (v2.9.1):** 0.9 minutes (97% faster)
+# Outputs:
+# - PDF: output/reports/executive_summary_YYYYMMDD_HHMMSS.pdf
+# - JSON: output/monitoring/weekly_monitoring_YYYYMMDD_HHMMSS.json
+# - Email: Auto-sent to configured recipient with PDF attached
+# - Price Archive: output/scraper_cache/price_history/ (JSONL, accumulates)
+```
 
 ---
 
 ## 📊 System Overview
 
-**CloudClearingAPI** is a satellite-based land investment intelligence platform monitoring **29+ regions** across Indonesia (Java island focus) for development opportunities. Combines **Sentinel-2 imagery** with real-time infrastructure data and financial projections to generate **weekly investment reports** with BUY/WATCH/PASS recommendations.
+**CloudClearingAPI** is a satellite-based land investment intelligence platform monitoring **65 regions** across Indonesia for development opportunities. Combines **dual-sensor satellite imagery** (Sentinel-2 optical + Sentinel-1 SAR radar) with real-time infrastructure data, live market prices, and development news to generate **weekly investment reports** with BUY/WATCH/PASS recommendations.
 
 ### Core Value Proposition
 Transform **satellite pixels** → **actionable investment thesis** with concrete **ROI projections**.
 
 ### Key Technologies
-- **Geospatial:** Google Earth Engine (Sentinel-2, 10m resolution)
-- **Infrastructure:** OpenStreetMap Overpass API (7-day caching)
-- **Market Data:** Web scraping (Lamudi, Rumah.com, 99.co) + static benchmarks
-- **Reports:** ReportLab PDF generation
+- **Geospatial:** Google Earth Engine (Sentinel-2 optical 10m + Sentinel-1 SAR radar, dual-sensor fusion)
+- **Infrastructure:** OpenStreetMap Overpass API (7-day caching, 65-region fallback database)
+- **Market Data:** Web scraping (Lamudi primary, 99.co secondary) + static benchmarks + JSONL price history
+- **News:** Jakarta Post, Kompas, Antara News scraping with region matching
+- **Reports:** ReportLab PDF with decision matrix, executive summary, and per-region detail pages
+- **Email:** Gmail SMTP auto-delivery with PDF attachment
 - **Testing:** pytest + Hypothesis (property-based testing)
 
 ### Architecture Principles
 1. **Satellite-centric scoring:** Development activity drives base score (0-40 points)
-2. **Multiplier-based enrichment:** Infrastructure (0.8-1.3x) and Market (0.85-1.4x) multiply base
+2. **Multiplier-based enrichment:** Infrastructure (0.8-1.3x), Market (0.85-1.4x), News (0.95-1.2x), Momentum (0.85-1.3x)
 3. **Cascading fallback:** Live scraping → Cache → Static benchmarks (never fails)
-4. **Strict separation:** Stage 1 (Scoring) → Stage 2 (Financial) → Stage 3 (PDF)
-
----
-
-## 🔧 Configuration
-
-Main configuration file: `config/config.yaml`
-
-Critical settings:
-- `gee_project`: Google Cloud Project ID (required for GEE since 2023)
-- `web_scraping.enabled`: Toggle live scraping vs benchmarks only
-- `web_scraping.cache_expiry_hours`: Balance freshness vs API load (24-48h recommended)
-- `processing.max_cloud_cover`: 20 = strict, 50 = permissive
-- `financial_projections.target_investment_usd`: Budget-driven plot sizing (default $100K)
-
-See [Configuration Guide](architecture/configuration.md) for complete reference.
+4. **Dual-sensor fusion:** Optical + SAR radar with cloud-penetrating fallback
+5. **Infrastructure sanity checks:** OSM data validated against curated regional fallback database
 
 ---
 
 ## 📈 Current Status
 
-### Production Metrics (October 2025)
-- **Regions Monitored:** 29 (Java island)
-- **Weekly Runtime:** ~30-35 minutes (first run) / ~15-20 minutes (with warm cache)
-- **Parallel Processing:** 5 regions/batch, 6 batches total
-- **Market Data Success:** 100% (Lamudi primary source)
-- **OSM Cache Hit Rate:** 86% (7-day TTL)
-- **GEE Cache Hit Rate:** 0-70% (14-day TTL, increases after first run)
-- **Average Score:** 45-75 (varies by region/week)
+### Production Metrics (April 2026)
+- **Regions Monitored:** 65 (31 Java + 34 outer islands)
+- **Scoring Pipeline:** Activity × Infrastructure × Market × News × Confidence × Momentum
+- **Satellite Sensors:** Sentinel-2 optical + Sentinel-1 SAR radar (dual-sensor fusion)
+- **Market Data:** Lamudi live scraping (~40% coverage), benchmark fallback for remainder
+- **Infrastructure:** OSM with 65-region curated fallback database
+- **News Sources:** Jakarta Post, Kompas, Antara News
+- **Report Output:** Multi-page PDF with decision matrix + auto-email delivery
 
 ### Recent Milestones
-- ✅ **v2.9.1-tier2 (CCAPI-28):** Docker + Terraform (Tier 2 DE Foundation complete)
-  - **CCAPI-28.0:** Docker containerization (1.19GB image, 50% reduction, CI/CD pipeline)
-  - **CCAPI-28.1:** Terraform IaC (5 AWS modules, ~70 resources, $23-139/mo cost-optimized)
-- ✅ **v2.9.1 (CCAPI-27.5):** GEE Caching + Async Processing (82-97% faster, 19 tests passing)
-- ✅ **CCAPI-27.4:** Documentation refactor (modular structure, 76% size reduction)
-- ✅ **CCAPI-27.3:** Property-based testing (9 tests, 416 examples, all passing)
-- ✅ **CCAPI-27.2:** Benchmark drift monitoring (608 lines, production-ready)
-- ✅ **CCAPI-27.1:** Full validation (12 regions, 100/100 improvement score)
-- ✅ **v2.8.2:** Market data restoration (4 root causes fixed, 100% success rate)
+- ✅ **v2.12.1 (Apr 2026):** First full 65-region run, infrastructure/market/drift fixes
+- ✅ **v2.12 (Mar 2026):** Decision matrix PDF page, expanded to 65 regions
+- ✅ **v2.11 (Mar 2026):** SAR radar fusion, news catalyst scoring, price momentum, auto-email
+- ✅ **v2.10 (Feb 2026):** Indonesia expansion (39 → 51 regions)
+- ✅ **v2.9.1 (Nov 2025):** Docker + Terraform + Step Functions + GEE caching + async processing
+- ✅ **v2.8.2 (Oct 2025):** Market data restoration (Lamudi JSON-LD parsing)
+- ✅ **v2.7.0 (Oct 2025):** Budget-driven investment sizing
 
 ---
 
@@ -169,7 +145,7 @@ See [Configuration Guide](architecture/configuration.md) for complete reference.
 ### Adding Features
 1. Create feature branch: `git checkout -b feature/CCAPI-XX-description`
 2. Write tests first (TDD approach)
-3. Implement feature following [Architecture Principles](architecture/components.md)
+3. Implement feature following architecture principles
 4. Run validation: `pytest tests/ --cov=src`
 5. Update relevant documentation in `docs/`
 6. Create PR with detailed description
@@ -181,8 +157,6 @@ See [Configuration Guide](architecture/configuration.md) for complete reference.
 - **Logging:** Use `logging` module, not `print()`
 - **Error handling:** All network requests must have timeout + try/except
 
-See [Component Overview](architecture/components.md) for detailed patterns.
-
 ---
 
 ## 📞 Support & Resources
@@ -190,16 +164,16 @@ See [Component Overview](architecture/components.md) for detailed patterns.
 - **GitHub Repository:** https://github.com/MIFUNEKINSKi/CloudClearingAPI
 - **Issue Tracker:** GitHub Issues
 - **Documentation:** `/docs/README.md` (this file)
-- **Legacy Documentation:** `TECHNICAL_SCORING_DOCUMENTATION.md` (deprecated - use modular docs)
+- **Main README:** `README.md` (project overview and scoring philosophy)
 
 ---
 
 ## 📜 License
 
-Proprietary - CloudClearingAPI Team  
+MIT License  
 **Author:** Chris Moore  
-**Contact:** [Project maintainer contact]
+**GitHub:** [@MIFUNEKINSKi](https://github.com/MIFUNEKINSKi)
 
 ---
 
-**Last Documentation Update:** October 29, 2025 (CCAPI-28 Tier 2 DE Foundation - Docker + Terraform)
+**Last Documentation Update:** April 4, 2026 (v2.12.1 — Full 65-Region Coverage + Scoring Fixes)
