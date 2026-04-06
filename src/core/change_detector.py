@@ -111,83 +111,107 @@ class SentinelProcessor:
             logger.error(f"Failed to initialize satellite image saver: {e}")
             self.image_saver = None
     
-    def find_best_available_dates(self, bbox, # type: ignore 
+    def find_best_available_dates(self, bbox, # type: ignore
                                  target_end_date: Optional[str] = None,
-                                 lookback_days: int = 30) -> Dict[str, Any]:
+                                 lookback_days: int = 56) -> Dict[str, Any]:
         """
-        Find the best available Sentinel-2 dates by working backwards from target date
-        
+        Find the best available Sentinel-2 dates by working backwards from target date.
+
+        Uses progressive cloud-cover relaxation: tries the configured threshold first,
+        then widens to 40 % and 60 % before giving up on each week.  Combined with the
+        extended 8-week lookback (up from 5 weeks), this dramatically improves optical
+        hit rates during Indonesia's rainy season.
+
         Args:
             bbox: Area of interest
             target_end_date: Desired end date (YYYY-MM-DD), defaults to today-7 days
-            lookback_days: How many days to look back for available imagery
-            
+            lookback_days: How many days to look back for available imagery (default 56 = 8 weeks)
+
         Returns:
             Dict with 'week_a_start', 'week_b_start', 'actual_images_found' keys
         """
         if not target_end_date:
             target_end_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
-            
+
         logger.info(f"Finding best available Sentinel-2 dates around {target_end_date}")
-        
+
         target_date = datetime.strptime(target_end_date, '%Y-%m-%d')
-        
-        # Check for available imagery working backwards
-        for days_back in range(0, lookback_days, 7):  # Check weekly intervals
-            check_date = target_date - timedelta(days=days_back)
-            week_b_start = check_date.strftime('%Y-%m-%d')
-            week_a_start = (check_date - timedelta(days=14)).strftime('%Y-%m-%d')
-            
-            # Test if we have imagery for both periods
-            try:
-                # Quick test for week B (recent)
-                week_b_collection = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')  # type: ignore
-                    .filterBounds(bbox)
-                    .filterDate(week_b_start, (check_date + timedelta(days=7)).strftime('%Y-%m-%d'))
-                    .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', self.config.max_cloud_cover))  # type: ignore
+
+        # Progressive cloud-cover thresholds: try strict first, then relax.
+        # 20 % is ideal, 40 % still gives usable optical signal, 60 % is noisy but
+        # far better than falling back to SAR-only.
+        cloud_thresholds = [self.config.max_cloud_cover, 40.0, 60.0]
+        # De-duplicate in case max_cloud_cover is already >= 40 or 60
+        cloud_thresholds = sorted(set(cloud_thresholds))
+
+        for cloud_pct in cloud_thresholds:
+            for days_back in range(0, lookback_days, 7):  # Check weekly intervals
+                check_date = target_date - timedelta(days=days_back)
+                week_b_start = check_date.strftime('%Y-%m-%d')
+                week_a_start = (check_date - timedelta(days=14)).strftime('%Y-%m-%d')
+
+                try:
+                    week_b_collection = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')  # type: ignore
+                        .filterBounds(bbox)
+                        .filterDate(week_b_start, (check_date + timedelta(days=7)).strftime('%Y-%m-%d'))
+                        .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud_pct))  # type: ignore
+                    )
+
+                    week_a_end = check_date - timedelta(days=7)
+                    week_a_collection = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')  # type: ignore
+                        .filterBounds(bbox)
+                        .filterDate(week_a_start, week_a_end.strftime('%Y-%m-%d'))
+                        .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud_pct))  # type: ignore
+                    )
+
+                    week_b_count = week_b_collection.size().getInfo()
+                    week_a_count = week_a_collection.size().getInfo()
+
+                    if week_b_count > 0 and week_a_count > 0:
+                        relaxed = cloud_pct > self.config.max_cloud_cover
+                        label = f" (relaxed cloud threshold: {cloud_pct}%)" if relaxed else ""
+                        logger.info(
+                            f"Found available imagery{label}: "
+                            f"Week A ({week_a_start}): {week_a_count} images, "
+                            f"Week B ({week_b_start}): {week_b_count} images"
+                        )
+                        return {
+                            'week_a_start': week_a_start,
+                            'week_b_start': week_b_start,
+                            'actual_images_found': True,
+                            'week_a_count': week_a_count,
+                            'week_b_count': week_b_count,
+                            'days_back_from_target': days_back,
+                            'cloud_cover_threshold_used': cloud_pct,
+                        }
+
+                except Exception as e:
+                    logger.debug(f"Error checking dates {week_a_start}/{week_b_start} (cloud {cloud_pct}%): {e}")
+                    continue
+
+            if cloud_pct < cloud_thresholds[-1]:
+                logger.info(
+                    f"No imagery at {cloud_pct}% cloud cover within {lookback_days} days — relaxing threshold"
                 )
-                
-                # Quick test for week A (baseline)
-                week_a_end = check_date - timedelta(days=7)
-                week_a_collection = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')  # type: ignore
-                    .filterBounds(bbox)
-                    .filterDate(week_a_start, week_a_end.strftime('%Y-%m-%d'))
-                    .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', self.config.max_cloud_cover))  # type: ignore
-                )
-                
-                # Test if collections have images
-                week_b_count = week_b_collection.size().getInfo()
-                week_a_count = week_a_collection.size().getInfo()
-                
-                if week_b_count > 0 and week_a_count > 0:
-                    logger.info(f"Found available imagery: Week A ({week_a_start}): {week_a_count} images, Week B ({week_b_start}): {week_b_count} images")
-                    return {
-                        'week_a_start': week_a_start,
-                        'week_b_start': week_b_start,
-                        'actual_images_found': True,
-                        'week_a_count': week_a_count,
-                        'week_b_count': week_b_count,
-                        'days_back_from_target': days_back
-                    }
-                    
-            except Exception as e:
-                logger.debug(f"Error checking dates {week_a_start}/{week_b_start}: {e}")
-                continue
-                
+
         # If no good dates found, return the original target dates with a warning
-        logger.warning(f"No suitable imagery found within {lookback_days} days of {target_end_date}")
-        logger.warning("Returning target dates - may result in empty composites")
-        
+        logger.warning(
+            f"No suitable imagery found within {lookback_days} days of {target_end_date} "
+            f"(tried cloud thresholds {cloud_thresholds})"
+        )
+        logger.warning("Returning target dates — may result in empty composites / SAR-only fallback")
+
         week_b_start = target_end_date
         week_a_start = (target_date - timedelta(days=14)).strftime('%Y-%m-%d')
-        
+
         return {
             'week_a_start': week_a_start,
             'week_b_start': week_b_start,
             'actual_images_found': False,
             'week_a_count': 0,
             'week_b_count': 0,
-            'days_back_from_target': lookback_days
+            'days_back_from_target': lookback_days,
+            'cloud_cover_threshold_used': cloud_thresholds[-1],
         }
     
     def mask_s2_clouds_advanced(self, image: ee.Image) -> ee.Image:  # type: ignore

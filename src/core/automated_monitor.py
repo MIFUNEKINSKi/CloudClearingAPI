@@ -8,7 +8,9 @@ with alerting, historical tracking, and comprehensive reporting.
 import asyncio
 import logging
 import os
+import threading
 import time
+import traceback
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 import json
@@ -1131,7 +1133,12 @@ class AutomatedMonitor:
                 continue
         return prev_counts
 
-    def _score_single_region(self, region_data: Dict, prev_news_counts: Dict[str, int]) -> Optional[Dict]:
+    def _score_single_region(
+        self,
+        region_data: Dict,
+        prev_news_counts: Dict[str, int],
+        cancel_event: Optional[threading.Event] = None,
+    ) -> Optional[Dict]:
         """Score a single region. Thread-safe — no signal.alarm, uses only per-call state."""
         region_name = region_data['region_name']
         try:
@@ -1209,7 +1216,8 @@ class AutomatedMonitor:
                 coordinates=coordinates,
                 bbox=bbox,
                 sar_confidence_boost=fusion_result['confidence_boost'] if fusion_result else 0.0,
-                news_catalyst_multiplier=news_catalyst_result.multiplier if news_catalyst_result else 1.0
+                news_catalyst_multiplier=news_catalyst_result.multiplier if news_catalyst_result else 1.0,
+                cancel_event=cancel_event,
             )
             
             # Financial Projection
@@ -1310,7 +1318,7 @@ class AutomatedMonitor:
                     **corrected_result.data_sources,
                     'availability': corrected_result.data_availability
                 },
-                'analysis_type': 'corrected_satellite_centric',
+                'analysis_type': 'dynamic_real_time',
                 'financial_projection': financial_projection,
                 'rvi_data': rvi_data,
                 'sensitivity_flag': corrected_result.sensitivity_flag,
@@ -1419,6 +1427,7 @@ class AutomatedMonitor:
                 from concurrent.futures import ThreadPoolExecutor, as_completed
 
                 dynamic_scored_regions = []
+                failed_regions: List[Dict[str, Any]] = []  # track failures for summary + retry
                 # Default 2: Overpass is throttled globally, but fewer concurrent scorers
                 # reduces memory pressure and scraper/API contention during full runs.
                 _mw = int(os.environ.get("CC_SCORING_MAX_WORKERS", "2"))
@@ -1427,12 +1436,26 @@ class AutomatedMonitor:
                 logger.info(f"   ⚡ Scoring {n_score} regions with {max_workers} parallel workers")
                 _region_timeout = int(os.environ.get("CC_SCORE_REGION_TIMEOUT_SEC", "1200"))
 
+                # Map region_name → cancel_event so outer timeout can signal in-flight Overpass
+                cancel_events: Dict[str, threading.Event] = {}
+
+                def _submit_region(executor, region_data, cancel_events_map):
+                    rn = region_data['region_name']
+                    evt = threading.Event()
+                    cancel_events_map[rn] = evt
+                    future = executor.submit(
+                        self._score_single_region, region_data, prev_news_counts,
+                        cancel_event=evt,
+                    )
+                    return future
+
+                # --- initial pass ---
                 with ThreadPoolExecutor(max_workers=max_workers) as executor:
                     future_to_region = {}
+                    region_data_by_name = {}
                     for region_data in yogyakarta_regions:
-                        future = executor.submit(
-                            self._score_single_region, region_data, prev_news_counts
-                        )
+                        region_data_by_name[region_data['region_name']] = region_data
+                        future = _submit_region(executor, region_data, cancel_events)
                         future_to_region[future] = region_data['region_name']
 
                     scoring_t0 = time.monotonic()
@@ -1445,8 +1468,27 @@ class AutomatedMonitor:
                             if result:
                                 dynamic_scored_regions.append(result)
                                 ok = True
+                            else:
+                                failed_regions.append({
+                                    'region_name': region_name,
+                                    'error': 'returned None (scoring produced no result)',
+                                    'phase': 'initial',
+                                })
                         except Exception as e:
-                            logger.error(f"❌ Scoring failed for {region_name}: {e}")
+                            # Signal cancellation so in-flight Overpass bails out quickly
+                            evt = cancel_events.get(region_name)
+                            if evt is not None:
+                                evt.set()
+                            failed_regions.append({
+                                'region_name': region_name,
+                                'error': str(e),
+                                'error_type': type(e).__name__,
+                                'traceback': traceback.format_exc(),
+                                'phase': 'initial',
+                            })
+                            logger.error(
+                                f"❌ Scoring failed for {region_name}: {type(e).__name__}: {e}"
+                            )
 
                         completed_score += 1
                         elapsed_min = (time.monotonic() - scoring_t0) / 60.0
@@ -1458,21 +1500,75 @@ class AutomatedMonitor:
                             eta_part = " | scoring phase complete"
                         else:
                             eta_part = ""
-                        status = "ok" if ok else "failed"
+                        status = "ok" if ok else "FAILED"
                         logger.info(
                             f"   📈 Scoring [{completed_score}/{n_score}] {region_name} ({status}) — "
                             f"{elapsed_min:.1f} min in scoring phase{eta_part}"
                         )
-                
+
+                # --- retry pass (sequential, one attempt) for failed regions ---
+                if failed_regions:
+                    retryable = [f for f in failed_regions if f['phase'] == 'initial']
+                    if retryable:
+                        logger.info(
+                            f"   🔄 Retrying {len(retryable)} failed region(s) sequentially..."
+                        )
+                        still_failed = []
+                        for failure in retryable:
+                            rn = failure['region_name']
+                            rd = region_data_by_name.get(rn)
+                            if rd is None:
+                                still_failed.append(failure)
+                                continue
+                            try:
+                                # Fresh cancel event, no outer timeout — run sequentially
+                                result = self._score_single_region(rd, prev_news_counts)
+                                if result:
+                                    dynamic_scored_regions.append(result)
+                                    logger.info(f"   ✅ Retry succeeded for {rn}")
+                                else:
+                                    failure['phase'] = 'retry'
+                                    still_failed.append(failure)
+                                    logger.warning(f"   ⚠️ Retry returned None for {rn}")
+                            except Exception as e:
+                                failure['error'] = str(e)
+                                failure['error_type'] = type(e).__name__
+                                failure['traceback'] = traceback.format_exc()
+                                failure['phase'] = 'retry'
+                                still_failed.append(failure)
+                                logger.error(f"   ❌ Retry also failed for {rn}: {type(e).__name__}: {e}")
+                        failed_regions = still_failed
+
+                # --- error summary ---
+                if failed_regions:
+                    logger.warning(
+                        f"   ⚠️ SCORING SUMMARY: {len(dynamic_scored_regions)}/{n_score} succeeded, "
+                        f"{len(failed_regions)} failed after retry"
+                    )
+                    for f in failed_regions:
+                        logger.warning(
+                            f"      FAILED: {f['region_name']} — "
+                            f"{f.get('error_type', 'Unknown')}: {f.get('error', '?')}"
+                        )
+                else:
+                    logger.info(
+                        f"   ✅ SCORING SUMMARY: all {n_score} regions scored successfully"
+                    )
+
                 if dynamic_scored_regions:
                     # Generate investment report using dynamic scores
-                    yogyakarta_report = self._generate_dynamic_investment_report(dynamic_scored_regions)
+                    yogyakarta_report = self._generate_dynamic_investment_report(
+                        dynamic_scored_regions, failed_regions=failed_regions,
+                    )
                     investment_report['yogyakarta_analysis'] = yogyakarta_report
-                    
+
                     dynamic_count = sum(1 for r in dynamic_scored_regions if r.get('analysis_type') == 'dynamic_real_time')
                     total_opportunities = len(yogyakarta_report.get('buy_recommendations', []))
-                    
-                    logger.info(f"🎯 DYNAMIC MARKET Analysis: {dynamic_count}/{len(dynamic_scored_regions)} regions analyzed with real-time data")
+
+                    logger.info(
+                        f"🎯 DYNAMIC MARKET Analysis: {dynamic_count}/{n_score} regions analyzed "
+                        f"with real-time data ({len(failed_regions)} failed)"
+                    )
                     logger.info(f"💰 Investment opportunities identified: {total_opportunities}")
                     
             except Exception as e:
@@ -1744,7 +1840,11 @@ class AutomatedMonitor:
             'message': 'Historical analysis will be implemented in future version'
         }
 
-    def _generate_dynamic_investment_report(self, dynamic_scored_regions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _generate_dynamic_investment_report(
+        self,
+        dynamic_scored_regions: List[Dict[str, Any]],
+        failed_regions: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
         """
         Generate investment report from dynamic scoring results.
         Regions are sorted by investment score (highest first).
@@ -1859,17 +1959,26 @@ class AutomatedMonitor:
         watch_list.sort(key=lambda x: x.get('investment_score', 0), reverse=True)
         pass_list.sort(key=lambda x: x.get('investment_score', 0), reverse=True)
         
+        _failed = failed_regions or []
+        _failed_summary = [
+            {'region': f['region_name'], 'error': f.get('error', '?'), 'phase': f.get('phase', '?')}
+            for f in _failed
+        ]
+
         return {
             'buy_recommendations': buy_recommendations,
             'watch_list': watch_list,
-            'pass_list': pass_list,  # ✅ NEW: Include PASS regions so PDF shows all scores
+            'pass_list': pass_list,
             'market_insights': market_insights,
+            'failed_regions': _failed_summary,
             'summary': {
+                'total_regions_attempted': len(dynamic_scored_regions) + len(_failed),
                 'total_regions_analyzed': len(dynamic_scored_regions),
+                'failed_region_count': len(_failed),
                 'dynamic_analysis_count': len(dynamic_regions),
                 'buy_recommendations_count': len(buy_recommendations),
                 'watch_list_count': len(watch_list),
-                'pass_list_count': len(pass_list),  # ✅ NEW: Track PASS count
+                'pass_list_count': len(pass_list),
                 'average_confidence': avg_confidence,
                 'analysis_methodology': 'dynamic_real_time_intelligence'
             }

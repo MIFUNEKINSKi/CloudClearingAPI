@@ -109,7 +109,8 @@ class CorrectedInvestmentScorer:
                                    bbox: Dict[str, float],
                                    actual_price_m2: Optional[float] = None,
                                    sar_confidence_boost: float = 0.0,
-                                   news_catalyst_multiplier: float = 1.0) -> CorrectedScoringResult:
+                                   news_catalyst_multiplier: float = 1.0,
+                                   cancel_event=None) -> CorrectedScoringResult:
         """
         Calculate investment score using the CORRECT three-part system.
 
@@ -143,7 +144,7 @@ class CorrectedInvestmentScorer:
         
         # PART 2: INFRASTRUCTURE ANALYSIS & MULTIPLIER
         infrastructure_data, infra_multiplier = self._get_infrastructure_multiplier(
-            region_name, bbox, data_availability
+            region_name, bbox, data_availability, cancel_event=cancel_event
         )
         logger.info(f"   🏗️ Infrastructure Multiplier: {infra_multiplier:.2f}x (score: {infrastructure_data['infrastructure_score']}/100)")
         
@@ -346,10 +347,11 @@ class CorrectedInvestmentScorer:
         else:
             return 5.0
     
-    def _get_infrastructure_multiplier(self, 
+    def _get_infrastructure_multiplier(self,
                                       region_name: str,
                                       bbox: Dict[str, float],
-                                      data_availability: Dict[str, bool]) -> tuple:
+                                      data_availability: Dict[str, bool],
+                                      cancel_event=None) -> tuple:
         """
         🆕 IMPROVED: Get infrastructure data and convert to TIERED multiplier (0.8-1.3x).
         
@@ -367,7 +369,8 @@ class CorrectedInvestmentScorer:
             # Call the actual method that exists: analyze_infrastructure_context()
             infrastructure_data = self.infrastructure_engine.analyze_infrastructure_context(
                 bbox=bbox,
-                region_name=region_name
+                region_name=region_name,
+                cancel_event=cancel_event,
             )
             data_availability['infrastructure_data'] = True
             
