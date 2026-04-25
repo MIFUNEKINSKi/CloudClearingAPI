@@ -436,6 +436,8 @@ class PDFReportGenerator:
             Paragraph('<b>RVI</b>', header_style),
             Paragraph('<b>Mom.</b>', header_style),
             Paragraph('<b>3Y ROI</b>', header_style),
+            Paragraph('<b>Sat</b>', header_style),
+            Paragraph('<b>Mkt</b>', header_style),
             Paragraph('<b>Data</b>', header_style),
         ]]
 
@@ -506,6 +508,36 @@ class PDFReportGenerator:
             else:
                 data_str = '<font color="red">○○</font>'
 
+            # Satellite freshness column: optical = green ✓, SAR-only = age in days
+            # (yellow <=14d, red >14d), missing = red ✗.
+            sat_src = str(ds.get('satellite', 'optical'))
+            sat_age = ds.get('satellite_data_age_days', 0) or 0
+            if sat_src == 'sar_only':
+                if sat_age > 14:
+                    sat_str = f'<font color="red"><b>SAR {sat_age}d</b></font>'
+                else:
+                    sat_str = f'<font color="#CC8800">SAR {sat_age}d</font>'
+            elif sat_src in ('optical', '', None):
+                sat_str = '<font color="green">opt</font>'
+            else:
+                sat_str = f'<font color="#CC8800">{sat_src[:6]}</font>'
+
+            # Market source column: live source name, "cache", or "bench" (clamped tagged)
+            if 'clamped' in mkt_src:
+                mkt_str = f'<font color="#CC8800">{mkt_src.split("_")[0][:5]}*</font>'
+            elif 'cached' in mkt_src:
+                mkt_str = '<font color="#CC8800">cache</font>'
+            elif mkt_src in ('static_benchmark', 'fallback', 'regional_benchmark', ''):
+                mkt_str = '<font color="red">bench</font>'
+            elif mkt_src.startswith('lamudi'):
+                mkt_str = '<font color="green">lam</font>'
+            elif mkt_src.startswith('rumah'):
+                mkt_str = '<font color="green">rum</font>'
+            elif mkt_src.startswith('99'):
+                mkt_str = '<font color="green">99co</font>'
+            else:
+                mkt_str = f'{mkt_src[:5]}'
+
             table_data.append([
                 Paragraph(region_name, cell_style),
                 Paragraph(f'<b>{score:.1f}</b>', cell_style),
@@ -515,10 +547,12 @@ class PDFReportGenerator:
                 Paragraph(rvi_str, cell_style),
                 Paragraph(mom_str, cell_style),
                 Paragraph(f'{roi_3yr*100:.1f}%' if roi_3yr else '-', cell_style),
+                Paragraph(sat_str, cell_style),
+                Paragraph(mkt_str, cell_style),
                 Paragraph(data_str, cell_style),
             ])
 
-        col_widths = [1.35*inch, 0.45*inch, 0.45*inch, 0.7*inch, 0.55*inch, 0.4*inch, 0.5*inch, 0.5*inch, 0.35*inch]
+        col_widths = [1.25*inch, 0.4*inch, 0.4*inch, 0.6*inch, 0.5*inch, 0.35*inch, 0.45*inch, 0.45*inch, 0.55*inch, 0.45*inch, 0.35*inch]
         table = Table(table_data, colWidths=col_widths, repeatRows=1)
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E86AB')),
@@ -553,6 +587,16 @@ class PDFReportGenerator:
             '<b>Data:</b> <font color="green">●●</font> = both live | '
             '<font color="#CC8800">●○</font> = partial | '
             '<font color="red">○○</font> = fallback only</font>',
+            self.styles['Normal']
+        ))
+        story.append(Paragraph(
+            '<font size="7"><b>Sat:</b> '
+            '<font color="green">opt</font> = optical (fresh) | '
+            '<font color="#CC8800">SAR Nd</font> = radar-only N days old (no optical verification) | '
+            '<font color="red">SAR &gt;14d</font> = stale &nbsp; '
+            '<b>Mkt:</b> <font color="green">lam/rum/99co</font> = live | '
+            '<font color="#CC8800">cache / lam*</font> = cached or outlier-clamped | '
+            '<font color="red">bench</font> = static benchmark (verify pricing independently)</font>',
             self.styles['Normal']
         ))
 

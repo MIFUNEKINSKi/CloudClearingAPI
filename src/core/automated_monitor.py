@@ -1340,7 +1340,12 @@ class AutomatedMonitor:
                 'rationale': corrected_result.rationale,
                 'data_sources': {
                     **corrected_result.data_sources,
-                    'availability': corrected_result.data_availability
+                    'availability': corrected_result.data_availability,
+                    # Satellite provenance for PDF/email confidence display
+                    'satellite': region_data.get('data_source', 'optical'),
+                    'satellite_data_age_days': region_data.get('data_age_days', 0),
+                    'satellite_confidence_penalty': region_data.get('confidence_penalty', 0),
+                    'satellite_date_range': region_data.get('date_range_used', ''),
                 },
                 'analysis_type': 'dynamic_real_time',
                 'financial_projection': financial_projection,
