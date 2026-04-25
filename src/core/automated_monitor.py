@@ -432,135 +432,152 @@ class AutomatedMonitor:
         now = datetime.now()
         max_attempts = 5
         date_attempts = []
-        
+
         for attempt_num in range(max_attempts):
             weeks_back = attempt_num + 1
             start_date = now - timedelta(days=weeks_back*7+7)
             end_date = now - timedelta(days=weeks_back*7)
-            
+
             if weeks_back == 1:
                 description = "recent (1 week ago)"
             else:
                 description = f"{weeks_back} weeks ago"
-            
-            date_attempts.append((start_date, end_date, description))
-        
-        # Try each date range for this region until one works
-        last_error = None
-        for attempt_num, (start_date, end_date, description) in enumerate(date_attempts):
-            try:
-                week_a_str = start_date.strftime('%Y-%m-%d')
-                week_b_str = end_date.strftime('%Y-%m-%d')
-                
-                if attempt_num > 0:
-                    logger.info(f"   🔄 {region_name}: Trying fallback {description}: {week_a_str} to {week_b_str}")
-                
-                # Run change detection
-                results = self.detector.detect_weekly_changes(
-                    week_a_start=week_a_str,
-                    week_b_start=week_b_str,
-                    bbox=bbox,
-                    export_results=True
-                )
-                
-                # Check if we got valid results (not empty composites or errors)
-                # Check for error in change_types dict or if change_count is 0 with error in satellite_images
-                has_error = (
-                    'error' in results.get('change_types', {}) or
-                    (results.get('change_count', 0) == 0 and 
-                     'error' in results.get('satellite_images', {}))
-                )
-                
-                if has_error:
-                    # Empty composite or computation error, try next fallback
-                    if attempt_num < len(date_attempts) - 1:
-                        logger.warning(f"   ⚠️ {region_name}: {description} unavailable, will try next fallback")
-                        continue
-                    else:
-                        logger.warning(f"   ⚠️ {region_name}: All {len(date_attempts)} optical date ranges failed — attempting SAR-only fallback")
-                        sar_only_result = self._attempt_sar_only_fallback(region_name, region_bbox)
-                        if sar_only_result is not None:
-                            return sar_only_result
-                        logger.error(f"   ❌ {region_name}: All {len(date_attempts)} date range attempts AND SAR fallback failed!")
-                        return None
-                
-                # If we got here without error, we have good data!
-                # Enhance results with region info and save satellite images
-                satellite_images = results.get('satellite_images', {})
-                saved_images = {}
-                
-                # 📸 SAVE SATELLITE IMAGES for PDF integration
-                if satellite_images and 'error' not in satellite_images:
-                    try:
-                        saved_images = self.image_saver.save_satellite_images(
-                            satellite_images, region_name, week_a_str, week_b_str
-                        )
-                        logger.info(f"📸 Saved {len([p for p in saved_images.values() if p])} satellite images for {region_name}")
-                    except Exception as e:
-                        logger.warning(f"Failed to save satellite images for {region_name}: {e}")
-                
-                region_result = {
-                    'region_name': region_name,
-                    'bbox': region_bbox,
-                    'change_count': results['change_count'],
-                    'total_area_m2': results['total_area'],
-                    'change_types': results['change_types'],
-                    'week_a': results['week_a'],
-                    'week_b': results['week_b'],
-                    'analysis_timestamp': datetime.now().isoformat(),
-                    'satellite_images': satellite_images,  # Original URLs
-                    'saved_images': saved_images,  # Local file paths for PDF integration
-                    'date_range_used': description  # Track which fallback was used
-                }
 
-                # SAR (Sentinel-1 radar) change detection — complements optical
-                if self.sar_detector:
-                    try:
-                        sar_result = self.sar_detector.detect_sar_changes(
-                            bbox=region_bbox,
-                            region_name=region_name,
-                            period_a_start=start_date.strftime('%Y-%m-%d'),
-                            period_a_end=end_date.strftime('%Y-%m-%d'),
-                            period_b_start=end_date.strftime('%Y-%m-%d'),
-                            period_b_end=datetime.now().strftime('%Y-%m-%d')
-                        )
-                        region_result['sar_result'] = sar_result
-                        if sar_result.success:
-                            logger.info(f"   🛰️ SAR: {sar_result.sar_change_pixels:,} radar changes detected for {region_name}")
-                    except Exception as e:
-                        logger.warning(f"   ⚠️ SAR detection failed for {region_name}: {e}")
-                        region_result['sar_result'] = None
-                
-                if attempt_num > 0:
-                    logger.info(f"   ✅ {region_name}: Successfully analyzed using {description}")
-                
-                return region_result
-                
-            except Exception as e:
-                error_msg = str(e)
-                last_error = error_msg
-                
-                # Check if this is a satellite data availability issue
-                if "no bands" in error_msg.lower() or "empty composite" in error_msg.lower():
-                    # This date range didn't work, try the next one
-                    if attempt_num < len(date_attempts) - 1:
-                        logger.warning(f"   ⚠️ {region_name}: {description} unavailable, will try next fallback")
-                        continue
+            date_attempts.append((start_date, end_date, description))
+
+        # Progressive cloud-cover thresholds. We try every date range at the strict
+        # default (20%) first; only if all 5 dates are empty do we relax. This keeps
+        # the happy path identical to before but rescues regions where heavy cloud
+        # cover (rainy season) was forcing an SAR-only fallback.
+        cloud_thresholds = [None, 40.0, 60.0]  # None = use config default (20%)
+
+        last_error = None
+        for cloud_pct in cloud_thresholds:
+            cloud_label = f"cloud<{cloud_pct}%" if cloud_pct is not None else "cloud<strict"
+            if cloud_pct is not None:
+                logger.info(
+                    f"   ☁️ {region_name}: All dates failed at strict cloud threshold — "
+                    f"retrying with relaxed {cloud_label}"
+                )
+
+            for attempt_num, (start_date, end_date, description) in enumerate(date_attempts):
+                try:
+                    week_a_str = start_date.strftime('%Y-%m-%d')
+                    week_b_str = end_date.strftime('%Y-%m-%d')
+
+                    if attempt_num > 0:
+                        logger.info(f"   🔄 {region_name}: Trying fallback {description}: {week_a_str} to {week_b_str} ({cloud_label})")
+
+                    # Run change detection (cloud_pct overrides default when relaxed)
+                    results = self.detector.detect_weekly_changes(
+                        week_a_start=week_a_str,
+                        week_b_start=week_b_str,
+                        bbox=bbox,
+                        export_results=True,
+                        cloud_pct=cloud_pct,
+                    )
+
+                    # Check if we got valid results (not empty composites or errors)
+                    # Check for error in change_types dict or if change_count is 0 with error in satellite_images
+                    has_error = (
+                        'error' in results.get('change_types', {}) or
+                        (results.get('change_count', 0) == 0 and
+                         'error' in results.get('satellite_images', {}))
+                    )
+
+                    if has_error:
+                        # Empty composite or computation error, try next date in this cloud-tier
+                        if attempt_num < len(date_attempts) - 1:
+                            logger.warning(f"   ⚠️ {region_name}: {description} unavailable ({cloud_label}), will try next fallback")
+                            continue
+                        else:
+                            # Done with this cloud tier — break out so the outer
+                            # cloud_thresholds loop can try the next (more relaxed) one.
+                            logger.warning(
+                                f"   ⚠️ {region_name}: all {len(date_attempts)} dates failed at {cloud_label}; "
+                                "advancing to next cloud-cover tier"
+                            )
+                            break
+
+                    # SUCCESS PATH — we have good data. Enhance and return.
+                    satellite_images = results.get('satellite_images', {})
+                    saved_images = {}
+
+                    # 📸 SAVE SATELLITE IMAGES for PDF integration
+                    if satellite_images and 'error' not in satellite_images:
+                        try:
+                            saved_images = self.image_saver.save_satellite_images(
+                                satellite_images, region_name, week_a_str, week_b_str
+                            )
+                            logger.info(f"📸 Saved {len([p for p in saved_images.values() if p])} satellite images for {region_name}")
+                        except Exception as e:
+                            logger.warning(f"Failed to save satellite images for {region_name}: {e}")
+
+                    region_result = {
+                        'region_name': region_name,
+                        'bbox': region_bbox,
+                        'change_count': results['change_count'],
+                        'total_area_m2': results['total_area'],
+                        'change_types': results['change_types'],
+                        'week_a': results['week_a'],
+                        'week_b': results['week_b'],
+                        'analysis_timestamp': datetime.now().isoformat(),
+                        'satellite_images': satellite_images,  # Original URLs
+                        'saved_images': saved_images,  # Local file paths for PDF integration
+                        'date_range_used': description,  # Track which fallback was used
+                        'cloud_threshold_used': cloud_pct if cloud_pct is not None else self.detector.config.max_cloud_cover,
+                    }
+
+                    # SAR (Sentinel-1 radar) change detection — complements optical
+                    if self.sar_detector:
+                        try:
+                            sar_result = self.sar_detector.detect_sar_changes(
+                                bbox=region_bbox,
+                                region_name=region_name,
+                                period_a_start=start_date.strftime('%Y-%m-%d'),
+                                period_a_end=end_date.strftime('%Y-%m-%d'),
+                                period_b_start=end_date.strftime('%Y-%m-%d'),
+                                period_b_end=datetime.now().strftime('%Y-%m-%d')
+                            )
+                            region_result['sar_result'] = sar_result
+                            if sar_result.success:
+                                logger.info(f"   🛰️ SAR: {sar_result.sar_change_pixels:,} radar changes detected for {region_name}")
+                        except Exception as e:
+                            logger.warning(f"   ⚠️ SAR detection failed for {region_name}: {e}")
+                            region_result['sar_result'] = None
+
+                    if attempt_num > 0 or cloud_pct is not None:
+                        logger.info(f"   ✅ {region_name}: Successfully analyzed using {description} ({cloud_label})")
+
+                    return region_result
+
+                except Exception as e:
+                    error_msg = str(e)
+                    last_error = error_msg
+
+                    # Empty-composite / no-bands errors mean this specific date+cloud
+                    # combination failed; advance to the next date in this cloud tier.
+                    # Other errors are real bugs — bail.
+                    if "no bands" in error_msg.lower() or "empty composite" in error_msg.lower():
+                        if attempt_num < len(date_attempts) - 1:
+                            logger.warning(f"   ⚠️ {region_name}: {description} unavailable ({cloud_label}), will try next fallback")
+                            continue
+                        else:
+                            # End of this cloud tier — break to let the outer loop relax the threshold
+                            break
                     else:
-                        # All optical attempts failed — try SAR-only
-                        logger.warning(f"   ⚠️ {region_name}: All {len(date_attempts)} optical date ranges failed — attempting SAR-only fallback")
-                        sar_only_result = self._attempt_sar_only_fallback(region_name, region_bbox)
-                        if sar_only_result is not None:
-                            return sar_only_result
-                        logger.error(f"   ❌ {region_name}: All {len(date_attempts)} date range attempts AND SAR fallback failed!")
+                        logger.error(f"Region analysis failed for {region_name}: {e}")
                         return None
-                else:
-                    # Some other error, don't retry
-                    logger.error(f"Region analysis failed for {region_name}: {e}")
-                    return None
-        
-        # If we got here, all attempts failed
-        logger.error(f"❌ {region_name}: Failed to analyze after {len(date_attempts)} attempts. Last error: {last_error}")
+
+        # All cloud thresholds × all date ranges exhausted — fall back to SAR-only.
+        logger.warning(
+            f"   ⚠️ {region_name}: All {len(date_attempts)} optical date ranges failed across "
+            f"cloud tiers {[t for t in cloud_thresholds]} — attempting SAR-only fallback"
+        )
+        sar_only_result = self._attempt_sar_only_fallback(region_name, region_bbox)
+        if sar_only_result is not None:
+            return sar_only_result
+        logger.error(f"   ❌ {region_name}: All optical date+cloud combinations AND SAR fallback failed! Last error: {last_error}")
         return None
 
     def _attempt_sar_only_fallback(self, region_name: str, region_bbox: Dict) -> Optional[Dict]:

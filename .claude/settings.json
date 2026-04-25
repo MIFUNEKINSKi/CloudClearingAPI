@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git push*)",
+            "command": "jq -n --arg msg 'A git push just completed. CLAUDE.md Documentation-Sync Directive applies — analyze the diff between the previous and current HEAD on the pushed branch (git log @{u}@{1}..HEAD if available, else compare against origin/main) and propose updates to README.md, the Specification Document (TECHNICAL_SCORING_DOCUMENTATION.md), and DEVELOPMENT_ROADMAP.md in the directive required output format. Output: No updates required for any unchanged document.' '{hookSpecificOutput: {hookEventName: \"PostToolUse\", additionalContext: $msg}}'"
+          }
+        ]
+      }
+    ]
+  }
+}

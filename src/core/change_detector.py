@@ -438,17 +438,24 @@ class ChangeDetector:
                             bbox = None,  # type: ignore
                             export_results: bool = True,
                             auto_find_dates: bool = True,
-                            region_name: Optional[str] = None) -> Dict[str, Any]:
+                            region_name: Optional[str] = None,
+                            cloud_pct: Optional[float] = None) -> Dict[str, Any]:
         """
         Detect changes between two weekly composites with automatic date finding
-        
+
         Args:
             week_a_start: Start date of first week (YYYY-MM-DD), optional if auto_find_dates=True
             week_b_start: Start date of second week (YYYY-MM-DD), optional if auto_find_dates=True
             bbox: Area of interest geometry (can be dict or ee.Geometry)
             export_results: Whether to export results to Google Drive
             auto_find_dates: If True, automatically find best available dates
-            
+            cloud_pct: Cloud-cover threshold to use for compositing. When None, falls
+                back to the threshold ``find_best_dates`` resolved (auto-find path)
+                or to ``self.config.max_cloud_cover`` (explicit-dates path). Callers
+                that explicitly supply dates can pass a relaxed value (40, 60) to
+                rescue regions where the strict 20% default produces empty composites
+                during cloudy seasons.
+
         Returns:
             Dictionary containing change detection results
         """
@@ -487,7 +494,7 @@ class ChangeDetector:
                 }
 
         # Auto-find best available dates if requested
-        cloud_pct_used: Optional[float] = None
+        cloud_pct_used: Optional[float] = cloud_pct
         if auto_find_dates and (not week_a_start or not week_b_start):
             if bbox_ee is None:
                 raise ValueError("bbox is required when auto_find_dates=True")
@@ -495,7 +502,10 @@ class ChangeDetector:
             date_info = self.processor.find_best_available_dates(bbox_ee, week_b_start)
             week_a_start = date_info['week_a_start']
             week_b_start = date_info['week_b_start']
-            cloud_pct_used = date_info.get('cloud_cover_threshold_used')
+            # Caller-supplied cloud_pct takes precedence; otherwise honor what
+            # find_best_dates landed on.
+            if cloud_pct_used is None:
+                cloud_pct_used = date_info.get('cloud_cover_threshold_used')
 
             if date_info['actual_images_found']:
                 logger.info(f"✅ Using optimized dates: {week_a_start} → {week_b_start}")
