@@ -143,11 +143,101 @@ async def run_parallel_monitoring(
     return all_results
 
 
+def _load_env_from_file() -> None:
+    """Load .env into os.environ. Uses assignment (not setdefault) so a stale
+    value in the parent shell can't shadow a freshly-rotated credential."""
+    import os
+    env_file = Path('.env')
+    if not env_file.exists():
+        return
+    with open(env_file) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                os.environ[key.strip()] = value.strip()
+
+
+def _smtp_preflight() -> tuple[bool, str]:
+    """Try an SMTP login without sending anything. Returns (ok, reason).
+
+    Run at the start of the weekly pipeline so an auth failure surfaces in
+    the first few seconds of the log instead of after a 30-minute pipeline.
+    """
+    import os
+    import smtplib
+    _load_env_from_file()
+    address = os.environ.get('GMAIL_ADDRESS', '')
+    password = os.environ.get('GMAIL_APP_PASSWORD', '')
+    if not address or not password:
+        return False, 'GMAIL_ADDRESS or GMAIL_APP_PASSWORD missing in .env'
+    pwd_compact = password.replace(' ', '')
+    if not (len(pwd_compact) == 16 and pwd_compact.isalpha() and pwd_compact.islower()):
+        return False, (
+            f'GMAIL_APP_PASSWORD does not look like a Google App Password '
+            f'({len(pwd_compact)} chars; expected 16 lowercase letters). '
+            'Generate one at https://myaccount.google.com/apppasswords'
+        )
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=15) as server:
+            server.login(address, password)
+        return True, 'ok'
+    except smtplib.SMTPAuthenticationError as e:
+        return False, f'SMTP auth rejected: {e.smtp_code} {e.smtp_error!r}'
+    except Exception as e:
+        return False, f'SMTP error: {type(e).__name__}: {e}'
+
+
+def _send_webhook_alert(subject: str, body: str, json_path: str = None) -> bool:
+    """Post the briefing to WEBHOOK_URL (Slack-compatible) when email fails.
+
+    Without this fallback a broken email silently hides every BUY signal —
+    defeats the whole purpose of running the pipeline.
+    """
+    import os
+    import json as _json
+    import urllib.request
+    _load_env_from_file()
+    webhook_url = os.environ.get('WEBHOOK_URL', '')
+    if not webhook_url or 'YOUR/SLACK/WEBHOOK' in webhook_url:
+        logger.warning('WEBHOOK_URL not configured — cannot fall back from email')
+        return False
+    # Slack messages cap around 40k chars; trim aggressively
+    trimmed_body = body if len(body) < 35000 else body[:35000] + '\n\n…(truncated)'
+    payload = {
+        'text': f'*{subject}*\n```\n{trimmed_body}\n```',
+        'attachments': [{
+            'color': '#ff8800',
+            'text': f'Email delivery failed — JSON output: `{json_path}`' if json_path else 'Email delivery failed',
+        }],
+    }
+    try:
+        req = urllib.request.Request(
+            webhook_url,
+            data=_json.dumps(payload).encode('utf-8'),
+            headers={'Content-Type': 'application/json'},
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            ok = 200 <= resp.status < 300
+            if ok:
+                logger.info(f'Webhook fallback delivered ({resp.status})')
+            else:
+                logger.error(f'Webhook returned HTTP {resp.status}')
+            return ok
+    except Exception as e:
+        logger.error(f'Webhook delivery failed: {type(e).__name__}: {e}')
+        return False
+
+
 def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
     """Send email report after a successful monitoring run.
 
     Requires GMAIL_APP_PASSWORD in .env file.
     Returns True if email was sent, False otherwise.
+
+    On failure, automatically posts a webhook fallback (Slack-compatible)
+    so the briefing isn't lost. Subject is tagged [LOW-CONF] when more than
+    20 % of regions ended up on benchmark/fallback data.
     """
     import os
     import smtplib
@@ -155,15 +245,7 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
     from email.mime.text import MIMEText
     from email.mime.application import MIMEApplication
 
-    # Load .env
-    env_file = Path('.env')
-    if env_file.exists():
-        with open(env_file) as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
-                    os.environ.setdefault(key.strip(), value.strip())
+    _load_env_from_file()
 
     gmail_address = os.environ.get('GMAIL_ADDRESS', 'moorecash@gmail.com')
     gmail_password = os.environ.get('GMAIL_APP_PASSWORD', '')
@@ -180,6 +262,9 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
         "=" * 55,
         "",
     ]
+    # Default values for the low-confidence subject tag (computed below if data loads)
+    market_fallback_pct = 0.0
+    sar_only_pct = 0.0
     try:
         import json as _json
         with open(json_path) as f:
@@ -191,15 +276,34 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
         passes = yog.get('pass_list', [])
         all_recs = buy + watch + passes
 
+        # --- Data quality (computed first so we can tag the subject) ---
+        n = max(1, len(all_recs))
+        market_fallback = sum(
+            1 for r in all_recs
+            if r.get('data_sources', {}).get('market') in ('fallback', 'regional_benchmark', 'static_benchmark', None)
+        )
+        live_market = len(all_recs) - market_fallback
+        live_infra = sum(1 for r in all_recs if 'osm_live' in str(r.get('data_sources', {}).get('infrastructure', '')))
+        sar_only_count = sum(1 for r in all_recs if r.get('data_sources', {}).get('satellite') == 'sar_only')
+        market_fallback_pct = market_fallback / n
+        sar_only_pct = sar_only_count / n
+
         # --- Portfolio Overview ---
         body_lines.append(f"PORTFOLIO OVERVIEW")
         body_lines.append(f"  Regions Scored: {len(all_recs)}")
         body_lines.append(f"  BUY: {len(buy)} | WATCH: {len(watch)} | PASS: {len(passes)}")
-
-        # Data quality summary
-        live_market = sum(1 for r in all_recs if r.get('data_sources', {}).get('market') not in ('fallback', 'regional_benchmark', None))
-        live_infra = sum(1 for r in all_recs if 'osm_live' in str(r.get('data_sources', {}).get('infrastructure', '')))
         body_lines.append(f"  Data Quality: {live_market}/{len(all_recs)} live market, {live_infra}/{len(all_recs)} live infrastructure")
+        if sar_only_count:
+            body_lines.append(
+                f"  ⚠ {sar_only_count}/{len(all_recs)} regions on SAR-only satellite "
+                f"(no optical verification — confidence reduced)"
+            )
+        if market_fallback_pct >= 0.20:
+            body_lines.append(
+                f"  ⚠ LOW-CONFIDENCE RUN: {market_fallback}/{len(all_recs)} regions "
+                f"({market_fallback_pct:.0%}) ended up on static benchmark pricing — "
+                "verify any BUY independently before acting"
+            )
         body_lines.append("")
 
         # --- Top BUY Opportunities ---
@@ -295,10 +399,18 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
     body_lines.append("")
     body_lines.append("— CloudClearingAPI Automated Report")
 
+    # Subject prefix: tag low-confidence runs so the recipient can spot them
+    # before opening the PDF. >=20% benchmark fallback OR any SAR-only is a flag.
+    subject_prefix = ''
+    if market_fallback_pct >= 0.20 or sar_only_pct >= 0.10:
+        subject_prefix = '[LOW-CONF] '
     msg = MIMEMultipart()
     msg['From'] = gmail_address
     msg['To'] = recipient
-    msg['Subject'] = f"CloudClearingAPI Report — {datetime.now().strftime('%B %d, %Y %H:%M')}"
+    msg['Subject'] = (
+        f"{subject_prefix}CloudClearingAPI Report — "
+        f"{datetime.now().strftime('%B %d, %Y %H:%M')}"
+    )
     msg.attach(MIMEText('\n'.join(body_lines), 'plain'))
 
     if pdf_path and Path(pdf_path).exists():
@@ -316,11 +428,32 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
         return True
     except Exception as e:
         logger.error(f"Email failed: {e}")
+        # Fallback: post the briefing to the webhook so the BUY signal isn't lost.
+        # Without this, an SMTP outage silently hides every recommendation.
+        webhook_ok = _send_webhook_alert(
+            subject=msg['Subject'],
+            body='\n'.join(body_lines),
+            json_path=json_path,
+        )
+        if webhook_ok:
+            logger.info('Webhook fallback delivered the briefing')
         return False
 
 
 async def main(all_regions: bool = False, auto_confirm: bool = False):
     """Run weekly monitoring for Java or all Indonesia regions with parallel processing"""
+
+    # SMTP preflight — surface email auth failures in the first 5 seconds of
+    # the run instead of after a 30-min pipeline. Don't gate the pipeline:
+    # we still want JSON/PDF generated even if email is broken (webhook
+    # fallback will kick in at delivery time).
+    smtp_ok, smtp_reason = _smtp_preflight()
+    if smtp_ok:
+        logger.info('✅ SMTP preflight passed — email delivery should work')
+    else:
+        logger.error(f'❌ SMTP preflight FAILED: {smtp_reason}')
+        logger.error('   Email at end of run will fail; webhook fallback will be attempted.')
+        logger.error('   Fix: generate App Password at https://myaccount.google.com/apppasswords')
 
     # Import expansion manager
     from src.indonesia_expansion_regions import get_expansion_manager

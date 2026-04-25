@@ -512,37 +512,95 @@ class LandPriceOrchestrator:
         else:
             return 'declining'
     
+    # If extracted average exceeds the regional benchmark by this multiplier we
+    # treat it as scraper noise (typical causes: commercial buildings priced as
+    # land, "starting from" prices, unit confusion). Indonesian land tops out
+    # around Rp 80-100M/m² in the most expensive Jakarta CBD plots — anything
+    # 5× the regional benchmark is almost certainly garbage.
+    _PRICE_OUTLIER_MULTIPLIER = 5.0
+
+    def _sanity_check_price(
+        self,
+        region_name: Optional[str],
+        average: float,
+        median: float,
+        listing_count: int,
+        source: str,
+    ) -> tuple[float, float, bool, str]:
+        """Compare extracted prices against the regional benchmark.
+
+        Returns (avg, med, was_clamped, reason). When the average is implausibly
+        high we return the median (more outlier-resistant), or fall through to
+        the benchmark if the median is also wild.
+        """
+        if not region_name:
+            return average, median, False, ""
+        benchmark = self._find_nearest_benchmark(region_name).get('current_avg', 0)
+        if benchmark <= 0:
+            return average, median, False, ""
+        threshold = benchmark * self._PRICE_OUTLIER_MULTIPLIER
+        if average <= threshold:
+            return average, median, False, ""
+        # Average is implausible. Try median first.
+        if 0 < median <= threshold:
+            reason = (
+                f"avg Rp {average:,.0f}/m² is {average / benchmark:.1f}× benchmark "
+                f"(Rp {benchmark:,.0f}/m²) for {region_name} — using median Rp {median:,.0f}/m² "
+                f"({listing_count} listings, source={source})"
+            )
+            logger.warning(f"⚠️ Price outlier clamped: {reason}")
+            return median, median, True, reason
+        # Both average and median are wild — fall back to the benchmark.
+        reason = (
+            f"avg Rp {average:,.0f}/m² AND median Rp {median:,.0f}/m² both exceed "
+            f"{self._PRICE_OUTLIER_MULTIPLIER}× benchmark Rp {benchmark:,.0f}/m² for "
+            f"{region_name} — clamping to benchmark ({listing_count} listings, source={source})"
+        )
+        logger.error(f"🚨 Price outlier — using benchmark: {reason}")
+        return float(benchmark), float(benchmark), True, reason
+
     def _convert_scrape_result_to_dict(self, result: ScrapeResult, region_name: Optional[str] = None) -> Dict[str, Any]:
         """
         Convert ScrapeResult to dict for consistency
-        
+
         Args:
             result: ScrapeResult from scraper
             region_name: Optional region name for trend calculation
-            
+
         Returns:
             Dict with price data including trend calculations
         """
+        # Sanity check: clamp implausibly high prices (e.g. Rp 165M/m² for
+        # Bitung — almost certainly commercial buildings). A bogus high price
+        # silently kills any BUY signal for that region.
+        avg, med, clamped, clamp_reason = self._sanity_check_price(
+            region_name=region_name,
+            average=result.average_price_per_m2,
+            median=result.median_price_per_m2,
+            listing_count=result.listing_count,
+            source=result.source,
+        )
+
         # Calculate price trend if we have historical cache data
         price_trend_30d = 0.0
         market_heat = 'neutral'
-        
+
         if region_name:
             price_trend_30d, market_heat = self._calculate_price_trend(
-                region_name, 
-                result.average_price_per_m2
+                region_name,
+                avg,
             )
-        
-        return {
+
+        result_dict = {
             'success': result.success,
-            'average_price_per_m2': result.average_price_per_m2,
-            'median_price_per_m2': result.median_price_per_m2,
+            'average_price_per_m2': avg,
+            'median_price_per_m2': med,
             'listing_count': result.listing_count,
-            'data_source': result.source,
+            'data_source': result.source if not clamped else f'{result.source}_clamped',
             'scraped_at': result.scraped_at.isoformat(),
-            'data_confidence': 0.85,  # High confidence for live data
-            'price_trend_30d': price_trend_30d,  # NEW: 30-day price trend percentage
-            'market_heat': market_heat,  # NEW: Market heat classification
+            'data_confidence': 0.85 if not clamped else 0.55,
+            'price_trend_30d': price_trend_30d,
+            'market_heat': market_heat,
             'listings': [
                 {
                     'price_per_m2': listing.price_per_m2,
@@ -554,6 +612,9 @@ class LandPriceOrchestrator:
                 for listing in result.listings
             ]
         }
+        if clamped:
+            result_dict['price_clamp_reason'] = clamp_reason
+        return result_dict
     
     def get_orchestrator_status(self) -> Dict[str, Any]:
         """

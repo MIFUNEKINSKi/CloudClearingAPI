@@ -40,6 +40,30 @@ _CC_OS_SKIP_LIVE_OVERPASS = os.environ.get("CC_OS_SKIP_LIVE_OVERPASS", "").lower
     "yes",
 )
 
+# Process-wide Overpass circuit breaker. When the upstream public instances are
+# down (504 / timeout storms), every region pays minutes of retry sleeps before
+# falling back. After N total failed Overpass calls in this run we trip the
+# breaker and route all remaining regions straight to the regional fallback.
+_OVERPASS_BREAKER_LOCK = threading.Lock()
+_overpass_failure_count = 0
+_overpass_breaker_tripped_at = 0.0
+_OVERPASS_BREAKER_THRESHOLD = int(os.environ.get("CC_OVERPASS_BREAKER_THRESHOLD", "6"))
+
+
+def _overpass_breaker_record_failure() -> bool:
+    """Increment the global Overpass failure count. Returns True if the breaker just tripped."""
+    global _overpass_failure_count, _overpass_breaker_tripped_at
+    with _OVERPASS_BREAKER_LOCK:
+        _overpass_failure_count += 1
+        if _overpass_failure_count >= _OVERPASS_BREAKER_THRESHOLD and _overpass_breaker_tripped_at == 0.0:
+            _overpass_breaker_tripped_at = time.monotonic()
+            return True
+        return False
+
+
+def _overpass_breaker_is_tripped() -> bool:
+    return _overpass_breaker_tripped_at > 0.0
+
 
 def _overpass_connect_timeout_sec() -> float:
     return float(os.environ.get("CC_OVERPASS_CONNECT_TIMEOUT_SEC", "12"))
@@ -365,6 +389,21 @@ class InfrastructureAnalyzer:
                 analysis.update(self._get_regional_infrastructure_fallback(region_name))
                 return analysis
 
+            # Circuit breaker: if Overpass has failed too many times this run,
+            # skip live calls entirely and use the regional fallback. Saves
+            # ~3-5 min per remaining region during an Overpass outage.
+            if _overpass_breaker_is_tripped():
+                logger.warning(
+                    f"⛔ Overpass circuit breaker open — skipping live query for {region_name}, "
+                    "using regional fallback (set CC_OVERPASS_BREAKER_THRESHOLD to tune)"
+                )
+                analysis["reasoning"].append(
+                    "⚠️ Overpass circuit breaker open — using regional knowledge base"
+                )
+                analysis.update(self._get_regional_infrastructure_fallback(region_name))
+                analysis["data_source"] = "fallback_breaker"
+                return analysis
+
             logger.info(f"🔴 Cache miss for {region_name} - querying OSM API")
 
             expand_km = float(os.environ.get("CC_OSM_BBOX_EXPAND_KM", "40"))
@@ -676,6 +715,7 @@ class InfrastructureAnalyzer:
 
         last_error = None
         prev_gateway_or_timeout = False
+        consecutive_5xx_or_timeout = 0
         log_label = f"OSM {feature_type}"
         if region_name:
             log_label = f"{log_label} [{region_name}]"
@@ -684,6 +724,16 @@ class InfrastructureAnalyzer:
             # Bail early if the outer region timeout fired
             if cancel_event is not None and cancel_event.is_set():
                 logger.warning(f"  ⛔ {log_label}: skipping attempt {attempt_num} — outer timeout")
+                break
+
+            # Per-call circuit breaker: if 2 different mirrors already returned 5xx /
+            # timeout, the upstream is degraded — skip remaining attempts (saves ~22s
+            # of retry sleep per query).
+            if consecutive_5xx_or_timeout >= 2:
+                logger.warning(
+                    f"  ⛔ {log_label}: 2 consecutive 5xx/timeout — skipping remaining "
+                    f"{max_retries - attempt_num + 1} attempt(s), routing to fallback"
+                )
                 break
 
             api_url = api_urls[(attempt_num - 1) % len(api_urls)]
@@ -731,6 +781,7 @@ class InfrastructureAnalyzer:
                         f"(attempt {attempt_num}/{max_retries})"
                     )
                     prev_gateway_or_timeout = True
+                    consecutive_5xx_or_timeout += 1
                     continue
 
                 response.raise_for_status()
@@ -797,6 +848,7 @@ class InfrastructureAnalyzer:
                     f"  ⏱️ {log_label} query timeout ({host}) (attempt {attempt_num}/{max_retries})"
                 )
                 prev_gateway_or_timeout = True
+                consecutive_5xx_or_timeout += 1
                 continue
 
             except requests.exceptions.HTTPError as e:
@@ -868,6 +920,13 @@ class InfrastructureAnalyzer:
                 f"❌ All {max_retries} attempts failed for {feature_type} query "
                 f"[{region_name or '?'}]. Last error: {last_error} | "
                 f"Mirrors: [{mirrors_tried}]{bbox_str}"
+            )
+
+        # Bump process-wide failure counter and trip the breaker if threshold reached
+        if _overpass_breaker_record_failure():
+            logger.error(
+                f"⛔ Overpass circuit breaker TRIPPED after {_OVERPASS_BREAKER_THRESHOLD} failures — "
+                "remaining regions will use regional fallback"
             )
         return []
 

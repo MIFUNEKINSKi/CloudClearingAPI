@@ -198,7 +198,11 @@ def run_monitoring():
     try:
         from run_weekly_java_monitor import main
         import asyncio
-        asyncio.run(main())
+        # Pass all_regions=True so we monitor the full 65-region set
+        # (Java + Sumatra + Bali/Lombok/NTT + Eastern), matching the old
+        # crontab invocation `run_weekly_java_monitor.py --all --yes`.
+        # Without this, main() defaults to all_regions=False → only 31 regions.
+        asyncio.run(main(all_regions=True, auto_confirm=True))
         logger.info("✅ Monitoring run completed successfully")
         return True
     except Exception as e:

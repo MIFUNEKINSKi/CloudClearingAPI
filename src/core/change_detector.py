@@ -279,45 +279,67 @@ class SentinelProcessor:
         """
         return self.mask_s2_clouds_advanced(image)
     
-    def create_weekly_composite(self, 
-                              start_date: str, 
-                              end_date: str, 
-                              bbox: ee.Geometry) -> ee.Image:  # type: ignore
+    def create_weekly_composite(self,
+                              start_date: str,
+                              end_date: str,
+                              bbox: ee.Geometry,  # type: ignore
+                              cloud_pct: Optional[float] = None) -> ee.Image:  # type: ignore
         """
-        Create weekly median composite from Sentinel-2 collection
-        
+        Create weekly median composite from Sentinel-2 collection.
+
+        Uses the same cloud-cover threshold that ``find_best_dates`` chose so
+        the composite isn't filtered narrower than the date discovery. Without
+        this, ``find_best_dates`` could relax to 60 % to find imagery and then
+        ``create_weekly_composite`` would re-filter at the hard-coded < 30 %
+        and produce an empty composite ("Image.select: Band pattern 'B11' was
+        applied to an Image with no bands").
+
         Args:
             start_date: Start date in 'YYYY-MM-DD' format
-            end_date: End date in 'YYYY-MM-DD' format  
+            end_date: End date in 'YYYY-MM-DD' format
             bbox: Bounding box geometry
-            
+            cloud_pct: Cloud cover threshold (matches what find_best_dates used).
+                Defaults to ``self.config.max_cloud_cover`` (the strict default).
+
         Returns:
             Weekly median composite image
         """
-        # Use the harmonized Sentinel-2 collection (replaces deprecated S2_SR)
-        # First, let's try without cloud masking to test basic functionality
+        if cloud_pct is None:
+            cloud_pct = self.config.max_cloud_cover
+
         collection = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')  # type: ignore
                      .filterDate(start_date, end_date)
                      .filterBounds(bbox)
-                     .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30))  # type: ignore
-                     .select(['B2', 'B3', 'B4', 'B8', 'B11', 'B12']))  # Only select needed bands
-        
-        # Create median composite and clip to area
+                     .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud_pct))  # type: ignore
+                     .select(['B2', 'B3', 'B4', 'B8', 'B11', 'B12']))
+
+        # Diagnostic: log image count BEFORE compositing so we can see whether
+        # the filter rejected everything (vs. the composite/clip step losing data).
+        try:
+            pre_count = collection.size().getInfo()
+        except Exception:
+            pre_count = -1
+
         composite = collection.median().clip(bbox)
-        
-        # Add image count as metadata
-        count = collection.size()
-        composite = composite.set('image_count', count)
-        
-        # Debug: Check if composite has bands
+        composite = composite.set('image_count', collection.size())
+
         try:
             band_count = composite.bandNames().size().getInfo()
             if band_count == 0:
-                logger.warning(f"Empty composite created for {start_date} to {end_date}")
-        except:
-            pass  # Don't fail on debug info
-        
-        logger.info(f"Created composite from {start_date} to {end_date}")
+                logger.warning(
+                    f"Empty composite for {start_date}..{end_date}: "
+                    f"{pre_count} images matched filter (cloud<{cloud_pct}%); "
+                    "median produced 0 bands. Likely all images failed clip-to-bbox "
+                    "or had non-overlapping band sets."
+                )
+            else:
+                logger.info(
+                    f"Composite {start_date}..{end_date}: {pre_count} images "
+                    f"(cloud<{cloud_pct}%), {band_count} bands"
+                )
+        except Exception:
+            pass
+
         return composite
 
 class SpectralIndices:
@@ -465,6 +487,7 @@ class ChangeDetector:
                 }
 
         # Auto-find best available dates if requested
+        cloud_pct_used: Optional[float] = None
         if auto_find_dates and (not week_a_start or not week_b_start):
             if bbox_ee is None:
                 raise ValueError("bbox is required when auto_find_dates=True")
@@ -472,30 +495,32 @@ class ChangeDetector:
             date_info = self.processor.find_best_available_dates(bbox_ee, week_b_start)
             week_a_start = date_info['week_a_start']
             week_b_start = date_info['week_b_start']
-            
+            cloud_pct_used = date_info.get('cloud_cover_threshold_used')
+
             if date_info['actual_images_found']:
                 logger.info(f"✅ Using optimized dates: {week_a_start} → {week_b_start}")
-                logger.info(f"   Week A: {date_info['week_a_count']} images, Week B: {date_info['week_b_count']} images")
+                logger.info(f"   Week A: {date_info['week_a_count']} images, Week B: {date_info['week_b_count']} images (cloud<{cloud_pct_used}%)")
                 if date_info['days_back_from_target'] > 0:
                     logger.info(f"   📅 Adjusted {date_info['days_back_from_target']} days back to find available imagery")
             else:
                 logger.warning(f"⚠️  Using fallback dates: {week_a_start} → {week_b_start} (may have no imagery)")
-        
+
         # Validate required parameters
         if not week_a_start or not week_b_start or bbox_ee is None:
             raise ValueError("week_a_start, week_b_start, and bbox are required")
-            
+
         logger.info(f"Analyzing changes from {week_a_start} to {week_b_start}")
-        
+
         # Calculate the end dates for each week
         week_a_end = (datetime.strptime(week_a_start, '%Y-%m-%d') + timedelta(days=7)).strftime('%Y-%m-%d')
         week_b_end = (datetime.strptime(week_b_start, '%Y-%m-%d') + timedelta(days=7)).strftime('%Y-%m-%d')
-        
-        # Create weekly composites
+
+        # Pass through the same cloud threshold find_best_available_dates landed on
+        # so we don't accidentally re-filter the imagery away.
         composite_a = self.processor.create_weekly_composite(
-            week_a_start, week_a_end, bbox_ee)
+            week_a_start, week_a_end, bbox_ee, cloud_pct=cloud_pct_used)
         composite_b = self.processor.create_weekly_composite(
-            week_b_start, week_b_end, bbox_ee)
+            week_b_start, week_b_end, bbox_ee, cloud_pct=cloud_pct_used)
         
         # Calculate spectral indices for both weeks
         ndvi_a = self.indices.ndvi(composite_a)

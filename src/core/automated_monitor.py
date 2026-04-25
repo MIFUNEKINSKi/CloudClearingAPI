@@ -177,9 +177,10 @@ class AutomatedMonitor:
             except Exception as e:
                 logger.warning(f"Failed to load strategic corridors: {e}")
         
-        # Initialize database if available
+        # Database persistence is intentionally disabled — outputs are flat JSON
+        # in output/ and history/. Logged at DEBUG so it doesn't crowd weekly logs.
         self.db_manager = None
-        logger.warning("Database functionality disabled due to SQLAlchemy compatibility issues")
+        logger.debug("Database persistence disabled (intentional — outputs are JSON)")
         
         # Monitoring schedule - Original Yogyakarta regions
         self.yogyakarta_regions = [
@@ -600,8 +601,20 @@ class AutomatedMonitor:
                 )
 
                 if sar_result and sar_result.success and sar_result.sar_change_pixels > 0:
-                    logger.info(f"   ✅ {region_name}: SAR-only fallback succeeded! "
-                               f"{sar_result.sar_change_pixels:,} radar changes detected")
+                    sar_data_age_days = max(0, (datetime.now() - period_b_end).days)
+                    # Confidence penalty: SAR-only loses optical signal entirely.
+                    # Stale SAR (>14 days) loses more — investor should not act on it without verification.
+                    if sar_data_age_days > 14:
+                        sar_confidence_penalty = 0.40  # 60% confidence cap
+                    elif sar_data_age_days > 7:
+                        sar_confidence_penalty = 0.25  # 75% confidence cap
+                    else:
+                        sar_confidence_penalty = 0.15  # 85% confidence cap (SAR-only baseline)
+                    logger.warning(
+                        f"   ⚠️ {region_name}: SAR-only fallback succeeded "
+                        f"({sar_result.sar_change_pixels:,} radar changes, data {sar_data_age_days}d old) — "
+                        f"confidence reduced by {sar_confidence_penalty:.0%} (no optical verification)"
+                    )
 
                     # Build a region_result that mimics optical output
                     # Use SAR change pixels as the primary change count
@@ -623,6 +636,8 @@ class AutomatedMonitor:
                         'date_range_used': f'SAR-only fallback ({period_a_start.strftime("%Y-%m-%d")} to {period_b_end.strftime("%Y-%m-%d")})',
                         'sar_result': sar_result,
                         'data_source': 'sar_only',  # Flag that this is SAR-only
+                        'data_age_days': sar_data_age_days,
+                        'confidence_penalty': sar_confidence_penalty,
                     }
                     return region_result
 
@@ -1206,7 +1221,13 @@ class AutomatedMonitor:
                         'delta': current_count,
                         'trend': 'new_coverage'
                     }
-            
+                if news_wow:
+                    logger.info(
+                        f"   📰 [{region_name}] News WoW: "
+                        f"{news_wow['previous_articles']}→{news_wow['current_articles']} "
+                        f"(ratio={news_wow['ratio']:.2f}, trend={news_wow['trend']})"
+                    )
+
             # Calculate CORRECTED score (satellite is PRIMARY)
             corrected_result = self.corrected_scorer.calculate_investment_score(
                 region_name=region_name,
@@ -1289,7 +1310,10 @@ class AutomatedMonitor:
                         if news_wow and news_wow['trend'] in ('surging', 'increasing'):
                             news_momentum_boost = min(1.08, 1.0 + (news_wow['ratio'] - 1.0) * 0.05)
                             momentum_mult *= news_momentum_boost
-                            logger.info(f"   📰 [{region_name}] News WoW: {news_wow['previous_articles']}→{news_wow['current_articles']} ({news_wow['trend']}, {news_momentum_boost:.3f}x boost)")
+                            logger.info(
+                                f"   📰 [{region_name}] News WoW boost: {news_momentum_boost:.3f}x "
+                                f"applied to momentum (trend={news_wow['trend']})"
+                            )
                         corrected_result.final_investment_score = min(100,
                             corrected_result.final_investment_score * momentum_mult)
                         logger.info(f"   📈 [{region_name}] Momentum: {momentum_data['momentum_ratio']:.2f}x → "
@@ -1782,11 +1806,10 @@ class AutomatedMonitor:
         # except Exception as e:
         #     logger.warning(f"Failed to generate cached imagery viewer: {e}")
         
-        # Save to database if available
+        # Save to database if available (intentionally disabled — outputs are JSON)
         if self.db_manager:
             try:
-                # await self.db_manager.save_monitoring_results(results)  # Disabled
-                logger.info("💾 Database functionality disabled")
+                await self.db_manager.save_monitoring_results(results)
             except Exception as e:
                 logger.warning(f"Failed to save to database: {e}")
 

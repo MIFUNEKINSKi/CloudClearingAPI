@@ -46,6 +46,8 @@ config/config.yaml
 config/config.production.yaml
 .env
 .env.local
+.env.backup*
+.env.*.bak
 *.pem
 *.key
 
