@@ -182,9 +182,14 @@ class CorrectedInvestmentScorer:
         # SAR dual-sensor boost increases confidence (max +0.10).
         # Skipped when the "optical" signal is actually SAR data copied into
         # the change_count field by the SAR-only fallback path — fusing SAR
-        # with itself was producing a fake +0.10 that exactly cancelled the
-        # SAR-only cap (resulting in 0.94 instead of the intended 0.84).
-        if satellite_data_source != 'sar_only':
+        # with itself produces a fake +0.10 that cancels the SAR-only cap.
+        # ALSO skipped when market data was outlier-clamped: the fusion boost
+        # was undoing the clamp cap (0.80 + 0.10 = 0.90) and putting clamped
+        # regions back into STRONG_BUY territory (0.85+ gate). A region whose
+        # extracted prices were >5x benchmark should never claim top
+        # confidence regardless of how good the satellite signal looks.
+        market_clamped = str(market_data.get('data_source', '')).endswith('_clamped')
+        if satellite_data_source != 'sar_only' and not market_clamped:
             confidence = min(1.0, confidence + sar_confidence_boost)
         
         # Non-linear confidence multiplier (v2.4.1 refinement)
