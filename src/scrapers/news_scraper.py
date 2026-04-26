@@ -270,6 +270,7 @@ class NewsScraper:
             ('jakarta_post', self._scrape_jakarta_post),
             ('kompas', self._scrape_kompas),
             ('antara', self._scrape_antara),
+            ('detik_infra', self._scrape_detik_infrastructure),
         ]:
             cached = self._check_cache(source_name)
             if cached is not None:
@@ -463,7 +464,68 @@ class NewsScraper:
                 logger.warning(f"Antara scrape error: {e}")
 
         return articles[:30]
-    
+
+    def _scrape_detik_infrastructure(self) -> List[Dict]:
+        """Scrape infrastructure articles from finance.detik.com/infrastruktur.
+
+        This is the highest-density real-infra-news source we found:
+        live probe returned ~78 long-text headlines, 9 with infra keywords
+        ("Tol Yogyakarta-Bawen", "KEK Batang", "LRT Jakarta", "Whoosh",
+        "Pelabuhan Patimban"). These are the Indonesian-press project names
+        the prior 3 sources (Jakarta Post / Kompas / Antara) were missing.
+        """
+        articles = []
+        urls = [
+            "https://finance.detik.com/infrastruktur",
+            "https://finance.detik.com/properti",
+            "https://www.detik.com/properti",
+        ]
+
+        seen_urls = set()
+        for url in urls:
+            try:
+                resp = self._get_with_retry(url)
+                if not resp:
+                    continue
+
+                soup = BeautifulSoup(resp.text, 'html.parser')
+
+                for link in soup.find_all('a', href=True):
+                    href = link.get('href', '')
+                    title_text = link.get_text(strip=True)
+
+                    if not title_text or len(title_text) < 25:
+                        continue
+                    # Detik articles always have /d-{id}/ in the path
+                    if 'detik.com' not in href or '/d-' not in href:
+                        continue
+                    if href in seen_urls:
+                        continue
+                    seen_urls.add(href)
+
+                    matched = self._match_keywords(title_text)
+                    cities = self._match_cities(title_text)
+                    if not matched and not cities:
+                        continue
+
+                    articles.append({
+                        'title': title_text[:200],
+                        'source': 'detik_infra',
+                        'url': href,
+                        'date': datetime.now().strftime('%Y-%m-%d'),
+                        'snippet': title_text[:200],
+                        'matched_keywords': matched,
+                        'matched_cities': cities,
+                    })
+
+                logger.info(f"📰 Detik ({url.split('/')[-1]}): {len(articles)} infra/region articles so far")
+                time.sleep(random.uniform(0.5, 1.5))
+
+            except Exception as e:
+                logger.warning(f"Detik scrape error ({url}): {e}")
+
+        return articles[:30]
+
     # ─── MATCHING ────────────────────────────────────────────────
     
     def _match_keywords(self, text: str) -> List[str]:

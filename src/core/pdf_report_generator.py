@@ -280,7 +280,7 @@ class PDFReportGenerator:
             )
             data_source_items.append(
                 f"News Catalyst: {news_active_count}/{total_regions} regions with matched articles "
-                f"(Jakarta Post, Kompas, Antara News)"
+                f"(Jakarta Post, Kompas, Antara, Detik Infrastruktur)"
             )
             for item in data_source_items:
                 story.append(Paragraph(f"   {item}", self.styles['Normal']))

@@ -110,7 +110,7 @@ class BenchmarkDriftMonitor:
     # regions all compared against ~5 tier averages. The tier benchmark is
     # kept as a final fallback when a region has no scraped history yet.
     PRICE_HISTORY_DIR = Path("./output/scraper_cache/price_history")
-    HISTORY_BENCHMARK_MIN_SAMPLES = 3  # Need at least N prior records
+    HISTORY_BENCHMARK_MIN_SAMPLES = 2  # Need at least N prior records (lowered from 3 — most regions only have 1-3 samples after recent runs, and using 2 still gives a real median)
     HISTORY_BENCHMARK_LOOKBACK_DAYS = 28
 
     def _per_region_benchmark(self, region_name: str) -> Optional[float]:
