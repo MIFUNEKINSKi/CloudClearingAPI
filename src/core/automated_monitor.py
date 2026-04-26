@@ -1134,36 +1134,45 @@ class AutomatedMonitor:
         return summary
 
     def _load_previous_news_counts(self) -> Dict[str, int]:
-        """Load per-region news article counts from the most recent prior monitoring run."""
+        """Load per-region news article counts from the most recent prior monitoring run.
+
+        Bug fixed 2026-04-26: previously checked regions_analyzed first and
+        bailed if non-empty. But regions_analyzed contains the SATELLITE
+        analysis results which never have a news_catalyst field — that lives
+        only on the post-scoring recommendation dicts (strong_buy / buy /
+        watch / pass). Result: news_wow never populated even when articles
+        were found. Fix: always use the recommendation lists.
+        """
         import glob as glob_mod
         monitoring_dir = getattr(self, 'monitoring_dir', './output/monitoring')
         pattern = os.path.join(monitoring_dir, 'weekly_monitoring_*.json')
         files = sorted(glob_mod.glob(pattern), reverse=True)
-        
-        # Skip the current run (first file may be in-progress), take the previous one
+
         prev_counts = {}
-        for filepath in files[:3]:
+        for filepath in files[:3]:  # try up to 3 most recent
             try:
                 with open(filepath, 'r') as f:
                     data = json.load(f)
-                regions = data.get('regions_analyzed', [])
-                if not regions:
-                    yog = data.get('investment_analysis', {}).get('yogyakarta_analysis', {})
-                    regions = (yog.get('strong_buy_recommendations', []) +
-                               yog.get('buy_recommendations', []) +
-                               yog.get('watch_list', []) + yog.get('pass_list', []))
+                yog = data.get('investment_analysis', {}).get('yogyakarta_analysis', {})
+                regions = (yog.get('strong_buy_recommendations', []) +
+                           yog.get('buy_recommendations', []) +
+                           yog.get('watch_list', []) + yog.get('pass_list', []))
                 for r in regions:
                     if not isinstance(r, dict):
                         continue
                     name = r.get('region_name') or r.get('region', '')
+                    if not name:
+                        continue
                     news = r.get('news_catalyst', {})
                     if isinstance(news, dict) and news.get('articles_found') is not None:
                         prev_counts[name] = news['articles_found']
                 if prev_counts:
                     logger.info(f"   📊 Loaded previous news counts for {len(prev_counts)} regions from {os.path.basename(filepath)}")
                     return prev_counts
-            except Exception:
+            except Exception as e:
+                logger.debug(f"news-counts loader skipped {filepath}: {e}")
                 continue
+        logger.info("   📊 No previous news counts available (first run? or all priors empty)")
         return prev_counts
 
     def _score_single_region(

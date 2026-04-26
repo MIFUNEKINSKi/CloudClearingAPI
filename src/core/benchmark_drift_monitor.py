@@ -145,9 +145,15 @@ class BenchmarkDriftMonitor:
                     if rec_date < cutoff or rec_date >= today:
                         # Skip pre-window records and today's own record
                         continue
-                    median = rec.get('median_price_m2') or rec.get('avg_price_m2')
-                    if median and median > 0:
-                        prices.append(float(median))
+                    # Use avg_price_m2 to match the live_price comparison
+                    # (current_price_per_m2 is the avg, except when clamped).
+                    # Earlier we used median — that produced false alarms when
+                    # listing mix shifted (e.g. tegal_brebes: median stayed
+                    # flat at 1M but avg trended 2.2→3.6M, giving spurious
+                    # +291% drift when comparing live-avg 3.6M vs hist-median 1M).
+                    price = rec.get('avg_price_m2') or rec.get('median_price_m2')
+                    if price and price > 0:
+                        prices.append(float(price))
         except OSError:
             return None
         if len(prices) < self.HISTORY_BENCHMARK_MIN_SAMPLES:

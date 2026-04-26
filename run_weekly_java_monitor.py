@@ -666,6 +666,7 @@ async def main(all_regions: bool = False, auto_confirm: bool = False):
             # Extract scored regions from investment analysis (these have financial_projection)
             yog = investment_analysis.get('yogyakarta_analysis', {})
             scored_regions = (
+                yog.get('strong_buy_recommendations', []) +
                 yog.get('buy_recommendations', []) +
                 yog.get('watch_list', []) +
                 yog.get('pass_list', [])
