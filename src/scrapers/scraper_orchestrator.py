@@ -65,98 +65,112 @@ class LandPriceOrchestrator:
             config=config
         )
         
-        # Static regional benchmarks (fallback)
-        # historical_appreciation is in PERCENT (e.g. 15 = 15%/yr)
+        # Static regional benchmarks (fallback when scrapers fail).
+        # historical_appreciation is in PERCENT (e.g. 15 = 15%/yr).
+        # current_avg refreshed 2026-04-25 from live Lamudi medians (only
+        # well-mapped regions, excluding outlier-clamped extracts). Untouched
+        # benchmarks (yogyakarta, palembang, nusantara, denpasar) had too few
+        # legitimate contributors or geographic mis-routing — flagged for a
+        # follow-up pass once the region→benchmark mapping is more granular.
         self.regional_benchmarks = {
             'jakarta': {
-                'current_avg': 8_500_000,
+                'current_avg': 8_564_000,  # was 8,500,000 — refreshed +0.8%
                 'historical_appreciation': 15.0,
                 'market_liquidity': 'high',
-                'data_source': 'static_benchmark'
+                'data_source': 'static_benchmark',
             },
             'bali': {
-                'current_avg': 12_000_000,
+                'current_avg': 7_494_000,  # was 12,000,000 — refreshed -37.5% (real Bali medians)
                 'historical_appreciation': 20.0,
                 'market_liquidity': 'high',
-                'data_source': 'static_benchmark'
+                'data_source': 'static_benchmark',
             },
             'yogyakarta': {
+                # NOT REFRESHED 2026-04-25: contributors include cross-province
+                # regions (anyer_carita = Banten) that fall through default
+                # routing. Refresh once region mapping has a 'banten' bucket.
                 'current_avg': 4_500_000,
                 'historical_appreciation': 12.0,
                 'market_liquidity': 'moderate',
-                'data_source': 'static_benchmark'
+                'data_source': 'static_benchmark',
             },
             'surabaya': {
-                'current_avg': 6_500_000,
+                'current_avg': 5_165_000,  # was 6,500,000 — refreshed -20.5%
                 'historical_appreciation': 14.0,
                 'market_liquidity': 'high',
-                'data_source': 'static_benchmark'
+                'data_source': 'static_benchmark',
             },
             'bandung': {
-                'current_avg': 5_000_000,
+                'current_avg': 5_845_000,  # was 5,000,000 — refreshed +16.9%
                 'historical_appreciation': 13.0,
                 'market_liquidity': 'moderate',
-                'data_source': 'static_benchmark'
+                'data_source': 'static_benchmark',
             },
             'semarang': {
-                'current_avg': 3_500_000,
+                'current_avg': 4_411_000,  # was 3,500,000 — refreshed +26.0%
                 'historical_appreciation': 11.0,
                 'market_liquidity': 'moderate',
-                'data_source': 'static_benchmark'
+                'data_source': 'static_benchmark',
             },
             'medan': {
-                'current_avg': 4_000_000,
+                'current_avg': 3_540_000,  # was 4,000,000 — refreshed -11.5%
                 'historical_appreciation': 10.0,
                 'market_liquidity': 'moderate',
-                'data_source': 'static_benchmark'
+                'data_source': 'static_benchmark',
             },
             'palembang': {
+                # NOT REFRESHED: 0 contributors with live data this run
                 'current_avg': 3_000_000,
                 'historical_appreciation': 9.0,
                 'market_liquidity': 'moderate',
-                'data_source': 'static_benchmark'
+                'data_source': 'static_benchmark',
             },
             'lampung': {
-                'current_avg': 2_500_000,
+                'current_avg': 1_867_000,  # was 2,500,000 — refreshed -25.3%
                 'historical_appreciation': 8.0,
                 'market_liquidity': 'low',
-                'data_source': 'static_benchmark'
+                'data_source': 'static_benchmark',
             },
             'batam': {
-                'current_avg': 5_500_000,
+                'current_avg': 5_175_000,  # was 5,500,000 — refreshed -5.9% (n=1)
                 'historical_appreciation': 12.0,
                 'market_liquidity': 'high',
-                'data_source': 'static_benchmark'
+                'data_source': 'static_benchmark',
             },
             'makassar': {
-                'current_avg': 4_200_000,
+                'current_avg': 5_815_000,  # was 4,200,000 — refreshed +38.4%
                 'historical_appreciation': 11.0,
                 'market_liquidity': 'moderate',
-                'data_source': 'static_benchmark'
+                'data_source': 'static_benchmark',
             },
             'balikpapan': {
-                'current_avg': 3_800_000,
+                'current_avg': 3_705_000,  # was 3,800,000 — refreshed -2.5% (basically right)
                 'historical_appreciation': 10.0,
                 'market_liquidity': 'moderate',
-                'data_source': 'static_benchmark'
+                'data_source': 'static_benchmark',
             },
             'nusantara': {
+                # NOT REFRESHED: only 1 contributor (nusantara_capital_core),
+                # too low a sample to overwrite. Land prices in IKN are still
+                # speculative and noisy.
                 'current_avg': 2_000_000,
                 'historical_appreciation': 25.0,
                 'market_liquidity': 'low',
-                'data_source': 'static_benchmark'
+                'data_source': 'static_benchmark',
             },
             'lombok': {
-                'current_avg': 5_000_000,
+                'current_avg': 2_815_000,  # was 5,000,000 — refreshed -43.7%
                 'historical_appreciation': 15.0,
                 'market_liquidity': 'moderate',
-                'data_source': 'static_benchmark'
+                'data_source': 'static_benchmark',
             },
             'denpasar': {
+                # NOT REFRESHED: 0 contributors (denpasar_north_expansion went
+                # to 'bali' bucket via tokens; denpasar key is rarely chosen).
                 'current_avg': 15_000_000,
                 'historical_appreciation': 18.0,
                 'market_liquidity': 'high',
-                'data_source': 'static_benchmark'
+                'data_source': 'static_benchmark',
             },
         }
         
@@ -338,43 +352,49 @@ class LandPriceOrchestrator:
     def _find_nearest_benchmark(self, region_name: str) -> Dict[str, Any]:
         """Find nearest regional benchmark for a region"""
         region_lower = region_name.lower()
-        
-        # Direct matches
-        for benchmark_name, data in self.regional_benchmarks.items():
-            if benchmark_name in region_lower:
-                return data
-        
-        # Province / island-level matches
+        # Token-based matching: split on '_' so 'bali' won't substring-match
+        # 'balikpapan' (which routed every Kalimantan region to the Bali
+        # benchmark and silently inflated the apparent Bali land prices when
+        # we tried to refresh benchmarks from real medians).
+        tokens = set(region_lower.split('_'))
+
+        # Province / island-level matches — checked FIRST (more specific than
+        # the bare-substring fallback) so balikpapan_* lands in 'balikpapan'
+        # not 'bali'.
         mapping = {
             'jakarta': ['jakarta', 'tangerang', 'bekasi', 'cikarang', 'bogor', 'karawang'],
-            'yogyakarta': ['yogya', 'sleman', 'bantul', 'kulon_progo', 'magelang', 'purwokerto'],
+            'yogyakarta': ['yogyakarta', 'yogya', 'sleman', 'bantul', 'kulon', 'magelang', 'purwokerto'],
             'surabaya': ['surabaya', 'sidoarjo', 'gresik', 'malang', 'probolinggo', 'jember', 'banyuwangi'],
             'bandung': ['bandung', 'cirebon', 'subang'],
             'semarang': ['semarang', 'solo', 'tegal', 'batang'],
-            'bali': ['denpasar', 'canggu', 'seminyak', 'sanur', 'ubud', 'tabanan', 'nusa_dua', 'bukit'],
-            'denpasar': [],  # handled by 'bali' keyword above
-            'medan': ['medan', 'kuala_namu', 'belawan', 'toba'],
-            'palembang': ['palembang', 'jakabaring', 'boom_baru'],
+            'bali': ['bali', 'denpasar', 'canggu', 'seminyak', 'sanur', 'ubud', 'tabanan', 'nusa', 'bukit'],
+            'medan': ['medan', 'kuala', 'belawan', 'toba'],
+            'palembang': ['palembang', 'jakabaring', 'boom'],
             'lampung': ['lampung', 'bakauheni'],
             'batam': ['batam'],
             'makassar': ['makassar', 'manado', 'bitung'],
             'balikpapan': ['balikpapan', 'samarinda', 'banjarmasin', 'pontianak'],
             'nusantara': ['nusantara', 'ikn'],
-            'lombok': ['lombok', 'mataram', 'mandalika', 'senggigi', 'labuan_bajo', 'kupang'],
+            'lombok': ['lombok', 'mataram', 'mandalika', 'senggigi'],
+            # Eastern Indonesia tourism — small Lombok-tier markets
         }
-        
+
         for bench_key, keywords in mapping.items():
+            if bench_key not in self.regional_benchmarks:
+                continue
             for kw in keywords:
-                if kw in region_lower:
-                    if bench_key in self.regional_benchmarks:
-                        return self.regional_benchmarks[bench_key]
-        
+                if kw in tokens:
+                    return self.regional_benchmarks[bench_key]
+
         # Broader island-level fallback
-        if any(k in region_lower for k in ['aceh', 'padang', 'pekanbaru']):
+        if tokens & {'aceh', 'padang', 'pekanbaru'}:
             return self.regional_benchmarks['medan']
-        if any(k in region_lower for k in ['jayapura', 'ambon', 'papua', 'maluku']):
+        if tokens & {'jayapura', 'ambon', 'papua', 'maluku'}:
             return self.regional_benchmarks['makassar']
-        
+        if tokens & {'labuan', 'kupang', 'flores'}:
+            # NTT/Flores — small island tourism, closest analogue is Lombok
+            return self.regional_benchmarks['lombok']
+
         # Default to Yogyakarta (mid-tier market)
         return self.regional_benchmarks['yogyakarta']
     

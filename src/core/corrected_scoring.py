@@ -619,6 +619,20 @@ class CorrectedInvestmentScorer:
         # Ensure within bounds (0.20 to 0.95)
         return max(0.20, min(0.95, overall_confidence))
     
+    # Recommendation thresholds.
+    # Tightened 2026-04-25 after the first full 65-region run on the new
+    # cloud-relaxation code showed median score = 46.8 — half the universe was
+    # clearing the old BUY≥40 gate. That defeats the point of a screen. New
+    # tiers are calibrated against the observed distribution so a "BUY" badge
+    # actually means something: STRONG_BUY = top decile (~6 regions),
+    # BUY = top third with positive headroom, WATCH = on the radar.
+    THRESHOLD_STRONG_BUY = 58.0
+    THRESHOLD_BUY = 50.0
+    THRESHOLD_WATCH = 35.0
+    CONF_GATE_STRONG_BUY = 0.85
+    CONF_GATE_BUY = 0.75
+    CONF_GATE_WATCH = 0.50
+
     def _generate_recommendation(self,
                                 final_score: float,
                                 confidence: float,
@@ -627,57 +641,65 @@ class CorrectedInvestmentScorer:
                                 market_data: Dict) -> tuple:
         """
         Generate investment recommendation based on CORRECTED scoring.
-        
-        NEW THRESHOLDS (based on proper 0-60 score range):
-        - BUY: ≥40 with ≥60% confidence
-        - WATCH: 25-39 with ≥40% confidence
-        - PASS: <25 or low confidence
-        
+
+        Tiers (calibrated to the actual score distribution observed on the
+        first 65-region run after cloud-relaxation rescue):
+        - STRONG_BUY: ≥58, conf ≥0.85  — top decile, due-diligence-ready
+        - BUY:        ≥50, conf ≥0.75  — active interest, verify before acting
+        - WATCH:      ≥35, conf ≥0.50  — monitor for strengthening signals
+        - PASS:       below WATCH or below confidence gate
+
         Returns:
             (recommendation str, rationale str)
         """
-        # Strong Buy
-        if final_score >= 45 and confidence >= 0.70:
+        # Top-conviction tier: real shortlist for capital deployment
+        if final_score >= self.THRESHOLD_STRONG_BUY and confidence >= self.CONF_GATE_STRONG_BUY:
+            recommendation = 'STRONG_BUY'
+            rationale = (
+                f"🔥 STRONG BUY: Top-decile signal with high confidence — "
+                f"{satellite_changes:,} satellite changes, strong infrastructure + market support. "
+                f"Score: {final_score:.1f}/100, Confidence: {confidence:.0%}. "
+                "Prioritize for due diligence."
+            )
+
+        # BUY: meaningful interest, verify before acting
+        elif final_score >= self.THRESHOLD_BUY and confidence >= self.CONF_GATE_BUY:
             recommendation = 'BUY'
-            rationale = (f"🔥 STRONG BUY: Exceptional development activity ({satellite_changes:,} changes) "
-                        f"with strong infrastructure and market support. Score: {final_score:.1f}/100, "
-                        f"Confidence: {confidence:.0%}")
-        
-        # Moderate Buy
-        elif final_score >= 40 and confidence >= 0.60:
-            recommendation = 'BUY'
-            rationale = (f"✅ BUY: Significant development activity ({satellite_changes:,} changes) "
-                        f"with good fundamentals. Score: {final_score:.1f}/100, Confidence: {confidence:.0%}")
-        
-        # Watch
-        elif final_score >= 25 and confidence >= 0.40:
+            rationale = (
+                f"✅ BUY: Solid development signal ({satellite_changes:,} changes) with good "
+                f"fundamentals. Score: {final_score:.1f}/100, Confidence: {confidence:.0%}. "
+                "Verify pricing and zoning before committing."
+            )
+
+        # WATCH: not actionable yet, monitor for upgrade
+        elif final_score >= self.THRESHOLD_WATCH and confidence >= self.CONF_GATE_WATCH:
             recommendation = 'WATCH'
-            rationale = (f"👀 WATCH: Moderate activity ({satellite_changes:,} changes) - "
-                        f"monitor for strengthening signals. Score: {final_score:.1f}/100, "
-                        f"Confidence: {confidence:.0%}")
-        
-        # Pass
+            rationale = (
+                f"👀 WATCH: Moderate activity ({satellite_changes:,} changes) — monitor for "
+                f"strengthening signals. Score: {final_score:.1f}/100, Confidence: {confidence:.0%}."
+            )
+
+        # Pass — score or confidence too low
         else:
             recommendation = 'PASS'
-            if confidence < 0.40:
-                rationale = (f"⚠️ PASS: Insufficient data confidence ({confidence:.0%}). "
-                            f"Requires additional validation.")
+            if confidence < self.CONF_GATE_WATCH:
+                rationale = (
+                    f"⚠️ PASS: Insufficient data confidence ({confidence:.0%}). "
+                    "Requires additional validation."
+                )
             else:
-                rationale = (f"❌ PASS: Low development activity ({satellite_changes:,} changes). "
-                            f"Score: {final_score:.1f}/100")
-        
+                rationale = (
+                    f"❌ PASS: Low development activity ({satellite_changes:,} changes). "
+                    f"Score: {final_score:.1f}/100"
+                )
+
         return recommendation, rationale
 
     def _analyze_sensitivity(self, final_score: float, confidence: float,
                              recommendation: str) -> tuple:
         """
-        Determine if a region is borderline — a 10% data change could flip
+        Determine if a region is borderline — a small data change could flip
         the recommendation category.
-
-        Thresholds:
-        - BUY:   score ≥40, confidence ≥0.60
-        - WATCH: score ≥25, confidence ≥0.40
-        - PASS:  below WATCH thresholds
 
         A region is "borderline" if its score is within ±5 points of the
         nearest category boundary, OR if its confidence is within 10pp of
@@ -691,49 +713,63 @@ class CorrectedInvestmentScorer:
 
         flag = None
         detail_parts = []
+        T_SB = self.THRESHOLD_STRONG_BUY
+        T_B = self.THRESHOLD_BUY
+        T_W = self.THRESHOLD_WATCH
 
-        if recommendation == 'BUY':
-            # How close to dropping to WATCH?
-            score_buffer = final_score - 40.0
-            conf_buffer = confidence - 0.60
+        if recommendation == 'STRONG_BUY':
+            score_buffer = final_score - T_SB
+            conf_buffer = confidence - self.CONF_GATE_STRONG_BUY
             if score_buffer < SCORE_MARGIN:
-                detail_parts.append(f"score only {score_buffer:+.1f}pts above BUY threshold (40)")
+                detail_parts.append(f"score only {score_buffer:+.1f}pts above STRONG_BUY threshold ({T_SB})")
             if conf_buffer < CONF_MARGIN:
-                detail_parts.append(f"confidence only {conf_buffer:+.0%} above BUY gate (60%)")
+                detail_parts.append(f"confidence only {conf_buffer:+.0%} above STRONG_BUY gate ({self.CONF_GATE_STRONG_BUY:.0%})")
+            if detail_parts:
+                flag = 'BORDERLINE_STRONG_BUY'
+            headroom = score_buffer
+
+        elif recommendation == 'BUY':
+            score_buffer = final_score - T_B
+            up_to_strong = T_SB - final_score
+            conf_buffer = confidence - self.CONF_GATE_BUY
+            if score_buffer < SCORE_MARGIN:
+                detail_parts.append(f"score only {score_buffer:+.1f}pts above BUY threshold ({T_B})")
+            if up_to_strong < SCORE_MARGIN:
+                detail_parts.append(f"only {up_to_strong:.1f}pts below STRONG_BUY threshold ({T_SB})")
+            if conf_buffer < CONF_MARGIN:
+                detail_parts.append(f"confidence only {conf_buffer:+.0%} above BUY gate ({self.CONF_GATE_BUY:.0%})")
             if detail_parts:
                 flag = 'BORDERLINE_BUY'
             headroom = score_buffer
 
         elif recommendation == 'WATCH':
-            # How close to upgrading to BUY or dropping to PASS?
-            to_buy = 40.0 - final_score
-            to_pass = final_score - 25.0
-            conf_to_buy = 0.60 - confidence
-            conf_to_pass = confidence - 0.40
+            to_buy = T_B - final_score
+            to_pass = final_score - T_W
+            conf_to_buy = self.CONF_GATE_BUY - confidence
+            conf_to_pass = confidence - self.CONF_GATE_WATCH
 
             if to_buy < SCORE_MARGIN:
-                detail_parts.append(f"only {to_buy:.1f}pts below BUY threshold (40)")
+                detail_parts.append(f"only {to_buy:.1f}pts below BUY threshold ({T_B})")
             if to_pass < SCORE_MARGIN:
-                detail_parts.append(f"only {to_pass:.1f}pts above PASS threshold (25)")
+                detail_parts.append(f"only {to_pass:.1f}pts above PASS threshold ({T_W})")
             if conf_to_buy < CONF_MARGIN:
-                detail_parts.append(f"confidence {conf_to_buy:.0%} short of BUY gate (60%)")
+                detail_parts.append(f"confidence {conf_to_buy:.0%} short of BUY gate ({self.CONF_GATE_BUY:.0%})")
             if conf_to_pass < CONF_MARGIN:
-                detail_parts.append(f"confidence only {conf_to_pass:.0%} above PASS gate (40%)")
+                detail_parts.append(f"confidence only {conf_to_pass:.0%} above PASS gate ({self.CONF_GATE_WATCH:.0%})")
             if detail_parts:
                 flag = 'BORDERLINE_WATCH'
-            headroom = min(to_pass, to_buy)  # distance to nearest edge
+            headroom = min(to_pass, to_buy)
 
         else:  # PASS
-            # How close to upgrading to WATCH?
-            score_gap = 25.0 - final_score
-            conf_gap = 0.40 - confidence
+            score_gap = T_W - final_score
+            conf_gap = self.CONF_GATE_WATCH - confidence
             if score_gap < SCORE_MARGIN and score_gap > 0:
-                detail_parts.append(f"only {score_gap:.1f}pts below WATCH threshold (25)")
+                detail_parts.append(f"only {score_gap:.1f}pts below WATCH threshold ({T_W})")
             if conf_gap < CONF_MARGIN and conf_gap > 0:
-                detail_parts.append(f"confidence only {conf_gap:.0%} below WATCH gate (40%)")
+                detail_parts.append(f"confidence only {conf_gap:.0%} below WATCH gate ({self.CONF_GATE_WATCH:.0%})")
             if detail_parts:
                 flag = 'BORDERLINE_PASS'
-            headroom = -score_gap  # negative = below threshold
+            headroom = -score_gap
 
         detail = '; '.join(detail_parts) if detail_parts else None
         return flag, detail, headroom

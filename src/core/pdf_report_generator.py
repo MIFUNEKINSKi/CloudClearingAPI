@@ -258,8 +258,9 @@ class PDFReportGenerator:
 
         # Aggregate SAR and news stats from investment data
         yogyakarta_analysis = data.get('investment_analysis', {}).get('yogyakarta_analysis', {})
+        strong_recs = yogyakarta_analysis.get('strong_buy_recommendations', [])
         buy_recs = yogyakarta_analysis.get('buy_recommendations', [])
-        all_recs = yogyakarta_analysis.get('all_regions', buy_recs)
+        all_recs = yogyakarta_analysis.get('all_regions', strong_recs + buy_recs)
 
         sar_active_count = sum(
             1 for r in all_recs
@@ -402,10 +403,11 @@ class PDFReportGenerator:
         story = []
 
         yogyakarta_analysis = data.get('investment_analysis', {}).get('yogyakarta_analysis', {})
+        strong_buys = yogyakarta_analysis.get('strong_buy_recommendations', [])
         buys = yogyakarta_analysis.get('buy_recommendations', [])
         watch = yogyakarta_analysis.get('watch_list', [])
         passes = yogyakarta_analysis.get('pass_list', [])
-        all_regions = buys + watch + passes
+        all_regions = strong_buys + buys + watch + passes
 
         if not all_regions:
             return story
@@ -413,10 +415,11 @@ class PDFReportGenerator:
         story.append(PageBreak())
         story.append(Paragraph("DECISION MATRIX — All Regions Ranked", self.styles['SectionHeader']))
 
-        # Summary counts
+        # Summary counts (tightened thresholds — see corrected_scoring.py)
         story.append(Paragraph(
-            f"<b>{len(buys)} BUY</b> | <b>{len(watch)} WATCH</b> | <b>{len(passes)} PASS</b> "
-            f"&nbsp;&nbsp;(BUY >= 40 | WATCH 25-39 | PASS < 25)",
+            f"<b>{len(strong_buys)} STRONG BUY</b> | <b>{len(buys)} BUY</b> | "
+            f"<b>{len(watch)} WATCH</b> | <b>{len(passes)} PASS</b> "
+            f"&nbsp;&nbsp;(STRONG BUY >= 58 conf>=85% | BUY >= 50 conf>=75% | WATCH >= 35 conf>=50% | PASS otherwise)",
             self.styles['Normal']
         ))
         story.append(Spacer(1, 10))
@@ -461,12 +464,14 @@ class PDFReportGenerator:
             confidence = r.get('confidence', r.get('confidence_level', 0))
             region_name = r.get('region', '').replace('_', ' ').title()
 
-            if rec == 'BUY':
-                action_str = '<font color="green"><b>BUY</b></font>'
+            if rec == 'STRONG_BUY':
+                action_str = '<font color="#008000"><b>★BUY</b></font>'
+            elif rec == 'BUY':
+                action_str = '<font color="green">BUY</font>'
             elif rec == 'WATCH':
-                action_str = '<font color="#CC8800"><b>WATCH</b></font>'
+                action_str = '<font color="#CC8800">WATCH</font>'
             else:
-                action_str = '<font color="red"><b>PASS</b></font>'
+                action_str = '<font color="red">PASS</font>'
 
             # Market heat color
             if heat in ('booming', 'strong'):
@@ -626,12 +631,13 @@ class PDFReportGenerator:
             ))
             story.append(Spacer(1, 10))
         
-        # Yogyakarta opportunities
+        # Yogyakarta opportunities — STRONG_BUY first, then BUY
         yogyakarta_analysis = investment_analysis.get('yogyakarta_analysis', {})
-        buy_recommendations = yogyakarta_analysis.get('buy_recommendations', [])
-        
+        strong_buy_recs = yogyakarta_analysis.get('strong_buy_recommendations', [])
+        buy_recommendations = strong_buy_recs + yogyakarta_analysis.get('buy_recommendations', [])
+
         if buy_recommendations:
-            story.append(Paragraph("🏠 Top Investment Opportunities:", self.styles['SubsectionHeader']))
+            story.append(Paragraph("🏠 Top Investment Opportunities (★ = STRONG BUY):", self.styles['SubsectionHeader']))
             
             # Create a compact detail style for table cells
             detail_style = ParagraphStyle(
@@ -858,11 +864,14 @@ class PDFReportGenerator:
         ))
         story.append(Spacer(1, 15))
         
-        # Add before/after imagery for top investment opportunities
+        # Add before/after imagery for top investment opportunities (STRONG_BUY first)
         investment_analysis = data.get('investment_analysis', {})
         yogyakarta_analysis = investment_analysis.get('yogyakarta_analysis', {})
-        buy_recommendations = yogyakarta_analysis.get('buy_recommendations', [])
-        
+        buy_recommendations = (
+            yogyakarta_analysis.get('strong_buy_recommendations', [])
+            + yogyakarta_analysis.get('buy_recommendations', [])
+        )
+
         # Show images for top 3 buy recommendations
         regions_shown = 0
         for rec in buy_recommendations[:3]:
@@ -913,10 +922,13 @@ class PDFReportGenerator:
         watch_list = yogyakarta_analysis.get('watch_list', yogyakarta_analysis.get('hold_recommendations', []))
         # ✅ NEW: Include pass_list so ALL scores appear in PDF (not just BUY/WATCH)
         pass_list = yogyakarta_analysis.get('pass_list', [])
-        all_recommendations = yogyakarta_analysis.get('buy_recommendations', []) + \
-                            watch_list + \
-                            pass_list + \
-                            yogyakarta_analysis.get('sell_recommendations', [])
+        all_recommendations = (
+            yogyakarta_analysis.get('strong_buy_recommendations', [])
+            + yogyakarta_analysis.get('buy_recommendations', [])
+            + watch_list
+            + pass_list
+            + yogyakarta_analysis.get('sell_recommendations', [])
+        )
         
         # Get list of regions already featured in Investment Opportunities
         featured_region_names = [rec.get('region') for rec in buy_recommendations[:5]]

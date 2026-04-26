@@ -271,10 +271,11 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
             data = _json.load(f)
 
         yog = data.get('investment_analysis', {}).get('yogyakarta_analysis', {})
+        strong_buy = yog.get('strong_buy_recommendations', [])
         buy = yog.get('buy_recommendations', [])
         watch = yog.get('watch_list', [])
         passes = yog.get('pass_list', [])
-        all_recs = buy + watch + passes
+        all_recs = strong_buy + buy + watch + passes
 
         # --- Data quality (computed first so we can tag the subject) ---
         n = max(1, len(all_recs))
@@ -291,7 +292,7 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
         # --- Portfolio Overview ---
         body_lines.append(f"PORTFOLIO OVERVIEW")
         body_lines.append(f"  Regions Scored: {len(all_recs)}")
-        body_lines.append(f"  BUY: {len(buy)} | WATCH: {len(watch)} | PASS: {len(passes)}")
+        body_lines.append(f"  STRONG BUY: {len(strong_buy)} | BUY: {len(buy)} | WATCH: {len(watch)} | PASS: {len(passes)}")
         body_lines.append(f"  Data Quality: {live_market}/{len(all_recs)} live market, {live_infra}/{len(all_recs)} live infrastructure")
         if sar_only_count:
             body_lines.append(
@@ -306,11 +307,13 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
             )
         body_lines.append("")
 
-        # --- Top BUY Opportunities ---
-        if buy:
-            body_lines.append("TOP BUY OPPORTUNITIES (sorted by score)")
+        # --- Top BUY Opportunities (STRONG_BUY first, then BUY) ---
+        priority_recs = strong_buy + buy
+        if priority_recs:
+            body_lines.append("PRIORITY OPPORTUNITIES — 🔥 STRONG BUY first, then BUY")
             body_lines.append("-" * 55)
-            for i, r in enumerate(sorted(buy, key=lambda x: x.get('investment_score', 0), reverse=True)[:7], 1):
+            for i, r in enumerate(sorted(priority_recs, key=lambda x: x.get('investment_score', 0), reverse=True)[:10], 1):
+                tier = '🔥 STRONG BUY' if r.get('recommendation') == 'STRONG_BUY' else 'BUY'
                 name = r.get('region', '?').replace('_', ' ').title()
                 score = r.get('investment_score', 0)
                 conf = r.get('confidence', r.get('confidence_level', 0))
@@ -339,7 +342,7 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
                 if isinstance(nwow, dict) and nwow.get('trend'):
                     wow_str = f" | News: {nwow.get('previous_articles', 0)}→{nwow.get('current_articles', 0)} ({nwow['trend']})"
 
-                body_lines.append(f"  {i}. {name}")
+                body_lines.append(f"  {i}. [{tier}] {name}")
                 body_lines.append(f"     Score: {score:.1f}/100 | Confidence: {conf*100:.0f}% | Market: {heat}")
                 body_lines.append(f"     Entry Price: Rp {price:,.0f}/m² → Rp {future_val:,.0f}/m² (projected)")
                 body_lines.append(f"     ROI: 3Y {land_roi_3y*100:.1f}% | 5Y {land_roi_5y*100:.1f}%")
@@ -379,16 +382,19 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
         # --- Actionable Next Steps ---
         body_lines.append("RECOMMENDED ACTIONS")
         body_lines.append("-" * 55)
-        if buy:
-            top = sorted(buy, key=lambda x: x.get('investment_score', 0), reverse=True)[0]
+        if priority_recs:
+            top = sorted(priority_recs, key=lambda x: x.get('investment_score', 0), reverse=True)[0]
             top_name = top.get('region', '?').replace('_', ' ').title()
-            body_lines.append(f"  1. Priority due diligence: {top_name} (highest score)")
-            body_lines.append(f"  2. Verify land titles and zoning for top 3 BUY regions")
-            body_lines.append(f"  3. Check local notary/PPAT availability for target plot")
-            low_rvi = [r for r in buy if isinstance(r.get('rvi_data'), dict) and r['rvi_data'].get('rvi', 999) < 0.85]
+            top_tier = '🔥 STRONG BUY' if top.get('recommendation') == 'STRONG_BUY' else 'BUY'
+            body_lines.append(f"  1. Priority due diligence: {top_name} [{top_tier}]")
+            if strong_buy:
+                body_lines.append(f"  2. Focus on the {len(strong_buy)} STRONG BUY region(s) first — these are top-decile signals")
+            body_lines.append(f"  3. Verify land titles and zoning before deploying capital")
+            body_lines.append(f"  4. Check local notary/PPAT availability for target plot")
+            low_rvi = [r for r in priority_recs if isinstance(r.get('rvi_data'), dict) and r['rvi_data'].get('rvi', 999) < 0.85]
             if low_rvi:
                 names = [r.get('region', '?').replace('_', ' ').title() for r in low_rvi[:3]]
-                body_lines.append(f"  4. Undervalued (RVI < 0.85): {', '.join(names)} — potential deep value")
+                body_lines.append(f"  5. Undervalued (RVI < 0.85): {', '.join(names)} — potential deep value")
         body_lines.append("")
         body_lines.append("Full PDF report with Decision Matrix, financial projections, and")
         body_lines.append("risk analysis attached.")

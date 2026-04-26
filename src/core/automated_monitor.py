@@ -1149,7 +1149,8 @@ class AutomatedMonitor:
                 regions = data.get('regions_analyzed', [])
                 if not regions:
                     yog = data.get('investment_analysis', {}).get('yogyakarta_analysis', {})
-                    regions = (yog.get('buy_recommendations', []) +
+                    regions = (yog.get('strong_buy_recommendations', []) +
+                               yog.get('buy_recommendations', []) +
                                yog.get('watch_list', []) + yog.get('pass_list', []))
                 for r in regions:
                     if not isinstance(r, dict):
@@ -1894,9 +1895,21 @@ class AutomatedMonitor:
         Generate investment report from dynamic scoring results.
         Regions are sorted by investment score (highest first).
         """
+        # Recommendation buckets — STRONG_BUY split out 2026-04-25 because the
+        # old "BUY ≥40" gate was catching 67% of the universe (median = 46.8).
+        # See corrected_scoring.py THRESHOLD_* constants.
+        from .corrected_scoring import CorrectedInvestmentScorer as _Sc
+        T_SB = _Sc.THRESHOLD_STRONG_BUY  # 58
+        T_B = _Sc.THRESHOLD_BUY          # 50
+        T_W = _Sc.THRESHOLD_WATCH        # 35
+        C_SB = _Sc.CONF_GATE_STRONG_BUY  # 0.85
+        C_B = _Sc.CONF_GATE_BUY          # 0.75
+        C_W = _Sc.CONF_GATE_WATCH        # 0.50
+
+        strong_buy_recommendations = []
         buy_recommendations = []
         watch_list = []
-        pass_list = []  # ✅ NEW: Track PASS regions (<25) so ALL scores appear in PDF
+        pass_list = []
         market_insights = []
         
         # Sort regions by investment score (highest first)
@@ -1936,53 +1949,54 @@ class AutomatedMonitor:
                 'rvi_data': region_score.get('rvi_data'),
             }
             
-            # ✅ CORRECTED THRESHOLDS (based on proper 0-60 score range)
-            # OLD: BUY ≥70, WATCH ≥50 (broken - everyone was a BUY!)
-            # NEW: BUY ≥40, WATCH ≥25 (proper differentiation)
-            if investment_score >= 40 and confidence >= 0.6:
-                recommendation['recommendation'] = 'BUY'
-                
-                # Build concise rationale (truncated for PDF display)
-                rationale_parts = []
-                
+            # Tightened thresholds — see corrected_scoring.CorrectedInvestmentScorer
+            # THRESHOLD_* constants. Median of the Apr 25 run was 46.8; old gate
+            # of ≥40 caught 67% of regions and made BUY meaningless. New tiers:
+            #   STRONG_BUY ≥58, conf ≥0.85  — top-decile, prioritize for DD
+            #   BUY        ≥50, conf ≥0.75  — solid signal, verify before acting
+            #   WATCH      ≥35, conf ≥0.50  — monitor for upgrade
+            #   PASS       below either gate
+            def _build_rationale():
+                parts = []
                 if price_trend > 5:
-                    rationale_parts.append(f"Strong price momentum (+{price_trend:.1f}%)")
+                    parts.append(f"Strong price momentum (+{price_trend:.1f}%)")
                 elif price_trend < -3:
-                    rationale_parts.append(f"Price correction ({price_trend:.1f}%)")
+                    parts.append(f"Price correction ({price_trend:.1f}%)")
                 else:
-                    rationale_parts.append(f"Stable market ({price_trend:+.1f}%)")
-                
-                if region_score.get('satellite_changes', 0) > 10000:
-                    rationale_parts.append(f"Very high development: {region_score.get('satellite_changes', 0):,} changes")
-                elif region_score.get('satellite_changes', 0) > 5000:
-                    rationale_parts.append(f"High development: {region_score.get('satellite_changes', 0):,} changes")
-                elif region_score.get('satellite_changes', 0) > 1000:
-                    rationale_parts.append(f"Moderate activity: {region_score.get('satellite_changes', 0):,} changes")
-                
-                # Combine with bullet separator for clean formatting
-                recommendation['rationale'] = " • ".join(rationale_parts)
-                
+                    parts.append(f"Stable market ({price_trend:+.1f}%)")
+                sc = region_score.get('satellite_changes', 0)
+                if sc > 10000:
+                    parts.append(f"Very high development: {sc:,} changes")
+                elif sc > 5000:
+                    parts.append(f"High development: {sc:,} changes")
+                elif sc > 1000:
+                    parts.append(f"Moderate activity: {sc:,} changes")
+                return " • ".join(parts)
+
+            if investment_score >= T_SB and confidence >= C_SB:
+                recommendation['recommendation'] = 'STRONG_BUY'
+                recommendation['rationale'] = "🔥 STRONG BUY • " + _build_rationale()
+                strong_buy_recommendations.append(recommendation)
+
+            elif investment_score >= T_B and confidence >= C_B:
+                recommendation['recommendation'] = 'BUY'
+                recommendation['rationale'] = _build_rationale()
                 buy_recommendations.append(recommendation)
-            
-            elif investment_score >= 25 and confidence >= 0.4:
+
+            elif investment_score >= T_W and confidence >= C_W:
                 recommendation['recommendation'] = 'WATCH'
                 recommendation['rationale'] = f"Moderate potential ({investment_score:.1f}/100) with monitoring advised. "
-                
-                if confidence < 0.6:
+                if confidence < C_B:
                     recommendation['rationale'] += f"Lower confidence ({confidence:.1%}) suggests careful evaluation. "
-                
                 watch_list.append(recommendation)
-            
+
             else:
-                # ✅ NEW: Capture PASS regions (<25) so ALL scores appear in PDF
                 recommendation['recommendation'] = 'PASS'
                 recommendation['rationale'] = f"Below investment threshold ({investment_score:.1f}/100). "
-                
                 if region_score.get('satellite_changes', 0) == 0:
                     recommendation['rationale'] += "No significant development detected. "
                 else:
                     recommendation['rationale'] += f"Limited activity: {region_score.get('satellite_changes', 0):,} changes. "
-                
                 pass_list.append(recommendation)
             
             # Add market insights
@@ -2000,6 +2014,7 @@ class AutomatedMonitor:
         avg_confidence = sum(r.get('overall_confidence', 0) for r in sorted_regions) / len(sorted_regions) if sorted_regions else 0
         
         # Sort all recommendation lists by score (highest first)
+        strong_buy_recommendations.sort(key=lambda x: x.get('investment_score', 0), reverse=True)
         buy_recommendations.sort(key=lambda x: x.get('investment_score', 0), reverse=True)
         watch_list.sort(key=lambda x: x.get('investment_score', 0), reverse=True)
         pass_list.sort(key=lambda x: x.get('investment_score', 0), reverse=True)
@@ -2011,6 +2026,7 @@ class AutomatedMonitor:
         ]
 
         return {
+            'strong_buy_recommendations': strong_buy_recommendations,
             'buy_recommendations': buy_recommendations,
             'watch_list': watch_list,
             'pass_list': pass_list,
