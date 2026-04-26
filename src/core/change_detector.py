@@ -704,7 +704,14 @@ class ChangeDetector:
             }
             
         except Exception as e:
-            logger.warning(f"Failed to generate satellite image URLs: {e}")
+            err_msg = str(e)
+            # Downgrade empty-geometry / no-bands errors to DEBUG: the cloud-tier
+            # loop in automated_monitor handles them by retrying. They were
+            # producing ~360 WARNING lines per run.
+            if 'no bands' in err_msg or 'must not be empty' in err_msg or 'Band pattern' in err_msg:
+                logger.debug(f"Failed to generate satellite image URLs: {e}")
+            else:
+                logger.warning(f"Failed to generate satellite image URLs: {e}")
             return {
                 'error': f"Image generation failed: {str(e)}",
                 'week_a_date': week_a,
@@ -788,7 +795,14 @@ class ChangeDetector:
             }
             
         except Exception as e:
-            logger.warning(f"Failed to generate satellite image URLs: {e}")
+            err_msg = str(e)
+            # Downgrade empty-geometry / no-bands errors to DEBUG: the cloud-tier
+            # loop in automated_monitor handles them by retrying. They were
+            # producing ~360 WARNING lines per run.
+            if 'no bands' in err_msg or 'must not be empty' in err_msg or 'Band pattern' in err_msg:
+                logger.debug(f"Failed to generate satellite image URLs: {e}")
+            else:
+                logger.warning(f"Failed to generate satellite image URLs: {e}")
             return {
                 'error': f"Image generation failed: {str(e)}",
                 'week_a_date': week_a,

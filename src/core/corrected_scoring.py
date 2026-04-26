@@ -179,8 +179,13 @@ class CorrectedInvestmentScorer:
             satellite_data_age_days=satellite_data_age_days,
             market_clamped=str(market_data.get('data_source', '')).endswith('_clamped'),
         )
-        # SAR dual-sensor boost increases confidence (max +0.10)
-        confidence = min(1.0, confidence + sar_confidence_boost)
+        # SAR dual-sensor boost increases confidence (max +0.10).
+        # Skipped when the "optical" signal is actually SAR data copied into
+        # the change_count field by the SAR-only fallback path — fusing SAR
+        # with itself was producing a fake +0.10 that exactly cancelled the
+        # SAR-only cap (resulting in 0.94 instead of the intended 0.84).
+        if satellite_data_source != 'sar_only':
+            confidence = min(1.0, confidence + sar_confidence_boost)
         
         # Non-linear confidence multiplier (v2.4.1 refinement)
         # Quadratic scaling below 85% for steeper penalties, linear above for diminishing returns
