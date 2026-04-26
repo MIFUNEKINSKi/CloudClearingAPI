@@ -1256,6 +1256,10 @@ class AutomatedMonitor:
                 bbox=bbox,
                 sar_confidence_boost=fusion_result['confidence_boost'] if fusion_result else 0.0,
                 news_catalyst_multiplier=news_catalyst_result.multiplier if news_catalyst_result else 1.0,
+                # Pass through satellite provenance so confidence calc can
+                # penalize SAR-only and stale data (was always trusting 1.0).
+                satellite_data_source=region_data.get('data_source', 'optical'),
+                satellite_data_age_days=region_data.get('data_age_days', 0),
                 cancel_event=cancel_event,
             )
             

@@ -110,6 +110,8 @@ class CorrectedInvestmentScorer:
                                    actual_price_m2: Optional[float] = None,
                                    sar_confidence_boost: float = 0.0,
                                    news_catalyst_multiplier: float = 1.0,
+                                   satellite_data_source: str = 'optical',
+                                   satellite_data_age_days: int = 0,
                                    cancel_event=None) -> CorrectedScoringResult:
         """
         Calculate investment score using the CORRECT three-part system.
@@ -171,7 +173,12 @@ class CorrectedInvestmentScorer:
         after_market = after_infrastructure * market_multiplier  # Apply market
         
         # Confidence weighting (reduces score when data is missing)
-        confidence = self._calculate_confidence(data_availability, market_data, infrastructure_data)
+        confidence = self._calculate_confidence(
+            data_availability, market_data, infrastructure_data,
+            satellite_data_source=satellite_data_source,
+            satellite_data_age_days=satellite_data_age_days,
+            market_clamped=str(market_data.get('data_source', '')).endswith('_clamped'),
+        )
         # SAR dual-sensor boost increases confidence (max +0.10)
         confidence = min(1.0, confidence + sar_confidence_boost)
         
@@ -311,41 +318,33 @@ class CorrectedInvestmentScorer:
     def _calculate_development_score(self, satellite_changes: int) -> float:
         """
         Calculate development score from satellite change count.
-        This is the PRIMARY signal - the foundation of the entire score!
+        This is the PRIMARY signal — the foundation of the entire score.
 
-        CALIBRATION NOTE: These thresholds are heuristic estimates based on
-        observed pixel-change ranges across Indonesian regions. They have NOT
-        been backtested against actual investment outcomes. Treat the resulting
-        scores as relative rankings (Region A vs Region B), not absolute
-        predictions of return. Threshold refinement requires ground-truth
-        validation against realized land-value changes.
+        Switched to logarithmic scaling 2026-04-26. The previous step-function
+        capped at 40 for any region with >50,000 changes — but actual regions
+        in the Apr 25/26 runs had between 8,000 and 8,000,000 changes, so the
+        cap saturated almost every meaningful BUY at exactly 40 and removed
+        all spread between "moderate" (100K) and "extreme" (5M) development.
+        Result: 7 STRONG_BUY regions tied at the same score.
 
-        Score ranges:
-        - 40 points: >50,000 changes (massive development)
-        - 35 points: 20,000-50,000 (very high activity)
-        - 30 points: 10,000-20,000 (high activity)
-        - 25 points: 5,000-10,000 (moderate activity)
-        - 20 points: 1,000-5,000 (some activity)
-        - 15 points: 500-1,000 (low activity)
-        - 10 points: 100-500 (minimal activity)
-        - 5 points: <100 (very little change)
+        Logarithmic formula: score = clip(5 + 5 * log10(max(10, changes)), 5, 40)
+        - 10        →  5  (noise floor)
+        - 100       → 15
+        - 1,000     → 20
+        - 10,000    → 25
+        - 100,000   → 30
+        - 1,000,000 → 35
+        - 10M+      → 40 (cap, real megaprojects)
+
+        CALIBRATION NOTE: thresholds are still heuristic — not backtested
+        against realized land-value changes. Treat scores as relative rankings,
+        not absolute return predictions.
         """
-        if satellite_changes > 50000:
-            return 40.0
-        elif satellite_changes > 20000:
-            return 35.0
-        elif satellite_changes > 10000:
-            return 30.0
-        elif satellite_changes > 5000:
-            return 25.0
-        elif satellite_changes > 1000:
-            return 20.0
-        elif satellite_changes > 500:
-            return 15.0
-        elif satellite_changes > 100:
-            return 10.0
-        else:
+        import math
+        if satellite_changes < 10:
             return 5.0
+        score = 5.0 + 5.0 * math.log10(satellite_changes)
+        return max(5.0, min(40.0, score))
     
     def _get_infrastructure_multiplier(self,
                                       region_name: str,
@@ -570,24 +569,51 @@ class CorrectedInvestmentScorer:
     def _calculate_confidence(self,
                              data_availability: Dict[str, bool],
                              market_data: Dict,
-                             infrastructure_data: Dict) -> float:
+                             infrastructure_data: Dict,
+                             satellite_data_source: str = 'optical',
+                             satellite_data_age_days: int = 0,
+                             market_clamped: bool = False) -> float:
         """
         Calculate confidence level (0.2-0.95) based on data availability and quality.
-        
-        Uses component-level quality bonuses to prevent post-aggregation inflation.
-        High-quality data sources increase confidence, low-quality reduces it.
-        
-        Version 2.4.1 Refinement: Component-level bonuses applied before weighted average.
+
+        2026-04-26: Now penalizes single-sensor (SAR-only) and outlier-clamped
+        market data instead of leaving them at full confidence. Mean confidence
+        on prior runs was 0.98 with no spread; the gate had become a no-op.
+
+        Penalties applied to per-component confidence BEFORE weighted average:
+        - SAR-only (no optical verification): satellite_conf 1.0 → 0.75
+        - Stale SAR (>14d old): additional drop to 0.60
+        - Market clamped (outlier prices): market_conf scaled down by 0.65
+        - Infrastructure fallback (not live OSM): -0.10
         """
         # Get data quality metrics
         market_confidence = market_data.get('data_confidence', 0.0)
         infra_confidence = infrastructure_data.get('data_confidence', 0.0)
-        satellite_confidence = 1.0  # Satellite data always available and reliable
-        
+
+        # Satellite confidence: penalize SAR-only and stale data
+        if satellite_data_source == 'sar_only':
+            if satellite_data_age_days > 14:
+                satellite_confidence = 0.60  # heavily penalized stale single-sensor
+            else:
+                satellite_confidence = 0.75  # SAR-only baseline (no optical verification)
+        else:
+            satellite_confidence = 1.0  # Optical (with or without SAR fusion)
+
+        # Market clamp penalty: outlier prices clamped to median/benchmark
+        # signal a data extraction issue that downstream scoring should treat
+        # cautiously even if the clamped value seems sensible.
+        if market_clamped:
+            market_confidence = min(market_confidence, 0.55)
+
+        # Infrastructure live vs fallback: penalize fallback
+        infra_source = str(infrastructure_data.get('data_source', ''))
+        if infra_source in ('fallback', 'fallback_breaker', 'unavailable', ''):
+            infra_confidence = max(0.30, infra_confidence - 0.10)
+
         # Component-level quality bonuses (applied BEFORE aggregation to prevent inflation)
         if data_availability['market_data'] and market_confidence >= 0.85:
             market_confidence = min(0.95, market_confidence + 0.05)  # +5% for excellent data
-        
+
         if data_availability['infrastructure_data'] and infra_confidence >= 0.85:
             infra_confidence = min(0.95, infra_confidence + 0.05)  # +5% for excellent data
         
