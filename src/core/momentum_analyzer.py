@@ -171,14 +171,26 @@ class MomentumAnalyzer:
         # Calculate velocities (average changes per run)
         recent_velocity = sum(recent_changes) / len(recent_changes) if recent_changes else 0
         baseline_velocity = sum(baseline_changes) / len(baseline_changes) if baseline_changes else 0
-        
-        # Calculate momentum ratio
+
+        # Calculate momentum ratio.
+        # CRITICAL bug fix 2026-04-26: previously when baseline_changes was
+        # EMPTY (no records in the baseline window — common when the
+        # historical archive is younger than 8 weeks) AND recent activity
+        # was non-zero, the code returned ratio=2.0 = "accelerating" for
+        # EVERY region. That faked a 3.4% multiplier boost across all 65
+        # regions on every run, inflating scores universally. Now we
+        # distinguish "no records in baseline window" (need more history,
+        # ratio=1.0) from "records show no activity" (genuine zero-to-some
+        # activity, the original 2.0 signal).
         if baseline_velocity > 0:
             momentum_ratio = recent_velocity / baseline_velocity
-        elif recent_velocity > 0:
-            momentum_ratio = 2.0  # Activity where there was none → strong signal
+        elif recent_velocity > 0 and len(baseline_changes) > 0:
+            # Genuine: baseline window had records but they showed 0 activity
+            momentum_ratio = 2.0
         else:
-            momentum_ratio = 1.0  # No activity in either period
+            # Either no baseline records (insufficient history) or no activity
+            # in either window — neutral, don't fake a signal.
+            momentum_ratio = 1.0
         
         # Convert to multiplier (0.85x–1.30x range)
         multiplier = self._ratio_to_multiplier(momentum_ratio)

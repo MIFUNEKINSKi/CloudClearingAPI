@@ -44,7 +44,8 @@ class FinancialProjection:
     # ROI Projections
     projected_roi_3yr: float  # Decimal (0.45 = 45% return) — includes dev costs
     projected_roi_5yr: float  # Decimal — includes dev costs
-    land_only_roi_3yr: float = 0.0  # Buy-and-hold ROI (no dev costs)
+    land_only_roi_3yr: float = 0.0  # Buy-and-hold ROI 3yr (no dev costs)
+    land_only_roi_5yr: float = 0.0  # Buy-and-hold ROI 5yr (no dev costs) — keep apples-to-apples with 3yr
     break_even_years: float = 0.0  # Years to break even
     
     # Investment Sizing
@@ -260,8 +261,10 @@ class FinancialMetricsEngine:
         roi_5yr = self._calculate_roi(
             current_value, dev_costs['total_per_m2'], future_value_5yr
         )
-        # Land-only ROI: pure appreciation without development costs (buy and hold)
+        # Land-only ROI: pure appreciation without development costs (buy and hold).
+        # Both 3yr and 5yr versions so the email/PDF can keep apples-to-apples.
         land_only_roi_3yr = (future_value_3yr - current_value) / current_value if current_value > 0 else 0
+        land_only_roi_5yr = (future_value_5yr - current_value) / current_value if current_value > 0 else 0
         bear_roi_3yr = self._calculate_roi(
             current_value, dev_costs['total_per_m2'], bear_future_3yr
         )
@@ -329,6 +332,7 @@ class FinancialMetricsEngine:
             projected_roi_3yr=roi_3yr,
             projected_roi_5yr=roi_5yr,
             land_only_roi_3yr=land_only_roi_3yr,
+            land_only_roi_5yr=land_only_roi_5yr,
             break_even_years=break_even_years,
             recommended_plot_size_m2=plot_size,
             total_acquisition_cost=total_acquisition,

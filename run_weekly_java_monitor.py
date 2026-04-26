@@ -323,14 +323,17 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
                 mom = r.get('momentum', {}).get('trend', 'n/a') if isinstance(r.get('momentum'), dict) else 'n/a'
                 heat = r.get('market_heat', 'unknown')
                 fp = r.get('financial_projection', {})
+                # Use land-only ROI for BOTH horizons so comparison is apples-to-apples.
+                # (Was mixing land_only_roi_3yr with projected_roi_5yr — produced
+                # the bizarre "5Y ROI < 3Y ROI" anomaly in 30/65 regions.)
                 if hasattr(fp, 'projected_roi_3yr'):
-                    land_roi_3y = fp.projected_roi_3yr
-                    land_roi_5y = getattr(fp, 'projected_roi_5yr', 0) or 0
+                    land_roi_3y = getattr(fp, 'land_only_roi_3yr', fp.projected_roi_3yr) or 0
+                    land_roi_5y = getattr(fp, 'land_only_roi_5yr', getattr(fp, 'projected_roi_5yr', 0)) or 0
                     entry_cost = getattr(fp, 'total_acquisition_cost', 0)
                     future_val = getattr(fp, 'estimated_future_value_per_m2', 0)
                 elif isinstance(fp, dict):
-                    land_roi_3y = fp.get('land_only_roi_3yr', fp.get('projected_roi_3yr', 0))
-                    land_roi_5y = fp.get('projected_roi_5yr', 0) or 0
+                    land_roi_3y = fp.get('land_only_roi_3yr', fp.get('projected_roi_3yr', 0)) or 0
+                    land_roi_5y = fp.get('land_only_roi_5yr', fp.get('projected_roi_5yr', 0)) or 0
                     entry_cost = fp.get('total_acquisition_cost', 0)
                     future_val = fp.get('estimated_future_value_per_m2', 0)
                 else:
