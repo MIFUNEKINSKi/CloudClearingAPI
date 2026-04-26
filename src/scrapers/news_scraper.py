@@ -171,8 +171,11 @@ class NewsScraper:
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
     ]
 
-    def __init__(self, cache_dir: str = "./cache/news", cache_ttl_days: int = 7,
+    def __init__(self, cache_dir: str = "./cache/news", cache_ttl_days: int = 2,
                  max_retries: int = 2, request_timeout: int = 15):
+        # Default TTL lowered from 7d → 2d in 2026-04-25: weekly runs were
+        # hitting the same 6-day-old 12-article cache and producing 0 region
+        # matches. 2d ensures the news pulled is at most one run stale.
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.cache_ttl = timedelta(days=cache_ttl_days)
@@ -308,9 +311,11 @@ class NewsScraper:
                         continue
                     seen_urls.add(full_url)
 
-                    # Check if title matches any infrastructure keyword
+                    # Keep article if it matches an infrastructure keyword OR
+                    # mentions one of our target cities/regions directly.
                     matched = self._match_keywords(title_text)
-                    if not matched:
+                    cities = self._match_cities(title_text)
+                    if not matched and not cities:
                         continue
 
                     articles.append({
@@ -320,9 +325,10 @@ class NewsScraper:
                         'date': datetime.now().strftime('%Y-%m-%d'),
                         'snippet': title_text[:200],
                         'matched_keywords': matched,
+                        'matched_cities': cities,
                     })
 
-                logger.info(f"📰 Jakarta Post ({url.split('/')[-1]}): {len(articles)} infrastructure articles")
+                logger.info(f"📰 Jakarta Post ({url.split('/')[-1]}): {len(articles)} infra/region articles so far")
                 time.sleep(random.uniform(0.5, 1.5))
 
             except Exception as e:
@@ -363,7 +369,8 @@ class NewsScraper:
                     seen_urls.add(href)
 
                     matched = self._match_keywords(title_text)
-                    if not matched:
+                    cities = self._match_cities(title_text)
+                    if not matched and not cities:
                         continue
 
                     articles.append({
@@ -373,9 +380,10 @@ class NewsScraper:
                         'date': datetime.now().strftime('%Y-%m-%d'),
                         'snippet': title_text[:200],
                         'matched_keywords': matched,
+                        'matched_cities': cities,
                     })
 
-                logger.info(f"📰 Kompas ({url.split('/')[-2]}): found matches")
+                logger.info(f"📰 Kompas ({url.split('/')[-2]}): {len(articles)} infra/region articles so far")
                 time.sleep(random.uniform(0.5, 1.5))
 
             except Exception as e:
@@ -384,11 +392,19 @@ class NewsScraper:
         return articles[:30]
     
     def _scrape_antara(self) -> List[Dict]:
-        """Scrape infrastructure articles from Antara News."""
+        """Scrape infrastructure articles from Antara News.
+
+        Antara's economy section publishes mostly commodity/financial news,
+        which has near-zero infra-keyword density. Adding infrastructure-
+        specific subsections (megapolitan, nasional, infografik) where toll
+        roads, ports, airports actually get headline coverage.
+        """
         articles = []
         urls = [
             "https://www.antaranews.com/ekonomi",
             "https://www.antaranews.com/ekonomi/bisnis",
+            # /megapolitan returns 404 (site restructured); skipped.
+            "https://www.antaranews.com/nasional",
         ]
         
         seen_urls = set()
@@ -416,7 +432,8 @@ class NewsScraper:
                     seen_urls.add(href)
 
                     matched = self._match_keywords(title_text)
-                    if not matched:
+                    cities = self._match_cities(title_text)
+                    if not matched and not cities:
                         continue
 
                     articles.append({
@@ -426,9 +443,10 @@ class NewsScraper:
                         'date': datetime.now().strftime('%Y-%m-%d'),
                         'snippet': title_text[:200],
                         'matched_keywords': matched,
+                        'matched_cities': cities,
                     })
 
-                logger.info(f"📰 Antara ({url.split('/')[-1]}): found matches")
+                logger.info(f"📰 Antara ({url.split('/')[-1]}): {len(articles)} infra/region articles so far")
                 time.sleep(random.uniform(0.5, 1.5))
 
             except Exception as e:
@@ -448,6 +466,18 @@ class NewsScraper:
             if _re.search(r'\b' + _re.escape(keyword) + r'\b', text_lower):
                 matched.append(keyword)
         return matched
+
+    def _match_cities(self, text: str) -> List[str]:
+        """Return any CITY_TO_REGIONS keys mentioned in text (word-boundary).
+
+        A headline that mentions one of our target cities/sub-regions is
+        worth keeping even without a generic infrastructure keyword — the
+        fact that a city we monitor is in the news IS the signal.
+        """
+        import re as _re
+        text_lower = text.lower()
+        return [city for city in CITY_TO_REGIONS
+                if _re.search(r'\b' + _re.escape(city) + r'\b', text_lower)]
     
     def match_articles_to_region(self, articles: List[Dict], region_name: str) -> List[NewsArticle]:
         """
@@ -481,19 +511,33 @@ class NewsScraper:
         
         for article in articles:
             text = f"{article['title']} {article.get('snippet', '')}".lower()
-            
-            # Check if any target city is mentioned (word boundary match)
+
+            # Check if any target city is mentioned (word boundary match).
+            # Prefer the precomputed matched_cities (set at scrape time) but
+            # fall back to live regex for old cached articles without it.
             import re as _re
-            city_match = any(_re.search(r'\b' + _re.escape(city) + r'\b', text) for city in target_cities)
+            article_cities = article.get('matched_cities')
+            if article_cities is not None:
+                city_match = bool(set(article_cities) & target_cities)
+            else:
+                city_match = any(_re.search(r'\b' + _re.escape(city) + r'\b', text) for city in target_cities)
             if not city_match:
                 continue
-            
+
             # Determine sentiment
             sentiment, neg_count = self._analyze_sentiment(text)
-            
-            # Calculate relevance score
+
+            # Relevance: average keyword weight, with a city-direct bonus when
+            # the article mentions a target city (region IS in the news →
+            # higher signal than generic infra mention).
             keyword_scores = [INFRA_KEYWORDS.get(kw, 0.5) for kw in article.get('matched_keywords', [])]
-            relevance = min(1.0, sum(keyword_scores) / max(1, len(keyword_scores)))
+            if keyword_scores:
+                relevance = sum(keyword_scores) / len(keyword_scores)
+            else:
+                # No infra keywords — purely a region mention. Treat as 0.6
+                # baseline (lower than a strong infra story but not noise).
+                relevance = 0.6
+            relevance = min(1.0, relevance)
             if neg_count > 0:
                 relevance *= 0.5  # Heavily discount negative articles
             

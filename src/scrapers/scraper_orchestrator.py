@@ -165,11 +165,22 @@ class LandPriceOrchestrator:
                 'data_source': 'static_benchmark',
             },
             'denpasar': {
-                # NOT REFRESHED: 0 contributors (denpasar_north_expansion went
-                # to 'bali' bucket via tokens; denpasar key is rarely chosen).
+                # 2026-04-25: denpasar_* now routes here (was bali). Keep the
+                # premium benchmark — Bali capital land trades ~2× rest of island.
+                # Refresh on next run when denpasar_north_expansion contributes.
                 'current_avg': 15_000_000,
                 'historical_appreciation': 18.0,
                 'market_liquidity': 'high',
+                'data_source': 'static_benchmark',
+            },
+            'banten': {
+                # Added 2026-04-25 to stop anyer/cilegon/serang/merak from
+                # polluting the yogyakarta default bucket. Banten coastal +
+                # industrial corridor — anchor at Cilegon/Merak port pricing.
+                # Will refresh from real medians on the next full run.
+                'current_avg': 4_000_000,
+                'historical_appreciation': 11.0,
+                'market_liquidity': 'moderate',
                 'data_source': 'static_benchmark',
             },
         }
@@ -360,14 +371,24 @@ class LandPriceOrchestrator:
 
         # Province / island-level matches — checked FIRST (more specific than
         # the bare-substring fallback) so balikpapan_* lands in 'balikpapan'
-        # not 'bali'.
+        # not 'bali'. Order matters when keywords overlap: more-specific
+        # benchmarks (denpasar, banten, jakarta) must come BEFORE the broader
+        # ones (bali, surabaya).
         mapping = {
+            # Banten = Indonesian province west of Jakarta (Anyer, Cilegon,
+            # Serang, Merak, Tangerang). Previously polluted yogyakarta default.
+            'banten': ['anyer', 'carita', 'cilegon', 'serang', 'merak'],
+            # Jakarta keeps tangerang/bekasi/cikarang/bogor — those are part of
+            # JABODETABEK metropolitan area, not Banten proper.
             'jakarta': ['jakarta', 'tangerang', 'bekasi', 'cikarang', 'bogor', 'karawang'],
+            # Denpasar (Bali capital) priced ~2× the rest of Bali — keep
+            # separate. Listed BEFORE bali so denpasar_* lands here.
+            'denpasar': ['denpasar'],
             'yogyakarta': ['yogyakarta', 'yogya', 'sleman', 'bantul', 'kulon', 'magelang', 'purwokerto'],
             'surabaya': ['surabaya', 'sidoarjo', 'gresik', 'malang', 'probolinggo', 'jember', 'banyuwangi'],
             'bandung': ['bandung', 'cirebon', 'subang'],
             'semarang': ['semarang', 'solo', 'tegal', 'batang'],
-            'bali': ['bali', 'denpasar', 'canggu', 'seminyak', 'sanur', 'ubud', 'tabanan', 'nusa', 'bukit'],
+            'bali': ['bali', 'canggu', 'seminyak', 'sanur', 'ubud', 'tabanan', 'nusa', 'bukit'],
             'medan': ['medan', 'kuala', 'belawan', 'toba'],
             'palembang': ['palembang', 'jakabaring', 'boom'],
             'lampung': ['lampung', 'bakauheni'],
@@ -376,7 +397,6 @@ class LandPriceOrchestrator:
             'balikpapan': ['balikpapan', 'samarinda', 'banjarmasin', 'pontianak'],
             'nusantara': ['nusantara', 'ikn'],
             'lombok': ['lombok', 'mataram', 'mandalika', 'senggigi'],
-            # Eastern Indonesia tourism — small Lombok-tier markets
         }
 
         for bench_key, keywords in mapping.items():
@@ -399,26 +419,17 @@ class LandPriceOrchestrator:
         return self.regional_benchmarks['yogyakarta']
     
     def _get_benchmark_region_name(self, region_name: str) -> str:
-        """Get the name of the benchmark region used"""
-        region_lower = region_name.lower()
-        
-        for benchmark_name in self.regional_benchmarks.keys():
-            if benchmark_name in region_lower:
-                return benchmark_name.capitalize()
-        
-        # Province-level
-        if 'jakarta' in region_lower or 'tangerang' in region_lower or 'bekasi' in region_lower:
-            return 'Jakarta'
-        elif 'yogya' in region_lower or 'sleman' in region_lower or 'bantul' in region_lower:
-            return 'Yogyakarta'
-        elif 'surabaya' in region_lower or 'sidoarjo' in region_lower:
-            return 'Surabaya'
-        elif 'bandung' in region_lower:
-            return 'Bandung'
-        elif 'semarang' in region_lower or 'solo' in region_lower:
-            return 'Semarang'
-        
-        return 'Yogyakarta'  # Default
+        """Get the display name of the benchmark region used.
+
+        Mirrors the lookup logic in _find_nearest_benchmark so the displayed
+        name matches the benchmark actually applied (token-based, not substring).
+        """
+        # Reverse-map: find the benchmark dict and return its key
+        target = self._find_nearest_benchmark(region_name)
+        for key, value in self.regional_benchmarks.items():
+            if value is target:
+                return key.capitalize()
+        return 'Yogyakarta'  # Should never hit; safety net
     
     def _calculate_price_trend(self, region_name: str, current_price: float) -> tuple:
         """
