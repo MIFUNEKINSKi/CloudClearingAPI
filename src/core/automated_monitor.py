@@ -1958,6 +1958,7 @@ class AutomatedMonitor:
                 'score_headroom': region_score.get('score_headroom'),
                 'sar_data': region_score.get('sar_data'),
                 'news_catalyst': region_score.get('news_catalyst'),
+                'news_wow': region_score.get('news_wow'),
                 'momentum': region_score.get('momentum'),
                 'rvi_data': region_score.get('rvi_data'),
             }
