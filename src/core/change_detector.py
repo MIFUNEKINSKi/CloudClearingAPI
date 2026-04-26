@@ -326,11 +326,15 @@ class SentinelProcessor:
         try:
             band_count = composite.bandNames().size().getInfo()
             if band_count == 0:
-                logger.warning(
-                    f"Empty composite for {start_date}..{end_date}: "
-                    f"{pre_count} images matched filter (cloud<{cloud_pct}%); "
-                    "median produced 0 bands. Likely all images failed clip-to-bbox "
-                    "or had non-overlapping band sets."
+                # Logged at DEBUG: the outer cloud-tier loop in
+                # automated_monitor._analyze_region already warns when ALL
+                # date+cloud combinations are exhausted. Per-attempt empties
+                # at strict cloud are expected during monsoon and were
+                # generating ~500 warnings per run (60% of total log noise).
+                logger.debug(
+                    f"Empty composite for {start_date}..{end_date} at "
+                    f"cloud<{cloud_pct}% — {pre_count} images matched filter "
+                    "(retry will relax cloud threshold)"
                 )
             else:
                 logger.info(
@@ -931,12 +935,20 @@ class ChangeDetector:
                 'error': 'computation_timeout'
             }
         except Exception as e:
-            logger.error(f"Statistics calculation failed: {e}")
+            err = str(e)
+            # "Band pattern X was applied to an Image with no bands" is the
+            # downstream symptom of an empty composite. The cloud-tier loop
+            # in automated_monitor handles this by trying the next date or
+            # relaxing the cloud threshold — no need for a per-attempt ERROR.
+            if 'no bands' in err or 'Band pattern' in err:
+                logger.debug(f"Statistics skipped — empty composite: {err}")
+            else:
+                logger.error(f"Statistics calculation failed: {e}")
             return {
                 'polygon_count': 0,
                 'total_area_m2': 0.0,
                 'change_types': {},
-                'error': str(e)
+                'error': err
             }
     
     def _export_results(self, 

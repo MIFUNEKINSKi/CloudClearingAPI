@@ -104,6 +104,59 @@ class BenchmarkDriftMonitor:
         logger.info(f"✅ BenchmarkDriftMonitor initialized: {self.history_dir}")
         logger.info(f"   Retention: {retention_days} days, Alerts: {enable_alerts}")
     
+    # Per-region price-history archive (written by scraper_orchestrator).
+    # Drift now compares "this region's current price" vs "this region's own
+    # 4-week median" — finally a like-for-like comparison instead of 65
+    # regions all compared against ~5 tier averages. The tier benchmark is
+    # kept as a final fallback when a region has no scraped history yet.
+    PRICE_HISTORY_DIR = Path("./output/scraper_cache/price_history")
+    HISTORY_BENCHMARK_MIN_SAMPLES = 3  # Need at least N prior records
+    HISTORY_BENCHMARK_LOOKBACK_DAYS = 28
+
+    def _per_region_benchmark(self, region_name: str) -> Optional[float]:
+        """Return the median scraped price from the region's own recent history.
+
+        Excludes today's record (so today's scrape can drift against its own
+        recent baseline). Falls back to None when not enough history exists,
+        so caller can use the tier benchmark.
+        """
+        history_file = self.PRICE_HISTORY_DIR / f"{region_name}.jsonl"
+        if not history_file.exists():
+            return None
+        import json as _json
+        from datetime import datetime as _dt, timedelta as _td
+        cutoff = (_dt.now() - _td(days=self.HISTORY_BENCHMARK_LOOKBACK_DAYS)).date()
+        today = _dt.now().date()
+        prices: List[float] = []
+        try:
+            with open(history_file) as fh:
+                for line in fh:
+                    try:
+                        rec = _json.loads(line)
+                    except _json.JSONDecodeError:
+                        continue
+                    rec_date_str = rec.get('date', '')
+                    if not rec_date_str:
+                        continue
+                    try:
+                        rec_date = _dt.strptime(rec_date_str, '%Y-%m-%d').date()
+                    except ValueError:
+                        continue
+                    if rec_date < cutoff or rec_date >= today:
+                        # Skip pre-window records and today's own record
+                        continue
+                    median = rec.get('median_price_m2') or rec.get('avg_price_m2')
+                    if median and median > 0:
+                        prices.append(float(median))
+        except OSError:
+            return None
+        if len(prices) < self.HISTORY_BENCHMARK_MIN_SAMPLES:
+            return None
+        # Sort + take median for robustness against single-week outliers
+        prices.sort()
+        mid = len(prices) // 2
+        return prices[mid] if len(prices) % 2 == 1 else 0.5 * (prices[mid - 1] + prices[mid])
+
     def calculate_drift(
         self,
         region_name: str,
@@ -113,39 +166,44 @@ class BenchmarkDriftMonitor:
     ) -> Optional[DriftSnapshot]:
         """
         Calculate drift for a single region.
-        
+
+        Tries per-region history first (region's own 4-week median, ≥3 prior
+        samples). Falls back to tier benchmark when history is insufficient.
+
         Args:
             region_name: Region identifier
             live_price: Live market price (IDR/m²)
             data_source: Source of live price (e.g., "Lamudi", "Rumah123")
             confidence: Confidence level of live price (0.0-1.0)
-        
+
         Returns:
             DriftSnapshot or None if benchmark not found
         """
         try:
-            # Get tier and benchmark for this region
-            tier = classify_region_tier(region_name)
-            if not tier:
-                logger.warning(f"⚠️ Region {region_name} not found in tier classification")
-                return None
-            
-            benchmark_data = get_tier_benchmark(tier, region_name)
-            if not benchmark_data:
-                logger.warning(f"⚠️ No benchmark found for tier {tier}")
-                return None
-            
-            benchmark_price = benchmark_data.get('avg_price_m2')
-            if not benchmark_price:
-                logger.warning(f"⚠️ No avg_price_m2 in benchmark for tier {tier}")
-                return None
-            
+            tier = classify_region_tier(region_name) or 'tier_4_frontier'
+
+            # Per-region history is the primary benchmark source — it's the
+            # only "like-for-like" comparison we have for 65 distinct markets.
+            benchmark_price = self._per_region_benchmark(region_name)
+            benchmark_source = 'region_history'
+
+            if benchmark_price is None:
+                # Fallback: tier average. Less precise but better than nothing.
+                benchmark_data = get_tier_benchmark(tier, region_name)
+                if not benchmark_data:
+                    logger.warning(f"⚠️ No benchmark for {region_name} (tier={tier})")
+                    return None
+                benchmark_price = benchmark_data.get('avg_price_m2')
+                benchmark_source = f'tier:{tier}'
+                if not benchmark_price:
+                    return None
+
             # Calculate drift percentage
             drift_pct = ((live_price - benchmark_price) / benchmark_price) * 100
-            
+
             # Check alert level
             alert_level = self._classify_alert_level(drift_pct)
-            
+
             snapshot = DriftSnapshot(
                 timestamp=datetime.now().isoformat(),
                 region_name=region_name,
@@ -153,13 +211,13 @@ class BenchmarkDriftMonitor:
                 benchmark_price=benchmark_price,
                 live_price=live_price,
                 drift_pct=drift_pct,
-                data_source=data_source,
+                data_source=f"{data_source} (vs {benchmark_source})",
                 confidence=confidence,
                 alert_level=alert_level
             )
-            
+
             return snapshot
-            
+
         except Exception as e:
             logger.error(f"❌ Failed to calculate drift for {region_name}: {e}")
             return None

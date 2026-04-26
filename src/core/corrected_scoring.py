@@ -619,7 +619,7 @@ class CorrectedInvestmentScorer:
         
         # Weighted average by availability (satellite always counts)
         available_sources = sum(data_availability.values())
-        
+
         if available_sources == 3:
             # All data available: weighted average (satellite:40%, infra:30%, market:30%)
             overall_confidence = (
@@ -637,11 +637,26 @@ class CorrectedInvestmentScorer:
         else:
             # Satellite only
             overall_confidence = satellite_confidence * 0.50  # 50% penalty for single source
-        
+
         # Apply strengthened penalties for very poor data quality
         if overall_confidence < 0.60:
-            overall_confidence *= 0.90  # -10% penalty for <60% confidence
-        
+            overall_confidence *= 0.90  # -10% penalty for <60% penalty
+
+        # 2026-04-26: Cap overall confidence by satellite_confidence + 0.10 when
+        # satellite is degraded. The weighted-average above was diluting the
+        # SAR-only penalty (0.75 sat + 0.95 market + 0.95 infra = 0.87, then
+        # market+infra bonuses pushed it to 0.94). The cap makes the penalty
+        # visible: SAR-only with great market/infra now lands at ~0.85 (clearly
+        # different from the 0.95-1.00 of optical regions). Same idea for
+        # market-clamped: a clamped extract is a data-quality flag the analyst
+        # should see in the headline confidence, not buried in a sub-component.
+        if satellite_confidence < 0.80:
+            overall_confidence = min(overall_confidence, satellite_confidence + 0.10)
+        if market_clamped:
+            # Clamped extract → cap overall at 0.80 regardless of how good
+            # other sources are. Investor needs to verify pricing before acting.
+            overall_confidence = min(overall_confidence, 0.80)
+
         # Ensure within bounds (0.20 to 0.95)
         return max(0.20, min(0.95, overall_confidence))
     

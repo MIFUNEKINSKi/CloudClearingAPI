@@ -45,37 +45,47 @@ class NewsArticle:
     relevance_score: float   # 0.0–1.0
 
 
-# Keywords for development activity detection (English + Indonesian)
+# Keywords for development activity detection (English + Indonesian).
+# Expanded 2026-04-26: previous list missed common Indonesian-press shorthand
+# (groundbreaking ceremonies, ministerial approvals, infra investment) which
+# was producing 0 catalyst boosts despite real news coverage.
 INFRA_KEYWORDS = {
     # Transport infrastructure
-    'toll road': 0.9, 'jalan tol': 0.9, 'highway': 0.7, 'expressway': 0.8,
-    'airport': 0.9, 'bandara': 0.9, 'runway': 0.7,
-    'port': 0.8, 'pelabuhan': 0.8, 'seaport': 0.8,
+    'toll road': 0.9, 'jalan tol': 0.9, 'tol ': 0.7, 'highway': 0.7, 'expressway': 0.8,
+    'airport': 0.9, 'bandara': 0.9, 'runway': 0.7, 'landasan pacu': 0.7,
+    'port': 0.8, 'pelabuhan': 0.8, 'seaport': 0.8, 'terminal peti kemas': 0.8,
+    'patimban': 0.9,  # specific megaport (so an article merely naming Patimban scores)
     'railway': 0.8, 'kereta api': 0.8, 'high-speed rail': 0.9, 'kereta cepat': 0.9,
+    'whoosh': 0.8,  # Jakarta-Bandung HSR brand
     'mrt': 0.7, 'lrt': 0.7, 'brt': 0.6, 'transjakarta': 0.5,
-    
+    'jalan baru': 0.7, 'flyover': 0.7, 'jembatan': 0.6,
+
     # Economic zones
-    'sez': 0.9, 'special economic zone': 0.9, 'kawasan ekonomi khusus': 0.9,
+    'sez': 0.9, 'special economic zone': 0.9, 'kawasan ekonomi khusus': 0.9, 'kek ': 0.9,
     'industrial park': 0.8, 'kawasan industri': 0.8, 'industrial estate': 0.8,
     'free trade zone': 0.7, 'bonded zone': 0.6,
-    
-    # Construction & development
-    'construction': 0.6, 'pembangunan': 0.6, 'development project': 0.7,
+
+    # Construction & development (broadened — these matter most)
+    'construction': 0.6, 'pembangunan': 0.6, 'dibangun': 0.6,
+    'development project': 0.7, 'proyek pembangunan': 0.7,
     'proyek strategis nasional': 0.9, 'psn': 0.8,
-    'groundbreaking': 0.8, 'peresmian': 0.7,
+    'groundbreaking': 0.8, 'peresmian': 0.8, 'diresmikan': 0.8, 'pencanangan': 0.7,
     'new city': 0.7, 'kota baru': 0.7,
-    'ikn': 0.6, 'nusantara': 0.6,  # New capital
-    
+    'ikn': 0.6, 'nusantara': 0.5,  # IKN/new capital (multiplier diluted — it's everywhere)
+
     # Government & finance
     'government contract': 0.7, 'kontrak pemerintah': 0.7,
-    'tender': 0.6, 'apbn': 0.6,
+    'tender': 0.6, 'apbn': 0.6, 'pemerintah pusat': 0.5,
     'foreign investment': 0.7, 'investasi asing': 0.7, 'fdi': 0.7,
     'billion dollar': 0.8, 'miliar dolar': 0.8, 'trillion rupiah': 0.8, 'triliun rupiah': 0.8,
-    
+    'investasi': 0.5, 'modal asing': 0.6,
+    'kementerian pupr': 0.7, 'kementerian perhubungan': 0.7, 'kemenhub': 0.7, 'kemenperin': 0.7,
+
     # Real estate development
     'property development': 0.7, 'real estate': 0.5,
     'housing development': 0.6, 'perumahan': 0.5,
     'hotel': 0.4, 'resort': 0.5, 'tourism': 0.4, 'pariwisata': 0.4,
+    'wisata': 0.4, 'destinasi wisata': 0.5,
 }
 
 # Negative keywords (reduce score)
@@ -563,13 +573,21 @@ class NewsScraper:
         return matched
     
     def _analyze_sentiment(self, text: str) -> Tuple[str, int]:
-        """Simple keyword-based sentiment analysis."""
+        """Simple keyword-based sentiment analysis.
+
+        2026-04-26: Lowered the positive threshold. Was `pos_count >= 2`,
+        which produced 0 positives across 65 regions on the prior run even
+        when titles like "Pelabuhan Patimban Phase 2" had 1 strong keyword.
+        Now: 1 high-relevance (>=0.7) keyword OR 2+ any keywords → positive.
+        """
         neg_count = sum(1 for kw in NEGATIVE_KEYWORDS if kw in text)
-        pos_count = sum(1 for kw in INFRA_KEYWORDS if kw in text)
-        
+        pos_keywords = [kw for kw in INFRA_KEYWORDS if kw in text]
+        pos_count = len(pos_keywords)
+        has_strong_signal = any(INFRA_KEYWORDS.get(kw, 0) >= 0.7 for kw in pos_keywords)
+
         if neg_count >= 2 or (neg_count > 0 and pos_count <= 1):
             return 'negative', neg_count
-        elif pos_count >= 2:
+        elif pos_count >= 2 or has_strong_signal:
             return 'positive', neg_count
         else:
             return 'neutral', neg_count
