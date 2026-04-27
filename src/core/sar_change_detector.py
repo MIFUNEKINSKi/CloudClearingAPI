@@ -231,18 +231,30 @@ class SARChangeDetector:
             vv_change = composite_b.select('VV').subtract(composite_a.select('VV')).rename('VV_change')
             vh_change = composite_b.select('VH').subtract(composite_a.select('VH')).rename('VH_change')
             
-            # Classify change types:
+            # Classify change types — explicitly rename so reduceRegion keys
+            # are unambiguous (previously all three masks inherited 'VV_change'
+            # via .gt()/.And()/.Or() and GEE auto-renamed duplicates to
+            # 'VV_change_1', breaking stats.get('VV') / stats.get('VH') which
+            # silently returned 0. construction_pixels and clearing_pixels
+            # have been zero on every run since the SAR detector shipped).
+            #
             # Construction: VV increases (harder surface) AND VH decreases (less vegetation)
-            construction_mask = vv_change.gt(self.construction_vv_threshold) \
+            construction_mask = (
+                vv_change.gt(self.construction_vv_threshold)
                 .And(vh_change.lt(self.construction_vh_threshold))
-            
+                .rename('construction')
+            )
+
             # Land clearing: VH decreases significantly (vegetation removal)
-            clearing_mask = vh_change.lt(self.vh_threshold)
-            
+            clearing_mask = vh_change.lt(self.vh_threshold).rename('clearing')
+
             # Any significant change: either VV or VH exceeds threshold
-            any_change_mask = vv_change.abs().gt(self.vv_threshold) \
+            any_change_mask = (
+                vv_change.abs().gt(self.vv_threshold)
                 .Or(vh_change.abs().gt(abs(self.vh_threshold)))
-            
+                .rename('any_change')
+            )
+
             # Reduce to get pixel counts
             stats = any_change_mask.addBands(construction_mask).addBands(clearing_mask) \
                 .reduceRegion(
@@ -252,10 +264,10 @@ class SARChangeDetector:
                     maxPixels=1e8,
                     bestEffort=True
                 ).getInfo()
-            
-            sar_change_pixels = int(stats.get('VV_change', 0))
-            construction_pixels = int(stats.get('VV', 0))
-            clearing_pixels = int(stats.get('VH', 0))
+
+            sar_change_pixels = int(stats.get('any_change', 0) or 0)
+            construction_pixels = int(stats.get('construction', 0) or 0)
+            clearing_pixels = int(stats.get('clearing', 0) or 0)
             
             # Get mean change values for reporting
             mean_stats = vv_change.addBands(vh_change).reduceRegion(
