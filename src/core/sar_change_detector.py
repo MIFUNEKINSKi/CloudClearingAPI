@@ -336,13 +336,26 @@ class SARChangeDetector:
         sar_available = sar_result.success and sar_result.sar_change_pixels > 0
         
         if optical_available and sar_available:
-            # Both available: weighted fusion
-            fused = int(optical_changes * optical_weight + sar_result.sar_change_pixels * sar_weight)
+            # Both available: weighted fusion with magnitude-cap on SAR.
+            # Bug fix 2026-04-27: the nominal 60/40 weighting was meaningless
+            # in practice. SAR change counts run 100-1000× larger than optical
+            # for the same region (different per-pixel sensitivity, sub-period
+            # accumulation), so SAR * 0.4 still dominated optical * 0.6 by
+            # ~400×. Spot check showed all 65 regions' fused signal was
+            # 99%+ SAR. Capping SAR at SAR_MAX_RATIO × optical preserves
+            # SAR as a corroborating signal without letting it drown optical.
+            SAR_MAX_RATIO = 20  # SAR can contribute at most 20× the optical count
+            sar_capped = min(sar_result.sar_change_pixels, SAR_MAX_RATIO * optical_changes)
+            sar_was_capped = sar_capped < sar_result.sar_change_pixels
+            fused = int(optical_changes * optical_weight + sar_capped * sar_weight)
             source = 'optical+sar_fusion'
             confidence_boost = 0.10  # Higher confidence with dual-sensor
-            
-            logger.info(f"   🔗 Sensor fusion: {optical_changes:,} optical + {sar_result.sar_change_pixels:,} SAR "
-                       f"→ {fused:,} fused (weights: {optical_weight:.0%}/{sar_weight:.0%})")
+
+            cap_note = f' (SAR capped to {sar_capped:,} from {sar_result.sar_change_pixels:,})' if sar_was_capped else ''
+            logger.info(
+                f"   🔗 Sensor fusion: {optical_changes:,} optical + {sar_result.sar_change_pixels:,} SAR "
+                f"→ {fused:,} fused (weights: {optical_weight:.0%}/{sar_weight:.0%}){cap_note}"
+            )
             
         elif optical_available:
             # Optical only (SAR failed or no changes)
