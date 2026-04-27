@@ -632,6 +632,22 @@ class LandPriceOrchestrator:
                 avg,
             )
 
+        # Confidence cascade:
+        # - clamped (avg >5x benchmark): 0.55 (data extraction is suspect)
+        # - low listing count (<10): 0.65 (median is unstable with N<10)
+        # - normal: 0.85
+        # Audit 2026-04-27: 17 of 65 regions show price-history listing_count
+        # bouncing between 5 and 20 (Lamudi pagination instability). When the
+        # current scrape returns <10 listings the price aggregation is
+        # noticeably more volatile run-to-run. Surfacing the low-sample
+        # signal lets downstream confidence cap kick in.
+        if clamped:
+            data_conf = 0.55
+        elif result.listing_count < 10:
+            data_conf = 0.65
+        else:
+            data_conf = 0.85
+
         result_dict = {
             'success': result.success,
             'average_price_per_m2': avg,
@@ -639,7 +655,7 @@ class LandPriceOrchestrator:
             'listing_count': result.listing_count,
             'data_source': result.source if not clamped else f'{result.source}_clamped',
             'scraped_at': result.scraped_at.isoformat(),
-            'data_confidence': 0.85 if not clamped else 0.55,
+            'data_confidence': data_conf,
             'price_trend_30d': price_trend_30d,
             'market_heat': market_heat,
             'listings': [

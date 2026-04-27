@@ -9,7 +9,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
+## [2.16.0] - 2026-04-26 - Honest Math + STRONG_BUY Tier + Detik News + Confidence Caps
+
+See [README.md](README.md) v2.16.0 changelog block for the full version. Highlights:
+
+### Scoring (math is now honest)
+- Activity log scaling (was step function saturating at 40 above 50K changes).
+- New STRONG_BUY tier (≥58, conf ≥0.85); BUY ≥50/0.75; WATCH ≥35/0.50.
+- Confidence caps that actually bite: SAR-only at 0.84, market-clamped at 0.80.
+- Momentum: fixed `_ratio_to_multiplier(1.0)` returning 0.85 (depressed all scores 15%); fixed fake `ratio=2.0` for empty-baseline (3.4% inflation across all 65 regions).
+- 5Y vs 3Y ROI now apples-to-apples (added `land_only_roi_5yr`).
+- SAR fusion: cap SAR contribution at 20× optical (was effectively 99/1 split, not the nominal 60/40).
+
+### News pipeline
+- Detik infrastructure scraper added (4th source).
+- City-direct matching + sentiment threshold loosened.
+- News cache TTL 7d → 2d.
+- Fixed `_load_previous_news_counts` bug — news_wow now populates.
+
+### Drift
+- Per-region benchmarks from price-history archive (avg drift 94.5% → 19.1%).
+- Apples-to-apples comparison (avg vs avg).
+- STRONG_BUY blind spot fixed.
+- Annualization noise cap at 12.2× (was 73× for 5-day histories).
+
+### Benchmark routing
+- Fixed substring bug (`'bali' in 'balikpapan'` was True).
+- Banten + Denpasar buckets added.
+- 11 of 15 benchmarks refreshed.
+
+### Reliability + observability
+- Tier-transition tracking ("⬆ UPGRADES this week" in email).
+- ~500 fewer log warnings per run (Empty composite + URL-gen DEBUG-downgraded).
+- OSM circuit breaker + 99.co Cloudflare short-circuit.
+- GEE empty-composite root cause (cloud threshold pass-through).
+- OSM coverage metric corrected (was 17/65, actual 65/65).
+- SAR-dominant warning in email when ratio > 20×.
+- Low-listing confidence penalty (Lamudi <10 listings → 0.65).
+
+### Delivery
+- SMTP preflight, webhook fallback, `[LOW-CONF]` subject prefix.
+
+### Fixed (legacy)
 
 - **`change_detector._calculate_statistics`:** `signal.alarm` is always cleared in a `finally` block. Previously, if the wrapped Earth Engine `getInfo()` call raised **any exception other than `TimeoutError`**, the alarm stayed armed and **SIGALRM** could terminate the process tens of seconds later (manifesting as `zsh: alarm` during a later pipeline phase).
 
