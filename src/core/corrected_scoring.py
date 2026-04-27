@@ -671,15 +671,19 @@ class CorrectedInvestmentScorer:
         return max(0.20, min(0.95, overall_confidence))
     
     # Recommendation thresholds.
-    # Tightened 2026-04-25 after the first full 65-region run on the new
-    # cloud-relaxation code showed median score = 46.8 — half the universe was
-    # clearing the old BUY≥40 gate. That defeats the point of a screen. New
-    # tiers are calibrated against the observed distribution so a "BUY" badge
-    # actually means something: STRONG_BUY = top decile (~6 regions),
-    # BUY = top third with positive headroom, WATCH = on the radar.
-    THRESHOLD_STRONG_BUY = 58.0
-    THRESHOLD_BUY = 50.0
-    THRESHOLD_WATCH = 35.0
+    # Recalibrated 2026-04-27 after the SAR fusion cap landed: SAR was
+    # over-amplifying activity scores by ~20%, inflating tier selection.
+    # With the cap, max realistic score dropped from 66 → 51 and the prior
+    # thresholds (58/50/35 calibrated against inflated scores) caught 0
+    # STRONG_BUY this run. New thresholds restore the original intent —
+    # "STRONG_BUY = top decile (~5 regions of 65)" — to the honest scale.
+    # Earlier history:
+    # - Tightened 2026-04-25 after median score = 46.8 produced 43 BUYs (67%
+    #   of universe).
+    # - Loosened 2026-04-27 after SAR cap dropped max scores by ~10pts.
+    THRESHOLD_STRONG_BUY = 49.0
+    THRESHOLD_BUY = 42.0
+    THRESHOLD_WATCH = 33.0
     CONF_GATE_STRONG_BUY = 0.85
     CONF_GATE_BUY = 0.75
     CONF_GATE_WATCH = 0.50

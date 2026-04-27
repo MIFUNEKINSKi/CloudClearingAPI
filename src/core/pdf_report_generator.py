@@ -419,7 +419,7 @@ class PDFReportGenerator:
         story.append(Paragraph(
             f"<b>{len(strong_buys)} STRONG BUY</b> | <b>{len(buys)} BUY</b> | "
             f"<b>{len(watch)} WATCH</b> | <b>{len(passes)} PASS</b> "
-            f"&nbsp;&nbsp;(STRONG BUY >= 58 conf>=85% | BUY >= 50 conf>=75% | WATCH >= 35 conf>=50% | PASS otherwise)",
+            f"&nbsp;&nbsp;(STRONG BUY >= 49 conf>=85% | BUY >= 42 conf>=75% | WATCH >= 33 conf>=50% | PASS otherwise)",
             self.styles['Normal']
         ))
         story.append(Spacer(1, 10))
