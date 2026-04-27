@@ -1335,7 +1335,7 @@ class AutomatedMonitor:
             if self.momentum_analyzer:
                 try:
                     momentum_data = self.momentum_analyzer.calculate_momentum(region_name)
-                    if momentum_data and momentum_data.get('trend') not in ('insufficient_data', 'new_region'):
+                    if momentum_data and momentum_data.get('trend') not in ('insufficient_data', 'insufficient_baseline', 'new_region'):
                         momentum_mult = momentum_data['multiplier']
                         # Apply news WoW boost to momentum if news is surging
                         if news_wow and news_wow['trend'] in ('surging', 'increasing'):
@@ -1416,7 +1416,7 @@ class AutomatedMonitor:
                     'baseline_velocity': momentum_data['baseline_velocity'],
                     'data_points_recent': momentum_data.get('data_points_recent', 0),
                     'data_points_baseline': momentum_data.get('data_points_baseline', 0),
-                } if momentum_data and momentum_data.get('trend') not in ('insufficient_data', 'new_region') else None,
+                } if momentum_data and momentum_data.get('trend') not in ('insufficient_data', 'insufficient_baseline', 'new_region') else None,
             }
             
             logger.info(

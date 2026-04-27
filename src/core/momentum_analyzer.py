@@ -180,11 +180,12 @@ class MomentumAnalyzer:
         # EVERY region. That faked a 3.4% multiplier boost across all 65
         # regions on every run, inflating scores universally. Now we
         # distinguish "no records in baseline window" (need more history,
-        # ratio=1.0) from "records show no activity" (genuine zero-to-some
-        # activity, the original 2.0 signal).
+        # tagged so consumer skips momentum entirely) from "records show
+        # no activity" (genuine zero-to-some activity, the original 2.0).
+        insufficient_baseline = (len(baseline_changes) == 0)
         if baseline_velocity > 0:
             momentum_ratio = recent_velocity / baseline_velocity
-        elif recent_velocity > 0 and len(baseline_changes) > 0:
+        elif recent_velocity > 0 and not insufficient_baseline:
             # Genuine: baseline window had records but they showed 0 activity
             momentum_ratio = 2.0
         else:
@@ -194,9 +195,18 @@ class MomentumAnalyzer:
         
         # Convert to multiplier (0.85x–1.30x range)
         multiplier = self._ratio_to_multiplier(momentum_ratio)
-        
-        # Determine trend description
-        trend, description = self._describe_trend(momentum_ratio, recent_velocity, baseline_velocity)
+
+        # Determine trend description.
+        # When baseline window has no records, the multiplier is 1.0 (neutral)
+        # but tag the trend as 'insufficient_baseline' so the consumer
+        # (automated_monitor) skips momentum entirely instead of presenting
+        # a fake "steady" signal to the user.
+        if insufficient_baseline:
+            trend = 'insufficient_baseline'
+            description = (f"Need 8+ weeks of history for momentum (have "
+                          f"{len(region_history)} runs, baseline window empty)")
+        else:
+            trend, description = self._describe_trend(momentum_ratio, recent_velocity, baseline_velocity)
         
         logger.info(f"📈 {region_name}: Momentum {momentum_ratio:.2f}x → multiplier {multiplier:.2f}x "
                    f"(recent: {recent_velocity:.0f}/run, baseline: {baseline_velocity:.0f}/run, trend: {trend})")
@@ -215,23 +225,22 @@ class MomentumAnalyzer:
     def _ratio_to_multiplier(self, momentum_ratio: float) -> float:
         """
         Convert momentum ratio to a scoring multiplier.
-        
-        Uses a clamped logistic-style mapping:
-        - ratio < 0.5: 0.85x (decelerating strongly)
-        - ratio = 1.0: 1.00x (steady state)
-        - ratio = 2.0: 1.15x (accelerating)
-        - ratio = 3.0: 1.22x (accelerating strongly)
-        - ratio > 5.0: 1.30x (max boost)
-        
-        Formula: 0.85 + 0.45 * (1 - 1/(1 + ln(ratio)))  for ratio > 0
+
+        Bug fix 2026-04-26: the previous formula
+            raw = 0.85 + 0.45 * (1 - 1/(1 + ln(ratio)))
+        evaluated to 0.85 at ratio=1.0 (since ln(1)=0 → 1-1/(1+0)=0). The
+        docstring claimed ratio=1.0 should map to 1.00x but the math gave
+        0.85, depressing every "steady" region's score by 15%. Switched to
+        a clean log2-centered mapping:
+            multiplier = 1.0 + 0.20 * log2(ratio)   clamped to [0.85, 1.30]
+        - ratio = 0.5 → 0.80 → clamped to 0.85
+        - ratio = 1.0 → 1.00 (true neutral)
+        - ratio = 2.0 → 1.20
+        - ratio = 3.0 → 1.32 → clamped to 1.30
         """
         if momentum_ratio <= 0:
             return 0.85
-        
-        # Logarithmic mapping: smooth, bounded, diminishing returns
-        raw = 0.85 + 0.45 * (1.0 - 1.0 / (1.0 + math.log(max(0.01, momentum_ratio))))
-        
-        # Clamp to 0.85–1.30
+        raw = 1.0 + 0.20 * math.log2(max(0.01, momentum_ratio))
         return round(min(1.30, max(0.85, raw)), 3)
     
     def _describe_trend(self, ratio: float, recent: float, baseline: float) -> Tuple[str, str]:
