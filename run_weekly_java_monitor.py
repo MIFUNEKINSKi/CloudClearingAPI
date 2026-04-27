@@ -393,10 +393,32 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
                     warnings.append('infra=fallback')
                 if warnings:
                     body_lines.append(f"     ⚠ Data: {', '.join(warnings)} — verify pricing independently")
+                # SAR construction/clearing breakdown — distinguishes
+                # early-stage clearing (vegetation removal = land prep) from
+                # later-stage construction (built-up surface). High clearing
+                # % is a "see opportunities early" signal: someone is prepping
+                # land before the construction shows up. Mature industrial
+                # zones show low clearing% because they're already developed.
+                sar = r.get('sar_data') or {}
+                if isinstance(sar, dict) and sar.get('available'):
+                    total = sar.get('sar_changes', 0) or 0
+                    construction = sar.get('sar_construction', 0) or 0
+                    clearing = sar.get('sar_clearing', 0) or 0
+                    if total > 0 and (construction > 0 or clearing > 0):
+                        pct_c = 100 * construction / total
+                        pct_cl = 100 * clearing / total
+                        stage = ''
+                        if pct_cl > 35 and pct_c < 15:
+                            stage = ' (early-stage: heavy clearing)'
+                        elif pct_c > 15 and pct_cl < 25:
+                            stage = ' (late-stage: heavy construction)'
+                        body_lines.append(
+                            f"     SAR breakdown: {pct_c:.0f}% construction, {pct_cl:.0f}% clearing{stage}"
+                        )
+
                 # SAR-dominant warning: when SAR > 20x optical, the satellite
                 # signal is mostly radar — likely water dynamics for ports/
                 # ferries. Investor should verify with imagery.
-                sar = r.get('sar_data') or {}
                 if isinstance(sar, dict) and sar.get('sar_dominant_warning'):
                     ratio = sar.get('sar_optical_ratio', 0)
                     body_lines.append(
