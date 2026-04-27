@@ -819,17 +819,20 @@ async def main(all_regions: bool = False, auto_confirm: bool = False):
         # Investment analysis
         investment = results.get('investment_analysis', {})
         yogyakarta_analysis = investment.get('yogyakarta_analysis', {})  # Name is legacy but works for all regions
+        strong_buy_recs = yogyakarta_analysis.get('strong_buy_recommendations', [])
         buy_recs = yogyakarta_analysis.get('buy_recommendations', [])
         watch_list = yogyakarta_analysis.get('watch_list', [])
-        
+        priority_recs = strong_buy_recs + buy_recs
+
         print("💰 **INVESTMENT INTELLIGENCE:**")
-        print(f"   • Strong Buy Recommendations: {len(buy_recs)}")
-        print(f"   • Watch List Opportunities: {len(watch_list)}")
+        print(f"   • 🔥 STRONG BUY: {len(strong_buy_recs)}")
+        print(f"   • BUY: {len(buy_recs)}")
+        print(f"   • WATCH: {len(watch_list)}")
         print()
-        
-        if buy_recs:
-            print("   🏆 **TOP 10 INVESTMENT OPPORTUNITIES:**")
-            for i, opp in enumerate(buy_recs[:10], 1):
+
+        if priority_recs:
+            print("   🏆 **TOP 10 PRIORITY OPPORTUNITIES (STRONG BUY first):**")
+            for i, opp in enumerate(priority_recs[:10], 1):
                 region_name = opp.get('region', 'Unknown')
                 score = opp.get('investment_score', 0)
                 confidence = opp.get('confidence_level', 0)
@@ -838,8 +841,9 @@ async def main(all_regions: bool = False, auto_confirm: bool = False):
                 # Get region details
                 region_obj = next((r for r in monitoring_regions if r.name == region_name), None)
                 province = region_obj.province if region_obj else 'Java'
-                
-                print(f"      {i:2d}. {region_name:40s} ({province})")
+
+                tier_badge = '🔥 STRONG BUY' if opp.get('recommendation') == 'STRONG_BUY' else 'BUY'
+                print(f"      {i:2d}. [{tier_badge}] {region_name:40s} ({province})")
                 print(f"          Score: {score:.1f}/100 | Confidence: {confidence:.0%} | Changes: {changes:,}")
                 
                 # Show data availability if present
