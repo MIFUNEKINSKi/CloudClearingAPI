@@ -877,49 +877,52 @@ class ChangeDetector:
         
         return vectors
     
-    def _calculate_statistics(self, 
+    def _calculate_statistics(self,
                             vectors: ee.FeatureCollection,  # type: ignore
                             changes: ee.Image) -> Dict[str, Any]:  # type: ignore
-        """Calculate summary statistics for detected changes with timeout handling"""
-        
-        import signal
+        """Calculate summary statistics for detected changes with timeout handling.
+
+        2026-04-27: replaced signal.alarm-based timeout with concurrent.futures.
+        signal.alarm only works in the main thread; in parallel scoring (where
+        this runs from worker threads), it either silently no-ops or fires
+        SIGALRM at the main thread killing unrelated work. Result: GEE
+        getInfo() calls could hang for 53+ minutes during a GEE outage with
+        no actual timeout enforcement (caught by the Apr 27 14:03 run audit).
+        """
+        import concurrent.futures as _cf
         from functools import wraps
-        
-        def timeout_handler(signum, frame):
-            raise TimeoutError("Earth Engine computation timed out")
-        
+
         def with_timeout(seconds):
             def decorator(func):
                 @wraps(func)
                 def wrapper(*args, **kwargs):
-                    # Set timeout for macOS/Linux
-                    old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-                    signal.alarm(seconds)
-                    try:
-                        return func(*args, **kwargs)
-                    except TimeoutError:
-                        logger.warning(f"{func.__name__} timed out after {seconds} seconds")
-                        raise
-                    finally:
-                        # Always disarm: if func() raised a non-TimeoutError, leaving the alarm
-                        # armed restores SIG_DFL and SIGALRM kills the whole process later
-                        # (often during unrelated work, e.g. parallel OSM scoring).
-                        signal.alarm(0)
-                        signal.signal(signal.SIGALRM, old_handler)
+                    # Run in a sub-thread so we can enforce a wall-clock timeout
+                    # regardless of which thread the caller is on.
+                    with _cf.ThreadPoolExecutor(max_workers=1) as ex:
+                        future = ex.submit(func, *args, **kwargs)
+                        try:
+                            return future.result(timeout=seconds)
+                        except _cf.TimeoutError:
+                            logger.warning(f"{func.__name__} timed out after {seconds} seconds")
+                            # Best-effort: cancel the future. The underlying
+                            # GEE HTTP call may continue in the background but
+                            # will be discarded when the executor exits.
+                            future.cancel()
+                            raise TimeoutError(f"{func.__name__} timed out after {seconds} seconds")
                 return wrapper
             return decorator
-        
-        @with_timeout(60)  # 60 second timeout per operation
+
+        @with_timeout(60)
         def get_polygon_count():
             return vectors.size().getInfo()
-        
+
         @with_timeout(60)
         def get_total_area():
             def sum_areas(feature, previous):
                 return ee.Number(previous).add(feature.get('area_m2'))
             total_area = vectors.iterate(sum_areas, 0)
             return ee.Number(total_area).getInfo()
-        
+
         @with_timeout(60)
         def get_change_types():
             return vectors.aggregate_histogram('change_type').getInfo()
