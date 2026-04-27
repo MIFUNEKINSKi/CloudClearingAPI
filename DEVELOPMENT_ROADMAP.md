@@ -1,6 +1,6 @@
 # CloudClearingAPI Development Roadmap
 **Updated:** April 27, 2026
-**Current Version:** v2.16.1 (SAR Fusion Cap + Threshold Recalibration + Tier Transitions)
+**Current Version:** v2.16.2 (Drift Tests Cleaned + News Supply Expansion + AWS Lifecycle Fixes + 99.co Cloudscraper Revival)
 
 ---
 
@@ -26,9 +26,9 @@ CloudClearingAPI is an automated land investment analyst for Indonesia that comb
 | **Parallel scoring** | ✅ Working | ThreadPoolExecutor (4 workers), ~4x scoring speedup |
 | **Dual-sensor satellite analysis** | ✅ Working | API integration (Google Earth Engine), data fusion |
 | **GEE optical caching** | ✅ Working | 14-day cache avoids repeat satellite analysis |
-| **Web scraping pipeline** | ✅ 64/65 live (98%) | Lamudi primary; price-outlier clamp (>5× benchmark); 99.co Cloudflare-blocked, short-circuited; Rumah.com unused |
+| **Web scraping pipeline** | ✅ 64/65 live (98%) | Lamudi primary; price-outlier clamp (>5× benchmark); 99.co revived via cloudscraper (best-effort, ~1 region/run before CF rate-limits); Rumah.com unused |
 | **Infrastructure analysis (OSM)** | ✅ 65/65 live | 17 fresh queries + 48 cache hits per run; 0 fallbacks. Email "live infrastructure" metric was incorrectly excluding cached OSM (now fixed). |
-| **News pipeline** | ✅ 4 sources, 17 regions matched | Jakarta Post, Kompas, Antara, Detik Infrastruktur. Genuine 1.05x boost firing for ~6 regions per run. news_wow now populated. |
+| **News pipeline** | ✅ 5 sources, 17+ regions matched | Jakarta Post, Kompas, Antara, Detik (infrastruktur + properti + berita-ekonomi-bisnis), CNBC Indonesia. Raw articles ~46→~79/run. Genuine 1.05x boost firing for ~6 regions per run. news_wow now populated. |
 | **Market tier classification** | ✅ 100% | All 65 regions classified (T1: 10, T2: 18, T3: 29, T4: 8) |
 | **Investment scoring engine** | ✅ Working | Multi-factor data transformation pipeline |
 | **PDF with decision matrix** | ✅ Working | Market heat, data quality indicators, expanded columns |
@@ -121,7 +121,7 @@ Priorities ordered by what matters most for demonstrating data engineering compe
 
 | Task | Effort | DE Skill | Priority |
 |------|--------|----------|----------|
-| Fix 99.co scraper (request throttling) | 4-8h | **Web scraping, rate limiting** | P2 |
+| Harden 99.co revival (residential proxy rotation, longer dwell, Playwright fallback) | 4-8h | **Web scraping, rate limiting** | P2 |
 | Add alternative data source (Properti.com) | 8-12h | **Multi-source ingestion** | P2 |
 | Build JSONL price history over time | Ongoing | **Append-only data lake** | P2 |
 | Scoring formula calibration | 8-16h | **Data analysis, algorithm tuning** | P3 |
@@ -170,6 +170,8 @@ How CloudClearingAPI maps to common DE job requirements:
 
 | Version | Date | Key Features |
 |---------|------|-------------|
+| **v2.16.2** | Apr 25, 2026 | Drift tests cleaned (22 obsolete tier-only tests skipped, suite now 10/22/0); News supply expansion: Detik berita-ekonomi-bisnis + CNBC Indonesia (raw articles 46→79); AWS Terraform: 5 deprecated S3 lifecycle rules fixed (filter{} added) + recursive fmt; 99.co revived via cloudscraper (best-effort, ~1 region/run, breaker trips on first CF block) |
+| **v2.16.1** | Apr 27, 2026 | SAR fusion 20× cap + threshold recalibration (49/42/33); tier transitions tracked week-over-week; thread-safe stats timeout (replaced broken signal.alarm); SAR construction/clearing band-name fix |
 | **v2.16.0** | Apr 26, 2026 | STRONG_BUY tier (≥58 conf≥0.85); activity log-scaling (was step-cap); confidence hard caps for SAR-only/clamped; Detik Infrastruktur news source; per-region drift benchmarks (avg drift 94%→19%); momentum math bug fixed (was depressing all scores 15%); 5Y/3Y ROI apples-to-apples; news_wow loader bug fixed; Banten + Denpasar benchmark buckets; price-outlier clamp; SMTP preflight + webhook fallback |
 | **v2.14.0** | Apr 2026 | Parallel scoring (ThreadPoolExecutor), news WoW rate of change, GEE optical cache integration, province-level scraper fallback, expanded PDF decision matrix (market heat + data quality), actionable email briefing |
 | **v2.13.0** | Apr 2026 | Live data pipeline: OSM 0%→78%, Lamudi 85%→94%, 65-region tier config, drift monitoring fixed |
@@ -188,11 +190,11 @@ How CloudClearingAPI maps to common DE job requirements:
 ## 🚨 Known Issues & Limitations
 
 ### Scraper Coverage Gaps
-- **99.co:** Cloudflare JS challenge — short-circuited after one CF probe per run; revival requires Playwright + stealth or `cloudscraper`
+- **99.co:** Cloudflare JS challenge — partially revived via `cloudscraper` (HTTP 200 + 20-listing __NEXT_DATA__ on first call). CF rate-limits aggressively after that; realistic ceiling ~1 region per run before breaker trips on the next 403. Hardening (residential proxy rotation, Playwright stealth) is the upgrade path.
 - **Rumah.com:** Code path exists but never executes (Lamudi covers 98%); candidate for archival
 - **Lamudi coverage:** 64/65 (98%) live; 11 regions outlier-clamped (extracted avg >5× benchmark); 1 region on static benchmark
 - **OSM coverage:** 65/65 live (17 fresh queries + 48 cache hits per run, 0 fallbacks). The earlier "17/65 live" metric was a labeling error in the email body — fixed.
-- **News supply concentration:** Articles concentrated in Bandung/Jakarta/Yogyakarta corridors. Government endpoints (PSN, Kemenperin, Kemenhub) unreachable due to DNS/SSL issues — explored
+- **News supply concentration:** Articles concentrated in Bandung/Jakarta/Yogyakarta corridors. v2.16.2 expanded to 5 sources (added Detik berita-ekonomi-bisnis + CNBC Indonesia) — captures Yogya, Aceh, and other secondary regions that the prior 4-source pull missed. Government endpoints (PSN, Kemenperin, Kemenhub) still unreachable due to DNS/SSL issues.
 
 ### Score Differentiation
 - **Top STRONG_BUY tier compressed** — top 3 within 2.5 pts (60.6, 58.6, 58.1). Activity score caps at 40; with multipliers maxing ~1.61, final ceiling ~64. Could extend cap to 50 for more elite-tier spread but minimal investor value.

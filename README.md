@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.16.1 (SAR Fusion Cap + Threshold Recalibration + Tier Transitions + Low-Listing Penalty)
+**Version:** 2.16.2 (Drift Tests Cleaned + News Supply Expansion + AWS Lifecycle Fixes + 99.co Cloudscraper Revival)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,16 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.16.2 (April 25, 2026) — Future-Work Batch (Drift Tests, News Supply, AWS Lifecycle, 99.co Revival)
+
+**Drift tests:** 22 obsolete tier-only tests skipped with documented reason; suite is now clean (10 pass, 22 skip, 0 fail). The skipped tests still target the old tier-vs-tier benchmark model, which was replaced by per-region/tier fallback in v2.16.0.
+
+**News supply expansion (4 → 5 sources):** Added Detik `finance.detik.com/berita-ekonomi-bisnis` (4 infra hits per probe, comparable density to /infrastruktur) and CNBC Indonesia (`cnbcindonesia.com/news` + `/market`). Raw articles per run: ~46 → ~79. Captures Yogya (Ratu Boko access), Aceh (Krueng Tingkeum bridge), and other secondary regions the prior 4-source pull missed.
+
+**AWS Terraform — production-readiness pass:** `terraform validate` now passes cleanly. Fixed 5 deprecated S3 lifecycle rules missing required `filter{}` (raw, staging, curated, logs×2) — without the fix they become hard errors in a future AWS provider version. Recursive `terraform fmt` applied across all 6 modules.
+
+**99.co revival via cloudscraper:** Replaces plain `requests` (always hit the CF JS challenge) with a `cloudscraper.create_scraper()` session. Verified working: `/jual/tanah/yogyakarta` returns HTTP 200 + 20-listing `__NEXT_DATA__`; smoke test extracted 10 yogya listings at Rp 8.4M/m² avg. Realistic ceiling: 0–1 regions per run before CF rate-limits the IP and the existing process-wide breaker trips. Added `cloudscraper>=1.2.71` to requirements.
 
 ### v2.16.1 (April 27, 2026) — SAR Fusion Cap + Threshold Recalibration + Tier Transitions
 
