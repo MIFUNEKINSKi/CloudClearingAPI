@@ -1437,6 +1437,21 @@ class AutomatedMonitor:
                     'mean_vh_change_db': fusion_result['mean_vh_change_db'] if fusion_result else 0,
                     'optical_changes': optical_changes,
                     'fused_changes': satellite_changes,
+                    # SAR/optical disparity flag: when SAR > 20× optical, the
+                    # signal is mostly SAR (which captures water dynamics, ship
+                    # traffic, etc. — common false-positive source for ports
+                    # and coastal regions). Surfaced so investor can verify
+                    # with imagery before acting. Spot-check on Apr 26 run
+                    # showed top 3 STRONG_BUYs all at >100× SAR/optical:
+                    # Subang 398×, Merak 1318×, Banyuwangi 149×.
+                    'sar_optical_ratio': (
+                        round(fusion_result['sar_changes'] / max(1, optical_changes), 1)
+                        if fusion_result else 0
+                    ),
+                    'sar_dominant_warning': (
+                        bool(fusion_result and fusion_result['sar_changes'] > 20 * max(1, optical_changes))
+                        if fusion_result else False
+                    ),
                 } if fusion_result else None,
                 'news_catalyst': {
                     'multiplier': news_catalyst_result.multiplier,

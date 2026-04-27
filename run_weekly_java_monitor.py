@@ -393,6 +393,17 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
                     warnings.append('infra=fallback')
                 if warnings:
                     body_lines.append(f"     ⚠ Data: {', '.join(warnings)} — verify pricing independently")
+                # SAR-dominant warning: when SAR > 20x optical, the satellite
+                # signal is mostly radar — likely water dynamics for ports/
+                # ferries. Investor should verify with imagery.
+                sar = r.get('sar_data') or {}
+                if isinstance(sar, dict) and sar.get('sar_dominant_warning'):
+                    ratio = sar.get('sar_optical_ratio', 0)
+                    body_lines.append(
+                        f"     ⚠ Signal mostly SAR (radar {ratio:.0f}× optical) — "
+                        "common at ports/coast where ship traffic + water surface change. "
+                        "Verify with satellite imagery before acting."
+                    )
                 body_lines.append("")
 
         # --- WATCH List ---
