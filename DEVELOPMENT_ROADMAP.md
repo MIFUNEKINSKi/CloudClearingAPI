@@ -1,6 +1,6 @@
 # CloudClearingAPI Development Roadmap
-**Updated:** April 26, 2026
-**Current Version:** v2.16.0 (Honest Math + STRONG_BUY Tier + Detik News + Confidence Caps)
+**Updated:** April 27, 2026
+**Current Version:** v2.16.1 (SAR Fusion Cap + Threshold Recalibration + Tier Transitions)
 
 ---
 
@@ -41,16 +41,17 @@ CloudClearingAPI is an automated land investment analyst for Indonesia that comb
 | **Terraform IaC** | ✅ Defined | Infrastructure as Code (**6 modules**, ~70 AWS resources); **no-NAT dev path** wired (`enable_nat_gateway = false` → public subnets + `AssignPublicIp` for ECS RunTask) |
 | **Step Functions orchestration** | ✅ Defined | Workflow orchestration (not yet deployed) |
 
-### Latest Run Metrics (Apr 26, 2026)
-- **65/65 regions** analyzed in a single `--all` pass; runtime ~80–95 min
-- **3 STRONG_BUY** (top-decile, 100% conf, optical-verified, lamudi-live): Subang Patimban Megaport, Merak Port Corridor, Banyuwangi Ferry Corridor
-- **15 BUY**, **32 WATCH**, **15 PASS** — disciplined screen
-- **64/65 live market** (Lamudi); 1 region on static benchmark; 11 outlier-clamped (visible flag)
-- **65/65 live OSM** infrastructure (17 fresh queries + 48 cache hits)
-- **Confidence range 0.74–1.00** (was 0.84–1.00); SAR-only at 0.84, clamped at 0.80, both-degraded at 0.53
-- **Drift avg +19.1%** (was +94.5% before per-region benchmarks); 36 CRITICAL alerts (was 49)
+### Latest Run Metrics (Apr 27, 2026, post-SAR-cap + threshold recalibration)
+- **65/65 regions** analyzed; runtime ~80–120 min
+- **5 STRONG_BUY** (top-decile, all 100% conf, optical+lamudi-live): Merak Port (51.0), Solo Raya (50.4), Subang Patimban (50.4), Serang Cilegon (50.2), Cikarang (49.5)
+- **12 BUY**, **24 WATCH**, **24 PASS** — disciplined screen
+- **All 5 STRONG_BUYs carry SAR-dominant warning** (ratio 139–428×) — visible to investor before acting
+- **65/65 live OSM** (17 fresh + 48 cache, 0 fallbacks)
+- **Confidence range** 0.74–1.00; caps biting: SAR-only 0.84, clamped 0.80, low-listing 0.65
+- **Drift avg +15.8%** (was +94.5%); 44 CRITICAL alerts
 - **6 regions** with news boost (1.05x); **17 regions** with news_wow tracking
-- **5 caching layers** active: GEE (14d), SAR (14d), OSM (7d), news (2d), scraper (24h)
+- **22 tier upgrades** vs prior run (post-recalibration) — surfaced in email
+- **5 caching layers**: GEE (14d), SAR (14d), OSM (7d), news (2d), scraper (24h)
 
 ---
 

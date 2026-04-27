@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.16.0 (Honest Math + STRONG_BUY Tier + Detik News + Confidence Caps)
+**Version:** 2.16.1 (SAR Fusion Cap + Threshold Recalibration + Tier Transitions + Low-Listing Penalty)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,27 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.16.1 (April 27, 2026) — SAR Fusion Cap + Threshold Recalibration + Tier Transitions
+
+**SAR fusion bug + recalibration (the big one):**
+- **SAR was 99% of the fused signal**, not the nominal 40%. SAR pixel counts run 100-1000× larger than optical (different per-pixel sensitivity, different counting units — pixels vs polygons), so the 60/40 weighting was meaningless. Capped SAR contribution at 20× optical when both available. Top scores dropped from 60+ to ~51 (the artificial amplification was real).
+- **Thresholds recalibrated** for the honest scale: STRONG_BUY 58→49, BUY 50→42, WATCH 35→33. Restored the original "STRONG_BUY = top decile" intent. Apr 27 run: 5 STRONG_BUY / 12 BUY / 24 WATCH / 24 PASS.
+- **SAR-dominant warning** in JSON + email when ratio > 20×: `⚠ Signal mostly SAR (radar 428× optical) — common at ports/coast where ship traffic + water surface change. Verify with satellite imagery before acting.`
+
+**Tier transitions ("see opportunities early"):**
+- New email section "📈 TIER CHANGES SINCE LAST RUN" surfaces upgrades / downgrades / new regions with score deltas. Sorted by destination tier (STRONG_BUY first), then score delta. The investor's stated north-star — catch a region the moment it crosses into BUY — is now front-and-center.
+
+**OSM coverage metric correction:**
+- Email body claimed "17/65 live infrastructure" — actually 65/65 (48 cache hits + 17 fresh queries, 0 fallbacks). The metric was excluding cached-OSM as if it were fallback. Fix: count any data_source containing 'osm' as live.
+
+**Market-heat annualization noise cap:**
+- `_calculate_price_trend` was multiplying short-history trends by up to 73× (5-day data) to "annualize". A 1% real trend became 73%/yr → "booming". Capped at 12.2× (= 365/30) so sub-30-day histories don't extrapolate noise.
+
+**Low-listing-count confidence penalty:**
+- Audit found 17/65 regions with Lamudi listing_count bouncing 5↔20 (pagination instability). New cascade: clamped → 0.55, listing_count <10 → 0.65, normal → 0.85.
+
+**Detik infrastructure scraper added** — 4th source, real Indonesian-press infra news (Tol Yogyakarta-Bawen, KEK Batang, LRT Jakarta, Whoosh HSR).
 
 ### v2.16.0 (April 26, 2026) — Honest Math + STRONG_BUY Tier + Detik News + Confidence Caps
 
