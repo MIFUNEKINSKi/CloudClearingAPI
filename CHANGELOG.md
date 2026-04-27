@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.16.3] - 2026-04-25 - sar_only Cap + Confidence Provenance Fix (Merak audit)
+
+### Fixed
+- **`fuse_optical_and_sar` sar_only branch was uncapped.** Fusion mode had a 20× SAR cap; sar_only mode (optical returns 0) had none. Merak's 4.6M SAR pixels saturated activity log-scale at ~38. Added `SAR_ONLY_MAX = 500_000` cap. Original count preserved in JSON.
+- **`satellite_data_source` provenance leak.** When fusion fell into sar_only mode, `region_data['data_source']` stayed `'optical'`. The SAR-only confidence cap (0.84) keyed off this string and was bypassed. Now resolves `effective_satellite_source` from `fusion_result['source']` and uses it for both scoring AND the `data_sources` JSON output (so PDF/email reflect truth).
+
+### Changed
+- Stat-calc timeout 60s → 120s (2/65 regions hit the 60s wall in Apr 27 19:15 run).
+
+### Verification
+- Merak recompute against actual run data: 61.7 → ~51.2. Still STRONG_BUY (>49) but with SAR-dominant warning honestly visible and confidence properly capped at 0.84.
+- Tests: 26 passed, 22 skipped, 0 failed.
+
 ## [2.16.2] - 2026-04-25 - Future-Work Batch (Drift Tests, News Supply, AWS Lifecycle, 99.co Revival)
 
 ### Tests

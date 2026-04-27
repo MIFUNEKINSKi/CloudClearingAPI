@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.16.2 (Drift Tests Cleaned + News Supply Expansion + AWS Lifecycle Fixes + 99.co Cloudscraper Revival)
+**Version:** 2.16.3 (sar_only Cap + Confidence Provenance Fix — Merak Audit)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,18 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.16.3 (April 25, 2026) — sar_only Cap + Confidence Provenance Fix (Merak audit)
+
+The v2.16.2 weekly run audit caught Merak (port_corridor) at score **61.7 / confidence 99%** despite `optical_changes==0` and 4.6M uncapped SAR pixels — two compounding bugs:
+
+1. **`fuse_optical_and_sar` sar_only branch was uncapped.** Fusion mode already had a 20× SAR cap; sar_only mode (when optical returns zero) had none. Ports/coastal regions like Merak with 4–5M SAR pixels saturated the activity log-scale at ~38. Added `SAR_ONLY_MAX = 500_000` cap in sar_only mode (~comparable to post-cap fusion magnitude). Original count preserved in JSON for debugging.
+
+2. **`satellite_data_source` provenance leak.** When fusion fell into sar_only mode, `region_data['data_source']` stayed `'optical'` (the optical detector ran successfully — it just found nothing). The SAR-only confidence cap (0.84 in `corrected_scoring.py:604`) keys off this string, so without the override these regions skipped the cap. Now resolves `effective_satellite_source` from `fusion_result['source']` and uses it for both scoring AND the `data_sources` JSON output.
+
+**Net effect on Merak (recomputed against actual run data):** 61.7 → ~51.2. Still STRONG_BUY (>49) but the SAR-dominant warning is honestly visible and confidence capped at 0.84 — single-sensor data shouldn't claim 99%.
+
+**Stat-calc timeout 60s → 120s.** 2/65 regions hit the 60s wall in the Apr 27 run; busy GEE periods can blow past 60s for vector aggregation.
 
 ### v2.16.2 (April 25, 2026) — Future-Work Batch (Drift Tests, News Supply, AWS Lifecycle, 99.co Revival)
 

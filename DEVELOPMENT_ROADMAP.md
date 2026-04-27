@@ -1,6 +1,6 @@
 # CloudClearingAPI Development Roadmap
 **Updated:** April 27, 2026
-**Current Version:** v2.16.2 (Drift Tests Cleaned + News Supply Expansion + AWS Lifecycle Fixes + 99.co Cloudscraper Revival)
+**Current Version:** v2.16.3 (sar_only Cap + Confidence Provenance Fix — Merak Audit)
 
 ---
 
@@ -170,6 +170,7 @@ How CloudClearingAPI maps to common DE job requirements:
 
 | Version | Date | Key Features |
 |---------|------|-------------|
+| **v2.16.3** | Apr 25, 2026 | Plug sar_only loophole: cap fused at 500K (was uncapped → Merak saturated activity at 38); fix `satellite_data_source` provenance so SAR-only mode triggers the 0.84 confidence cap (was passing 'optical' even when fusion fell to sar_only); stat-calc timeout 60s → 120s (2/65 regions hit the wall on Apr 27 19:15 run). Net effect on Merak: 61.7 → ~51.2 |
 | **v2.16.2** | Apr 25, 2026 | Drift tests cleaned (22 obsolete tier-only tests skipped, suite now 10/22/0); News supply expansion: Detik berita-ekonomi-bisnis + CNBC Indonesia (raw articles 46→79); AWS Terraform: 5 deprecated S3 lifecycle rules fixed (filter{} added) + recursive fmt; 99.co revived via cloudscraper (best-effort, ~1 region/run, breaker trips on first CF block) |
 | **v2.16.1** | Apr 27, 2026 | SAR fusion 20× cap + threshold recalibration (49/42/33); tier transitions tracked week-over-week; thread-safe stats timeout (replaced broken signal.alarm); SAR construction/clearing band-name fix |
 | **v2.16.0** | Apr 26, 2026 | STRONG_BUY tier (≥58 conf≥0.85); activity log-scaling (was step-cap); confidence hard caps for SAR-only/clamped; Detik Infrastruktur news source; per-region drift benchmarks (avg drift 94%→19%); momentum math bug fixed (was depressing all scores 15%); 5Y/3Y ROI apples-to-apples; news_wow loader bug fixed; Banten + Denpasar benchmark buckets; price-outlier clamp; SMTP preflight + webhook fallback |
