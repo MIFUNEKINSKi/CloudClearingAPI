@@ -284,7 +284,12 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
             if r.get('data_sources', {}).get('market') in ('fallback', 'regional_benchmark', 'static_benchmark', None)
         )
         live_market = len(all_recs) - market_fallback
-        live_infra = sum(1 for r in all_recs if 'osm_live' in str(r.get('data_sources', {}).get('infrastructure', '')))
+        # Both osm_live (fresh query) and osm_cached (within 7-day cache TTL) are
+        # genuine OSM data. Only 'fallback' / 'unavailable' are non-OSM.
+        live_infra = sum(
+            1 for r in all_recs
+            if 'osm' in str(r.get('data_sources', {}).get('infrastructure', '')).lower()
+        )
         sar_only_count = sum(1 for r in all_recs if r.get('data_sources', {}).get('satellite') == 'sar_only')
         market_fallback_pct = market_fallback / n
         sar_only_pct = sar_only_count / n

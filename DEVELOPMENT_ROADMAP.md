@@ -27,7 +27,7 @@ CloudClearingAPI is an automated land investment analyst for Indonesia that comb
 | **Dual-sensor satellite analysis** | ✅ Working | API integration (Google Earth Engine), data fusion |
 | **GEE optical caching** | ✅ Working | 14-day cache avoids repeat satellite analysis |
 | **Web scraping pipeline** | ✅ 64/65 live (98%) | Lamudi primary; price-outlier clamp (>5× benchmark); 99.co Cloudflare-blocked, short-circuited; Rumah.com unused |
-| **Infrastructure analysis (OSM)** | ⚠️ 17/65 live | Most regions on regional fallback DB. Live coverage gap is open follow-up. |
+| **Infrastructure analysis (OSM)** | ✅ 65/65 live | 17 fresh queries + 48 cache hits per run; 0 fallbacks. Email "live infrastructure" metric was incorrectly excluding cached OSM (now fixed). |
 | **News pipeline** | ✅ 4 sources, 17 regions matched | Jakarta Post, Kompas, Antara, Detik Infrastruktur. Genuine 1.05x boost firing for ~6 regions per run. news_wow now populated. |
 | **Market tier classification** | ✅ 100% | All 65 regions classified (T1: 10, T2: 18, T3: 29, T4: 8) |
 | **Investment scoring engine** | ✅ Working | Multi-factor data transformation pipeline |
@@ -46,7 +46,7 @@ CloudClearingAPI is an automated land investment analyst for Indonesia that comb
 - **3 STRONG_BUY** (top-decile, 100% conf, optical-verified, lamudi-live): Subang Patimban Megaport, Merak Port Corridor, Banyuwangi Ferry Corridor
 - **15 BUY**, **32 WATCH**, **15 PASS** — disciplined screen
 - **64/65 live market** (Lamudi); 1 region on static benchmark; 11 outlier-clamped (visible flag)
-- **17/65 live OSM** infrastructure — known gap, on the work queue
+- **65/65 live OSM** infrastructure (17 fresh queries + 48 cache hits)
 - **Confidence range 0.74–1.00** (was 0.84–1.00); SAR-only at 0.84, clamped at 0.80, both-degraded at 0.53
 - **Drift avg +19.1%** (was +94.5% before per-region benchmarks); 36 CRITICAL alerts (was 49)
 - **6 regions** with news boost (1.05x); **17 regions** with news_wow tracking
@@ -190,7 +190,7 @@ How CloudClearingAPI maps to common DE job requirements:
 - **99.co:** Cloudflare JS challenge — short-circuited after one CF probe per run; revival requires Playwright + stealth or `cloudscraper`
 - **Rumah.com:** Code path exists but never executes (Lamudi covers 98%); candidate for archival
 - **Lamudi coverage:** 64/65 (98%) live; 11 regions outlier-clamped (extracted avg >5× benchmark); 1 region on static benchmark
-- **OSM coverage:** 17/65 live (open follow-up — most regions hit fallback DB; may need OSM cache warm-up or alternative data source)
+- **OSM coverage:** 65/65 live (17 fresh queries + 48 cache hits per run, 0 fallbacks). The earlier "17/65 live" metric was a labeling error in the email body — fixed.
 - **News supply concentration:** Articles concentrated in Bandung/Jakarta/Yogyakarta corridors. Government endpoints (PSN, Kemenperin, Kemenhub) unreachable due to DNS/SSL issues — explored
 
 ### Score Differentiation

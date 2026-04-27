@@ -492,10 +492,20 @@ class LandPriceOrchestrator:
                             age_days = (today - datetime.strptime(best_rec['date'], '%Y-%m-%d').date()).days
 
                             trend_pct = ((current_price - historical_price) / historical_price) * 100
-                            annualized_trend = trend_pct * (365.0 / max(age_days, 1))
+                            # Cap the annualization multiplier at 12.2x (= 365/30) so short
+                            # histories don't over-extrapolate noise. Without this, a 14-day
+                            # history with 1% trend produced annualized 26%/yr → "booming",
+                            # and 5-day histories went 73× → wild "declining" classifications
+                            # for any tiny price wiggle. Real-world land prices don't move
+                            # fast enough for sub-30-day extrapolation to be meaningful.
+                            annualization_factor = 365.0 / max(age_days, 30)
+                            annualized_trend = trend_pct * annualization_factor
                             market_heat = self._classify_market_heat(annualized_trend)
 
-                            logger.info(f"   📊 Price Trend ({age_days}d history): {trend_pct:+.1f}% (annualized: {annualized_trend:+.1f}%)")
+                            logger.info(
+                                f"   📊 Price Trend ({age_days}d history): {trend_pct:+.1f}% "
+                                f"(annualized: {annualized_trend:+.1f}%, factor {annualization_factor:.1f}x)"
+                            )
                             return trend_pct, market_heat
 
                 except Exception as e:
