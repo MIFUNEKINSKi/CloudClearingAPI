@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.14.0 (Parallel Scoring + News WoW + Caching + PDF Improvements)
+**Version:** 2.16.0 (Honest Math + STRONG_BUY Tier + Detik News + Confidence Caps)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,43 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.16.0 (April 26, 2026) — Honest Math + STRONG_BUY Tier + Detik News + Confidence Caps
+
+**Scoring (the math is now honest):**
+- **Activity score: log scaling** — replaced step-function (cap 40 above 50K changes — saturated every region) with `5 + 5 × log10(changes)` clamped to [5, 40]. Top regions now spread 21–38 instead of all-tied at 40. STRONG_BUY tier no longer has 7 regions tied at the same score.
+- **STRONG_BUY tier introduced** — score ≥58 with confidence ≥0.85; BUY ≥50 conf≥0.75; WATCH ≥35 conf≥0.50. Tighter than previous BUY≥40 (which caught 67% of regions). Now produces a 3-region elite shortlist + 15-region BUY pipeline.
+- **Confidence caps now bite** — SAR-only regions cap at 0.84 (was masked by sensor-fusion +0.10 boost), market-clamped (avg >5× benchmark) caps at 0.80. Visible in PDF + email so the analyst sees the data-quality flag before acting.
+- **Momentum math bug fixed** — `_ratio_to_multiplier(1.0)` was returning 0.85 instead of 1.0, depressing every score by 15% when momentum was steady. Switched to `1.0 + 0.20 × log2(ratio)` clamped to [0.85, 1.30]. Also tags `insufficient_baseline` so consumer drops momentum entirely until 8+ weeks of history exists (was firing fake "accelerating" for every region).
+- **5Y vs 3Y ROI apples-to-oranges fixed** — email was rendering `land_only_roi_3yr` (no dev cost) for the 3Y number but `projected_roi_5yr` (with dev cost) for the 5Y. Added `land_only_roi_5yr` field; both horizons now show pure land appreciation.
+
+**News pipeline activated:**
+- **Detik infrastructure scraper added** — `finance.detik.com/infrastruktur` is the highest-density Indonesian-press source for named projects (Tol Yogyakarta-Bawen, KEK Batang, LRT Jakarta, Whoosh HSR). Government endpoints (PSN, Kemenperin) unreachable due to DNS/SSL issues.
+- **City-direct matching** — accept articles mentioning any target city, not only generic infra keywords. Articles with no infra keyword stay sentiment=neutral so they count for `news_wow` WoW comparison without falsely boosting the catalyst multiplier.
+- **Sentiment classifier loosened** — positive triggers on 1 high-relevance keyword OR 2+ any keywords (was strict ≥2). Multiple regions now get genuine 1.05x boost (Bandung, Jakarta, Yogyakarta, Batang).
+- **News cache TTL: 7d → 2d** — was hitting same 12-article cache for 6 days at a time.
+- **`_load_previous_news_counts` bug** — was checking `regions_analyzed` first (satellite-only entries with no news_catalyst), bailing if non-empty. Fixed: always read recommendation lists. `news_wow` now populates correctly.
+
+**Drift monitoring fixed:**
+- **Per-region benchmarks** — drift compares each region against its own ~4-week scraped median (was 5 coarse tier averages for 65 regions). Avg drift dropped from +94.5% to +19.1% (5× improvement).
+- **Apples-to-apples comparison** — was using historical `median_price_m2` vs live `avg_price_m2` (current_price_per_m2 is the avg). Fixed: both use avg. Killed false positives like Tegal +291% where median was actually stable.
+- **STRONG_BUY blind spot fixed** — drift_input was excluding `strong_buy_recommendations` (field didn't exist when that code shipped). Top-conviction regions now have drift tracking.
+
+**Benchmark routing fixes:**
+- **`_find_nearest_benchmark` substring bug** — `'bali' in 'balikpapan_port_industrial'` was True, routing every Kalimantan region to the Bali benchmark and silently inflating it. Switched to token-based matching on underscore-separated region names.
+- **Banten + Denpasar buckets added** — Anyer/Cilegon/Serang/Merak no longer fall through to the yogyakarta default; Denpasar premium (Rp 15M/m²) preserved instead of being absorbed into the cheaper Bali bucket.
+- **11 of 15 benchmarks refreshed** from real Lamudi medians.
+
+**Reliability + log hygiene:**
+- **Empty-composite + "no bands" warnings downgraded to DEBUG** — cloud-tier loop already retries with relaxed thresholds; per-attempt warnings were ~500/run noise.
+- **OSM Overpass per-call + process-wide circuit breakers** — exit after 2 mirror failures, trip globally after 6 total.
+- **99.co Cloudflare short-circuit** — single probe per run instead of 65 wasted retries (saves ~15 min/run).
+- **GEE empty-composite root cause** — `find_best_dates` was relaxing cloud cover to 60% but `create_weekly_composite` re-filtered at hard-coded <30%. Threshold now passed through; progressive cloud-tier relaxation in `_analyze_region` rescues regions that would have gone SAR-only.
+
+**Delivery:**
+- **SMTP preflight at start of pipeline** — auth failures surface in 5s, not after 30 min.
+- **Webhook (Slack) fallback** when email fails.
+- **Subject prefixed `[LOW-CONF]`** when ≥20% benchmark fallback or ≥10% SAR-only.
 
 ### v2.14.0 (April 2026) — Parallel Scoring + News WoW + Caching + PDF Improvements
 
