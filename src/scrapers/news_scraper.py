@@ -10,6 +10,8 @@ Sources (priority order):
 1. Jakarta Post (English, RSS + HTML)
 2. Kompas (Indonesian, RSS + HTML)
 3. Antara News (English, official wire service)
+4. Detik (finance.detik.com — infrastructure, properti, ekonomi-bisnis)
+5. CNBC Indonesia (cnbcindonesia.com/news — broad business/infra wire)
 
 Output: List of NewsArticle objects matched to regions.
 """
@@ -271,6 +273,7 @@ class NewsScraper:
             ('kompas', self._scrape_kompas),
             ('antara', self._scrape_antara),
             ('detik_infra', self._scrape_detik_infrastructure),
+            ('cnbc_indonesia', self._scrape_cnbc_indonesia),
         ]:
             cached = self._check_cache(source_name)
             if cached is not None:
@@ -479,6 +482,10 @@ class NewsScraper:
             "https://finance.detik.com/infrastruktur",
             "https://finance.detik.com/properti",
             "https://www.detik.com/properti",
+            # Added 2026-04-25: berita-ekonomi-bisnis returned 69 long-link
+            # headlines on a probe with 4 infra hits — comparable density to
+            # the dedicated /infrastruktur subsection.
+            "https://finance.detik.com/berita-ekonomi-bisnis",
         ]
 
         seen_urls = set()
@@ -523,6 +530,74 @@ class NewsScraper:
 
             except Exception as e:
                 logger.warning(f"Detik scrape error ({url}): {e}")
+
+        return articles[:30]
+
+    def _scrape_cnbc_indonesia(self) -> List[Dict]:
+        """Scrape infrastructure/business articles from CNBC Indonesia.
+
+        Probe results (2026-04-25): cnbcindonesia.com/news returned 31 long-
+        link headlines with 2 infra hits per page. Article URLs follow the
+        pattern /news/<14-digit-stamp>-<digit>-<id>/<slug>. Lower density per
+        page than Detik but covers macro/policy stories the others miss.
+        """
+        articles = []
+        urls = [
+            "https://www.cnbcindonesia.com/news",
+            "https://www.cnbcindonesia.com/market",
+        ]
+
+        seen_urls = set()
+        for url in urls:
+            try:
+                resp = self._get_with_retry(url)
+                if not resp:
+                    continue
+
+                soup = BeautifulSoup(resp.text, 'html.parser')
+
+                for link in soup.find_all('a', href=True):
+                    href = link.get('href', '')
+                    title_text = link.get_text(strip=True)
+
+                    if not title_text or len(title_text) < 25:
+                        continue
+                    # CNBC article URLs always carry /news/ or /market/ +
+                    # a long timestamp-id segment.
+                    if 'cnbcindonesia.com' not in href:
+                        continue
+                    if not re.search(r'/(news|market)/\d{8,}-', href):
+                        continue
+                    if href in seen_urls:
+                        continue
+                    seen_urls.add(href)
+
+                    # Strip listing-card metadata that bleeds into link text:
+                    # "News4 jam yang lalu", "Market2 hari yang lalu", etc.
+                    title_text = re.sub(
+                        r'(News|Market|Bisnis|Investment)\d+\s*(jam|menit|detik|hari)\s+yang\s+lalu$',
+                        '', title_text, flags=re.IGNORECASE).strip()
+
+                    matched = self._match_keywords(title_text)
+                    cities = self._match_cities(title_text)
+                    if not matched and not cities:
+                        continue
+
+                    articles.append({
+                        'title': title_text[:200],
+                        'source': 'cnbc_indonesia',
+                        'url': href,
+                        'date': datetime.now().strftime('%Y-%m-%d'),
+                        'snippet': title_text[:200],
+                        'matched_keywords': matched,
+                        'matched_cities': cities,
+                    })
+
+                logger.info(f"📰 CNBC Indonesia ({url.split('/')[-1]}): {len(articles)} infra/region articles so far")
+                time.sleep(random.uniform(0.5, 1.5))
+
+            except Exception as e:
+                logger.warning(f"CNBC Indonesia scrape error ({url}): {e}")
 
         return articles[:30]
 

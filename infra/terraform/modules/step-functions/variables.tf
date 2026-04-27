@@ -89,7 +89,7 @@ variable "s3_cache_bucket" {
 variable "schedule_expression" {
   description = "EventBridge schedule expression for weekly execution"
   type        = string
-  default     = "cron(0 6 ? * MON *)"  # Every Monday at 6am UTC
+  default     = "cron(0 6 ? * MON *)" # Every Monday at 6am UTC
 }
 
 variable "default_regions_count" {

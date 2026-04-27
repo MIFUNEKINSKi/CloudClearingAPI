@@ -20,19 +20,19 @@ resource "aws_sfn_state_machine" "weekly_monitoring" {
   role_arn = aws_iam_role.step_functions.arn
 
   definition = templatefile("${path.module}/state_machine.asl.json", {
-    ecs_cluster_arn           = var.ecs_cluster_arn
-    monitor_task_definition   = var.monitor_task_definition_arn
-    aws_region                = var.aws_region
-    subnet_ids                = jsonencode(var.ecs_task_subnet_ids)
-    ecs_assign_public_ip      = var.ecs_assign_public_ip
-    security_group_ids        = jsonencode([var.ecs_security_group_id])
-    sns_success_topic_arn     = aws_sns_topic.pipeline_success.arn
-    sns_failure_topic_arn     = aws_sns_topic.pipeline_failure.arn
-    s3_reports_bucket         = var.s3_reports_bucket
-    s3_cache_bucket           = var.s3_cache_bucket
-    cloudwatch_log_group      = aws_cloudwatch_log_group.step_functions.name
-    gee_project_id            = var.gee_project_id
-    environment               = var.environment
+    ecs_cluster_arn         = var.ecs_cluster_arn
+    monitor_task_definition = var.monitor_task_definition_arn
+    aws_region              = var.aws_region
+    subnet_ids              = jsonencode(var.ecs_task_subnet_ids)
+    ecs_assign_public_ip    = var.ecs_assign_public_ip
+    security_group_ids      = jsonencode([var.ecs_security_group_id])
+    sns_success_topic_arn   = aws_sns_topic.pipeline_success.arn
+    sns_failure_topic_arn   = aws_sns_topic.pipeline_failure.arn
+    s3_reports_bucket       = var.s3_reports_bucket
+    s3_cache_bucket         = var.s3_cache_bucket
+    cloudwatch_log_group    = aws_cloudwatch_log_group.step_functions.name
+    gee_project_id          = var.gee_project_id
+    environment             = var.environment
   })
 
   logging_configuration {
@@ -42,7 +42,7 @@ resource "aws_sfn_state_machine" "weekly_monitoring" {
   }
 
   tracing_configuration {
-    enabled = true  # AWS X-Ray for distributed tracing
+    enabled = true # AWS X-Ray for distributed tracing
   }
 
   tags = merge(var.tags, {
@@ -60,7 +60,7 @@ resource "aws_sfn_state_machine" "weekly_monitoring" {
 resource "aws_cloudwatch_event_rule" "weekly_schedule" {
   name                = "${var.project_name}-weekly-schedule-${var.environment}"
   description         = "Trigger CloudClearingAPI weekly monitoring every Monday at 6am UTC"
-  schedule_expression = var.schedule_expression  # Default: "cron(0 6 ? * MON *)"
+  schedule_expression = var.schedule_expression # Default: "cron(0 6 ? * MON *)"
 
   tags = merge(var.tags, {
     Name = "${var.project_name}-weekly-schedule-${var.environment}"
@@ -73,15 +73,15 @@ resource "aws_cloudwatch_event_target" "step_functions" {
   role_arn = aws_iam_role.eventbridge.arn
 
   input = jsonencode({
-    execution_name = "weekly-monitoring-$${aws.scheduler.scheduled-time}"
-    regions_count  = var.default_regions_count  # 29 Java regions
+    execution_name  = "weekly-monitoring-$${aws.scheduler.scheduled-time}"
+    regions_count   = var.default_regions_count # 29 Java regions
     enable_scraping = var.enable_web_scraping
     force_refresh   = false
   })
 
   retry_policy {
     maximum_event_age_in_seconds = 3600
-    maximum_retry_attempts         = 2
+    maximum_retry_attempts       = 2
   }
 
   dead_letter_config {
@@ -144,7 +144,7 @@ resource "aws_sns_topic_subscription" "pipeline_failure_slack" {
 
 resource "aws_sqs_queue" "dlq" {
   name                      = "${var.project_name}-eventbridge-dlq-${var.environment}"
-  message_retention_seconds = 1209600  # 14 days
+  message_retention_seconds = 1209600 # 14 days
   kms_master_key_id         = var.kms_key_id
 
   tags = merge(var.tags, {
@@ -224,7 +224,7 @@ resource "aws_cloudwatch_metric_alarm" "execution_timeout" {
   namespace           = "AWS/States"
   period              = 300
   statistic           = "Maximum"
-  threshold           = 10800000  # 3 hours in milliseconds
+  threshold           = 10800000 # 3 hours in milliseconds
   alarm_description   = "Alert when Step Functions execution exceeds 3 hours"
   treat_missing_data  = "notBreaching"
 

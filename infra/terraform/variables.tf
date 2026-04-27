@@ -59,7 +59,7 @@ variable "enable_vpc_endpoints" {
 variable "enable_flow_logs" {
   description = "Enable VPC flow logs for network monitoring"
   type        = bool
-  default     = false  # Disabled by default to reduce costs
+  default     = false # Disabled by default to reduce costs
 }
 
 # ============================================================================
@@ -141,7 +141,7 @@ variable "logs_retention_days" {
 variable "step_functions_schedule" {
   description = "EventBridge schedule expression for weekly monitoring"
   type        = string
-  default     = "cron(0 6 ? * MON *)"  # Every Monday at 6am UTC
+  default     = "cron(0 6 ? * MON *)" # Every Monday at 6am UTC
 }
 
 variable "default_regions_count" {

@@ -42,6 +42,17 @@ class DriftSnapshot:
     confidence: float
     alert_level: str  # 'NONE', 'WARNING', 'CRITICAL'
 
+    def __getitem__(self, key):
+        """Dict-like access for backward compatibility with tests/code that
+        used `snapshot['drift_pct']` instead of `snapshot.drift_pct`."""
+        try:
+            return getattr(self, key)
+        except AttributeError as e:
+            raise KeyError(key) from e
+
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+
 
 @dataclass
 class DriftAlert:

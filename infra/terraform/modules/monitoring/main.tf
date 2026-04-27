@@ -4,7 +4,7 @@
 
 terraform {
   required_version = ">= 1.5.0"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -20,7 +20,7 @@ resource "aws_sns_topic" "alarms" {
   name              = "${var.project_name}-${var.environment}-alarms"
   display_name      = "CloudClearingAPI Alarms"
   kms_master_key_id = var.kms_key_id
-  
+
   tags = merge(
     var.common_tags,
     {
@@ -51,11 +51,11 @@ resource "aws_cloudwatch_metric_alarm" "ecs_task_failed" {
   threshold           = "0"
   alarm_description   = "Alert when ECS tasks fail"
   alarm_actions       = [aws_sns_topic.alarms.arn]
-  
+
   dimensions = {
     ClusterName = var.ecs_cluster_name
   }
-  
+
   tags = merge(
     var.common_tags,
     {
@@ -79,11 +79,11 @@ resource "aws_cloudwatch_metric_alarm" "ecs_cpu_high" {
   threshold           = "80"
   alarm_description   = "Alert when ECS CPU usage is high"
   alarm_actions       = [aws_sns_topic.alarms.arn]
-  
+
   dimensions = {
     ClusterName = var.ecs_cluster_name
   }
-  
+
   tags = merge(
     var.common_tags,
     {
@@ -107,11 +107,11 @@ resource "aws_cloudwatch_metric_alarm" "ecs_memory_high" {
   threshold           = "80"
   alarm_description   = "Alert when ECS memory usage is high"
   alarm_actions       = [aws_sns_topic.alarms.arn]
-  
+
   dimensions = {
     ClusterName = var.ecs_cluster_name
   }
-  
+
   tags = merge(
     var.common_tags,
     {
@@ -131,7 +131,7 @@ resource "aws_budgets_budget" "monthly_cost" {
   limit_amount = var.monthly_budget_limit
   limit_unit   = "USD"
   time_unit    = "MONTHLY"
-  
+
   notification {
     comparison_operator        = "GREATER_THAN"
     threshold                  = 80
@@ -139,7 +139,7 @@ resource "aws_budgets_budget" "monthly_cost" {
     notification_type          = "ACTUAL"
     subscriber_email_addresses = var.alarm_email_endpoints
   }
-  
+
   notification {
     comparison_operator        = "GREATER_THAN"
     threshold                  = 100
@@ -155,7 +155,7 @@ resource "aws_budgets_budget" "monthly_cost" {
 resource "aws_cloudwatch_dashboard" "main" {
   count          = var.enable_dashboard ? 1 : 0
   dashboard_name = "${var.project_name}-${var.environment}"
-  
+
   dashboard_body = jsonencode({
     widgets = [
       {

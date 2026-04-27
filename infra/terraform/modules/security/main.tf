@@ -4,7 +4,7 @@
 
 terraform {
   required_version = ">= 1.5.0"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -30,7 +30,7 @@ resource "aws_kms_key" "main" {
   description             = "${var.project_name} data encryption key"
   deletion_window_in_days = var.kms_deletion_window_days
   enable_key_rotation     = true
-  
+
   tags = merge(
     var.common_tags,
     {
@@ -53,7 +53,7 @@ resource "aws_secretsmanager_secret" "gee_credentials" {
   description             = "Google Earth Engine service account credentials"
   kms_key_id              = aws_kms_key.main.id
   recovery_window_in_days = var.secret_recovery_window_days
-  
+
   tags = merge(
     var.common_tags,
     {
@@ -71,7 +71,7 @@ resource "aws_secretsmanager_secret_version" "gee_credentials" {
     # Actual service account JSON should be added after Terraform apply
     placeholder = "Add GEE service account JSON via AWS Console or CLI"
   })
-  
+
   lifecycle {
     ignore_changes = [secret_string]
   }
@@ -85,7 +85,7 @@ resource "aws_secretsmanager_secret" "api_keys" {
   description             = "API keys for web scraping and external services"
   kms_key_id              = aws_kms_key.main.id
   recovery_window_in_days = var.secret_recovery_window_days
-  
+
   tags = merge(
     var.common_tags,
     {
@@ -103,7 +103,7 @@ resource "aws_secretsmanager_secret_version" "api_keys" {
     webhook_url   = ""
     slack_token   = ""
   })
-  
+
   lifecycle {
     ignore_changes = [secret_string]
   }
@@ -114,7 +114,7 @@ resource "aws_secretsmanager_secret_version" "api_keys" {
 # ============================================================================
 resource "aws_iam_role" "ecs_task_execution" {
   name = "${var.project_name}-${var.environment}-ecs-task-execution"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -125,7 +125,7 @@ resource "aws_iam_role" "ecs_task_execution" {
       }
     }]
   })
-  
+
   tags = merge(
     var.common_tags,
     {
@@ -144,7 +144,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
 resource "aws_iam_role_policy" "ecs_secrets_access" {
   name = "${var.project_name}-ecs-secrets-access"
   role = aws_iam_role.ecs_task_execution.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -176,7 +176,7 @@ resource "aws_iam_role_policy" "ecs_secrets_access" {
 # ============================================================================
 resource "aws_iam_role" "ecs_task" {
   name = "${var.project_name}-${var.environment}-ecs-task"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -187,7 +187,7 @@ resource "aws_iam_role" "ecs_task" {
       }
     }]
   })
-  
+
   tags = merge(
     var.common_tags,
     {
@@ -200,7 +200,7 @@ resource "aws_iam_role" "ecs_task" {
 resource "aws_iam_role_policy" "ecs_task_s3_access" {
   name = "${var.project_name}-ecs-s3-access"
   role = aws_iam_role.ecs_task.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -232,7 +232,7 @@ resource "aws_iam_role_policy" "ecs_task_s3_access" {
 resource "aws_iam_role_policy" "ecs_task_cloudwatch_logs" {
   name = "${var.project_name}-ecs-cloudwatch-logs"
   role = aws_iam_role.ecs_task.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -252,7 +252,7 @@ resource "aws_iam_role_policy" "ecs_task_cloudwatch_logs" {
 # ============================================================================
 resource "aws_iam_role" "lambda_execution" {
   name = "${var.project_name}-${var.environment}-lambda-execution"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -263,7 +263,7 @@ resource "aws_iam_role" "lambda_execution" {
       }
     }]
   })
-  
+
   tags = merge(
     var.common_tags,
     {
@@ -281,7 +281,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
 resource "aws_iam_role_policy" "lambda_s3_access" {
   name = "${var.project_name}-lambda-s3-access"
   role = aws_iam_role.lambda_execution.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -315,7 +315,7 @@ resource "aws_iam_role_policy" "lambda_s3_access" {
 # ============================================================================
 resource "aws_iam_role" "step_functions" {
   name = "${var.project_name}-${var.environment}-step-functions"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -326,7 +326,7 @@ resource "aws_iam_role" "step_functions" {
       }
     }]
   })
-  
+
   tags = merge(
     var.common_tags,
     {
@@ -339,7 +339,7 @@ resource "aws_iam_role" "step_functions" {
 resource "aws_iam_role_policy" "step_functions_execution" {
   name = "${var.project_name}-step-functions-execution"
   role = aws_iam_role.step_functions.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [

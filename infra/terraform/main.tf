@@ -4,14 +4,14 @@
 
 terraform {
   required_version = ">= 1.5.0"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
   }
-  
+
   # Backend configuration for state management
   # Uncomment after creating S3 bucket and DynamoDB table manually
   # backend "s3" {
@@ -29,7 +29,7 @@ terraform {
 # ============================================================================
 provider "aws" {
   region = var.aws_region
-  
+
   default_tags {
     tags = {
       Project     = "CloudClearingAPI"
@@ -55,7 +55,7 @@ data "aws_availability_zones" "available" {
 locals {
   aws_account_id = data.aws_caller_identity.current.account_id
   azs            = slice(data.aws_availability_zones.available.names, 0, var.az_count)
-  
+
   common_tags = {
     Project     = var.project_name
     Environment = var.environment
@@ -68,17 +68,17 @@ locals {
 # ============================================================================
 module "network" {
   source = "./modules/network"
-  
+
   project_name       = var.project_name
   environment        = var.environment
   aws_region         = var.aws_region
   vpc_cidr           = var.vpc_cidr
   availability_zones = local.azs
-  
+
   enable_nat_gateway   = var.enable_nat_gateway
   enable_vpc_endpoints = var.enable_vpc_endpoints
   enable_flow_logs     = var.enable_flow_logs
-  
+
   common_tags = local.common_tags
 }
 
@@ -87,7 +87,7 @@ module "network" {
 # ============================================================================
 module "security" {
   source = "./modules/security"
-  
+
   project_name   = var.project_name
   environment    = var.environment
   aws_region     = var.aws_region
@@ -101,15 +101,15 @@ module "security" {
 # ============================================================================
 module "data_lake" {
   source = "./modules/data_lake"
-  
+
   project_name   = var.project_name
   environment    = var.environment
   aws_account_id = local.aws_account_id
   kms_key_id     = module.security.kms_key_id
-  
+
   logs_retention_days        = var.logs_retention_days
-  enable_event_notifications = false  # Will be enabled in Tier 3
-  
+  enable_event_notifications = false # Will be enabled in Tier 3
+
   common_tags = local.common_tags
 }
 
@@ -118,26 +118,26 @@ module "data_lake" {
 # ============================================================================
 module "compute" {
   source = "./modules/compute"
-  
+
   project_name       = var.project_name
   environment        = var.environment
   aws_region         = var.aws_region
   vpc_id             = module.network.vpc_id
   private_subnet_ids = module.network.private_subnet_ids
-  
+
   kms_key_arn                 = module.security.kms_key_arn
   ecs_task_execution_role_arn = module.security.ecs_task_execution_role_arn
   ecs_task_role_arn           = module.security.ecs_task_role_arn
   gee_credentials_secret_arn  = module.security.gee_credentials_secret_arn
   api_keys_secret_arn         = module.security.api_keys_secret_arn
-  
+
   earthengine_project = var.earthengine_project
   task_cpu            = var.ecs_task_cpu
   task_memory         = var.ecs_task_memory
   log_level           = var.log_level
-  
+
   common_tags = local.common_tags
-  
+
   depends_on = [module.security, module.network]
 }
 
@@ -146,20 +146,20 @@ module "compute" {
 # ============================================================================
 module "monitoring" {
   source = "./modules/monitoring"
-  
+
   project_name     = var.project_name
   environment      = var.environment
   aws_region       = var.aws_region
   kms_key_id       = module.security.kms_key_id
   ecs_cluster_name = module.compute.ecs_cluster_name
-  
+
   alarm_email_endpoints = var.alarm_email_endpoints
   enable_cost_alerts    = var.enable_cost_alerts
   monthly_budget_limit  = var.monthly_budget_limit
   enable_dashboard      = var.enable_dashboard
-  
+
   common_tags = local.common_tags
-  
+
   depends_on = [module.compute]
 }
 
@@ -168,11 +168,11 @@ module "monitoring" {
 # ============================================================================
 module "step_functions" {
   source = "./modules/step-functions"
-  
+
   project_name = var.project_name
   environment  = var.environment
   aws_region   = var.aws_region
-  
+
   # ECS Configuration
   ecs_cluster_arn             = module.compute.ecs_cluster_arn
   ecs_cluster_name            = module.compute.ecs_cluster_name
@@ -180,34 +180,34 @@ module "step_functions" {
   ecs_task_role_arn           = module.security.ecs_task_role_arn
   ecs_execution_role_arn      = module.security.ecs_task_execution_role_arn
   # No NAT → public subnets + public IP so the task can reach GEE, scrapers, OSM (see docs/deployment/cost-aware-aws.md)
-  ecs_task_subnet_ids    = var.enable_nat_gateway ? module.network.private_subnet_ids : module.network.public_subnet_ids
-  ecs_assign_public_ip   = var.enable_nat_gateway ? "DISABLED" : "ENABLED"
-  ecs_security_group_id  = module.compute.ecs_tasks_security_group_id
-  
+  ecs_task_subnet_ids   = var.enable_nat_gateway ? module.network.private_subnet_ids : module.network.public_subnet_ids
+  ecs_assign_public_ip  = var.enable_nat_gateway ? "DISABLED" : "ENABLED"
+  ecs_security_group_id = module.compute.ecs_tasks_security_group_id
+
   # S3 Configuration (bucket id equals global bucket name in AWS)
   s3_reports_bucket = module.data_lake.curated_bucket_id
   s3_cache_bucket   = module.data_lake.staging_bucket_id
-  
+
   # Scheduler Configuration
-  schedule_expression    = var.step_functions_schedule
-  default_regions_count  = var.default_regions_count
-  enable_web_scraping    = var.enable_web_scraping
-  
+  schedule_expression   = var.step_functions_schedule
+  default_regions_count = var.default_regions_count
+  enable_web_scraping   = var.enable_web_scraping
+
   # Notifications
   success_email     = var.pipeline_success_email
   failure_email     = var.pipeline_failure_email
   slack_webhook_url = var.slack_webhook_url
-  
+
   # Security
   kms_key_id = module.security.kms_key_id
-  
+
   # Application
   gee_project_id = var.earthengine_project
-  
+
   # Logging
   log_retention_days = var.logs_retention_days
-  
+
   tags = local.common_tags
-  
+
   depends_on = [module.compute, module.security, module.data_lake, module.network]
 }

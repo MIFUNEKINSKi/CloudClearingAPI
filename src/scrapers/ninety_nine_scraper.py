@@ -4,15 +4,15 @@ CloudClearingAPI - October 25, 2025 (Phase 2A.5)
 Updated March 2026: Use __NEXT_DATA__ JSON instead of CSS selectors
 Updated April 2026: Detect Cloudflare JS challenge and short-circuit the
     rest of the run instead of paying ~15s/region on a guaranteed failure.
+Updated April 2026 (revival): Use ``cloudscraper`` to bypass the Cloudflare
+    JS challenge on listing pages. Plain ``requests`` returns the challenge
+    HTML; ``cloudscraper`` solves the JS challenge and returns real listings.
+    Probe shows /jual/tanah/<city> returns HTTP 200 + 20-listing __NEXT_DATA__.
+    The homepage still returns 403 under cloudscraper, so we no longer probe
+    it — we only react to CF markers on the actual listing fetches.
 
 Scrapes land listings from 99.co Indonesia real estate portal
 Third-tier fallback in multi-source scraping strategy.
-
-NOTE on 99.co status (2026-04): 99.co sits behind Cloudflare's
-"Just a moment..." JavaScript challenge. Plain HTTP scraping
-(requests + BeautifulSoup) cannot solve it. Reviving live 99.co
-scraping requires either Playwright/Selenium with stealth, the
-cloudscraper library, or a 99.co API/data partnership.
 """
 
 import json
@@ -23,7 +23,16 @@ import threading
 from datetime import datetime
 from typing import List, Optional
 
+from bs4 import BeautifulSoup
+
 from .base_scraper import BaseLandPriceScraper, ScrapedListing, ScrapeResult
+
+try:
+    import cloudscraper  # type: ignore
+    _HAS_CLOUDSCRAPER = True
+except ImportError:  # pragma: no cover — graceful fallback if missing
+    cloudscraper = None
+    _HAS_CLOUDSCRAPER = False
 
 logger = logging.getLogger(__name__)
 
@@ -60,9 +69,27 @@ class NinetyNineScraper(BaseLandPriceScraper):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.base_url = "https://www.99.co"
+        # Lazy cloudscraper session — created on first listing fetch.
+        # Shared across regions in this scraper instance so the CF clearance
+        # cookie persists.
+        self._cs_session = None
+        if not _HAS_CLOUDSCRAPER and not _NINETY_NINE_BLOCKED.is_set():
+            _NINETY_NINE_BLOCKED.set()
+            logger.warning(
+                "⛔ 99.co: cloudscraper not installed; tripping breaker. "
+                "Install with: pip install cloudscraper"
+            )
 
     def get_source_name(self) -> str:
         return "99.co"
+
+    def _get_cloudscraper(self):
+        """Lazy-create a cloudscraper session (Chrome on macOS profile)."""
+        if self._cs_session is None and _HAS_CLOUDSCRAPER:
+            self._cs_session = cloudscraper.create_scraper(
+                browser={'browser': 'chrome', 'platform': 'darwin', 'mobile': False}
+            )
+        return self._cs_session
 
     # ------------------------------------------------------------------
     # Region → city slug mapping (same approach as Lamudi / Rumah.com)
@@ -105,27 +132,20 @@ class NinetyNineScraper(BaseLandPriceScraper):
 
     def _scrape_live(self, region_name: str, max_listings: int) -> ScrapeResult:
         # Process-wide short-circuit: if 99.co is known-blocked for this run
-        # (Cloudflare challenge already detected, or env-disabled), don't
-        # waste 15s+ per region.
+        # (Cloudflare challenge already detected, cloudscraper missing, or
+        # env-disabled), don't waste 15s+ per region.
         if _NINETY_NINE_BLOCKED.is_set():
             return self._empty_result(
                 region_name,
                 "99.co disabled for this run (Cloudflare challenge or CC_99CO_DISABLED)",
             )
 
-        # Lazy one-shot CF probe: hit the 99.co homepage with raw requests so
-        # we can inspect status + body even when CF returns 403 (base scraper
-        # would swallow that). This runs only on the first region per run.
-        self._probe_cloudflare_once()
-        if _NINETY_NINE_BLOCKED.is_set():
-            return self._empty_result(region_name, "99.co Cloudflare challenge (probe)")
-
         logger.info(f"Starting live scrape of 99.co for {region_name}")
 
         search_url = self._build_search_url(region_name)
         logger.debug(f"Search URL: {search_url}")
 
-        soup = self._make_request(search_url)
+        soup = self._fetch_via_cloudscraper(search_url)
         if not soup:
             return self._empty_result(region_name, "Failed to fetch search results page")
 
@@ -136,9 +156,9 @@ class NinetyNineScraper(BaseLandPriceScraper):
             if not _NINETY_NINE_BLOCKED.is_set():
                 _NINETY_NINE_BLOCKED.set()
                 logger.warning(
-                    f"⛔ 99.co served Cloudflare JS challenge for {region_name} — "
-                    "tripping breaker; remaining regions will skip 99.co. "
-                    "Reviving requires Playwright/cloudscraper or a data partnership."
+                    f"⛔ 99.co served Cloudflare JS challenge for {region_name} "
+                    "even via cloudscraper — tripping breaker; remaining regions "
+                    "will skip 99.co. CF may have rotated to Turnstile."
                 )
             return self._empty_result(region_name, "99.co Cloudflare challenge")
 
@@ -178,47 +198,29 @@ class NinetyNineScraper(BaseLandPriceScraper):
         city_slug = self._extract_city_slug(region_name)
         return f"{self.base_url}/id/jual/tanah/{city_slug}"
 
-    _probed_once = False
+    def _fetch_via_cloudscraper(self, url: str):
+        """Fetch a 99.co URL via cloudscraper and return a BeautifulSoup.
 
-    def _probe_cloudflare_once(self) -> None:
-        """Hit 99.co homepage once per run to detect CF challenge.
-
-        Uses raw ``requests`` (not the BaseScraper helper) so we can inspect
-        the body even when CF returns HTTP 403 — the BaseScraper raises and
-        discards the body.
+        cloudscraper handles the Cloudflare JS challenge on listing pages
+        (verified 2026-04: /jual/tanah/<city> returns HTTP 200 + 20-listing
+        __NEXT_DATA__). On HTTP errors we return None and let the caller
+        decide whether to trip the breaker.
         """
-        if NinetyNineScraper._probed_once or _NINETY_NINE_BLOCKED.is_set():
-            return
-        NinetyNineScraper._probed_once = True
+        scraper = self._get_cloudscraper()
+        if scraper is None:
+            return None
         try:
-            import requests
-            resp = requests.get(
-                f"{self.base_url}/id",
-                headers={
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-                                  'AppleWebKit/537.36 (KHTML, like Gecko) '
-                                  'Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                    'Accept-Encoding': 'gzip, deflate',
-                },
-                timeout=10,
-            )
-            body = resp.text
-            cf_detected = (
-                resp.status_code == 403
-                or any(marker in body for marker in _CF_CHALLENGE_MARKERS)
-            )
-            if cf_detected:
-                _NINETY_NINE_BLOCKED.set()
-                logger.warning(
-                    f"⛔ 99.co probe: Cloudflare challenge detected (HTTP {resp.status_code}) — "
-                    "skipping 99.co for the rest of this run"
-                )
-            else:
-                logger.info(f"✅ 99.co probe: HTTP {resp.status_code}, no CF challenge — proceeding")
+            resp = scraper.get(url, timeout=self.request_timeout)
         except Exception as e:
-            logger.warning(f"99.co probe failed ({type(e).__name__}: {e}); will still attempt scraping")
+            logger.warning(f"99.co cloudscraper error for {url}: {type(e).__name__}: {e}")
+            return None
+
+        if resp.status_code != 200:
+            logger.warning(f"99.co cloudscraper HTTP {resp.status_code} for {url}")
+            # 403/503 with CF body → caller's marker check will trip the breaker
+            if resp.status_code not in (403, 503):
+                return None
+        return BeautifulSoup(resp.text, 'html.parser')
 
     # ------------------------------------------------------------------
     # Parsing — __NEXT_DATA__ JSON (primary) with HTML fallback

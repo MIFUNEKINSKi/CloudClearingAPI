@@ -129,7 +129,7 @@ output "pipeline_failure_topic_arn" {
 # ============================================================================
 output "next_steps" {
   description = "Quick start commands"
-  value = <<-EOT
+  value       = <<-EOT
     
     ╔════════════════════════════════════════════════════════════════╗
     ║       CloudClearingAPI Infrastructure Deployed ✓               ║

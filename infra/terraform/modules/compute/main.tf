@@ -4,7 +4,7 @@
 
 terraform {
   required_version = ">= 1.5.0"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -19,16 +19,16 @@ terraform {
 resource "aws_ecr_repository" "main" {
   name                 = "${var.project_name}-${var.environment}"
   image_tag_mutability = "MUTABLE"
-  
+
   image_scanning_configuration {
     scan_on_push = true
   }
-  
+
   encryption_configuration {
     encryption_type = "KMS"
     kms_key         = var.kms_key_arn
   }
-  
+
   tags = merge(
     var.common_tags,
     {
@@ -40,16 +40,16 @@ resource "aws_ecr_repository" "main" {
 
 resource "aws_ecr_lifecycle_policy" "main" {
   repository = aws_ecr_repository.main.name
-  
+
   policy = jsonencode({
     rules = [
       {
         rulePriority = 1
         description  = "Keep last 10 images"
         selection = {
-          tagStatus     = "any"
-          countType     = "imageCountMoreThan"
-          countNumber   = 10
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 10
         }
         action = {
           type = "expire"
@@ -64,12 +64,12 @@ resource "aws_ecr_lifecycle_policy" "main" {
 # ============================================================================
 resource "aws_ecs_cluster" "main" {
   name = "${var.project_name}-${var.environment}"
-  
+
   setting {
     name  = "containerInsights"
     value = "enabled"
   }
-  
+
   tags = merge(
     var.common_tags,
     {
@@ -81,15 +81,15 @@ resource "aws_ecs_cluster" "main" {
 
 resource "aws_ecs_cluster_capacity_providers" "main" {
   cluster_name = aws_ecs_cluster.main.name
-  
+
   capacity_providers = ["FARGATE", "FARGATE_SPOT"]
-  
+
   default_capacity_provider_strategy {
     capacity_provider = "FARGATE"
     weight            = 1
     base              = 1
   }
-  
+
   default_capacity_provider_strategy {
     capacity_provider = "FARGATE_SPOT"
     weight            = 4
@@ -103,7 +103,7 @@ resource "aws_cloudwatch_log_group" "ecs_tasks" {
   name              = "/aws/ecs/${var.project_name}-${var.environment}"
   retention_in_days = var.log_retention_days
   kms_key_id        = var.kms_key_arn
-  
+
   tags = merge(
     var.common_tags,
     {
@@ -124,13 +124,13 @@ resource "aws_ecs_task_definition" "weekly_monitoring" {
   memory                   = var.task_memory
   execution_role_arn       = var.ecs_task_execution_role_arn
   task_role_arn            = var.ecs_task_role_arn
-  
+
   container_definitions = jsonencode([
     {
       name      = "cloudclearing-monitor"
       image     = "${aws_ecr_repository.main.repository_url}:latest"
       essential = true
-      
+
       environment = [
         {
           name  = "EARTHENGINE_PROJECT"
@@ -149,7 +149,7 @@ resource "aws_ecs_task_definition" "weekly_monitoring" {
           value = "/app/output"
         }
       ]
-      
+
       secrets = [
         {
           name      = "GOOGLE_APPLICATION_CREDENTIALS"
@@ -164,7 +164,7 @@ resource "aws_ecs_task_definition" "weekly_monitoring" {
           valueFrom = "${var.api_keys_secret_arn}:smtp_password::"
         }
       ]
-      
+
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -173,10 +173,10 @@ resource "aws_ecs_task_definition" "weekly_monitoring" {
           "awslogs-stream-prefix" = "weekly-monitoring"
         }
       }
-      
+
       mountPoints = []
       volumesFrom = []
-      
+
       healthCheck = {
         command     = ["CMD-SHELL", "python -c 'import ee; import src.core.automated_monitor; print(\"OK\")'"]
         interval    = 30
@@ -186,7 +186,7 @@ resource "aws_ecs_task_definition" "weekly_monitoring" {
       }
     }
   ])
-  
+
   tags = merge(
     var.common_tags,
     {
@@ -203,7 +203,7 @@ resource "aws_security_group" "ecs_tasks" {
   name        = "${var.project_name}-${var.environment}-ecs-tasks"
   description = "Security group for ECS tasks"
   vpc_id      = var.vpc_id
-  
+
   egress {
     description = "Allow all outbound traffic"
     from_port   = 0
@@ -211,7 +211,7 @@ resource "aws_security_group" "ecs_tasks" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  
+
   tags = merge(
     var.common_tags,
     {
