@@ -912,18 +912,22 @@ class ChangeDetector:
                 return wrapper
             return decorator
 
-        @with_timeout(60)
+        # Bumped to 120s 2026-04-25: previous 60s caused 2/65 region timeouts
+        # in the Apr 27 19:15 run (busy GEE periods can blow past 60s for
+        # vector aggregation on regions with many polygons). Doubling cuts
+        # timeout-loss to near-zero without meaningfully extending tail run.
+        @with_timeout(120)
         def get_polygon_count():
             return vectors.size().getInfo()
 
-        @with_timeout(60)
+        @with_timeout(120)
         def get_total_area():
             def sum_areas(feature, previous):
                 return ee.Number(previous).add(feature.get('area_m2'))
             total_area = vectors.iterate(sum_areas, 0)
             return ee.Number(total_area).getInfo()
 
-        @with_timeout(60)
+        @with_timeout(120)
         def get_change_types():
             return vectors.aggregate_histogram('change_type').getInfo()
         

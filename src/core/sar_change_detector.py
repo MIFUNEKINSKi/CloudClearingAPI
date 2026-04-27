@@ -378,12 +378,24 @@ class SARChangeDetector:
             logger.info(f"   📡 Optical only: {fused:,} changes (SAR unavailable)")
             
         elif sar_available:
-            # SAR only (optical failed due to clouds - THIS IS THE KEY BENEFIT)
-            fused = sar_result.sar_change_pixels
+            # SAR only (optical failed due to clouds, OR optical legitimately
+            # returned zero changes — both end up here when optical_changes==0).
+            # Bug fix 2026-04-25: previously fused = sar_pixels uncapped, which
+            # let port/coastal regions (Merak 4.6M SAR pixels) saturate the
+            # activity log-scale at ~38 and then evade the SAR-only confidence
+            # cap (because data_source provenance was also wrong — see
+            # automated_monitor.py fix). Cap sar_only at SAR_ONLY_MAX so the
+            # signal stays visible in the JSON for debugging without
+            # dominating the score.
+            SAR_ONLY_MAX = 500_000  # ~comparable scale to post-cap fusion mode
+            sar_capped = min(sar_result.sar_change_pixels, SAR_ONLY_MAX)
+            sar_was_capped = sar_capped < sar_result.sar_change_pixels
+            fused = sar_capped
             source = 'sar_only'
             confidence_boost = 0.05  # Slight boost over no data at all
-            
-            logger.info(f"   🛰️ SAR fallback: {fused:,} changes (optical unavailable - likely cloud cover)")
+
+            cap_note = f' (capped from {sar_result.sar_change_pixels:,})' if sar_was_capped else ''
+            logger.info(f"   🛰️ SAR fallback: {fused:,} changes (optical unavailable or 0){cap_note}")
             
         else:
             # Neither available

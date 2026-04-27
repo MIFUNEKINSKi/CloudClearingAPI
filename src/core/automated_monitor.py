@@ -1297,6 +1297,19 @@ class AutomatedMonitor:
                         f"(ratio={news_wow['ratio']:.2f}, trend={news_wow['trend']})"
                     )
 
+            # Resolve satellite provenance: when fusion falls into sar_only
+            # mode (optical_changes==0 but SAR has signal), the upstream
+            # region_data['data_source'] is still 'optical' (optical detector
+            # ran successfully, just found nothing). The SAR-only confidence
+            # cap (0.84) keys off this string, so without overriding, regions
+            # like Merak (Apr 27: optical=0, SAR=4.6M) skipped the cap and
+            # finished at 0.99 confidence → score 61.7. Authoritative source
+            # is fusion_result['source'] when present.
+            if fusion_result and fusion_result['source'] == 'sar_only':
+                effective_satellite_source = 'sar_only'
+            else:
+                effective_satellite_source = region_data.get('data_source', 'optical')
+
             # Calculate CORRECTED score (satellite is PRIMARY)
             corrected_result = self.corrected_scorer.calculate_investment_score(
                 region_name=region_name,
@@ -1309,7 +1322,7 @@ class AutomatedMonitor:
                 news_catalyst_multiplier=news_catalyst_result.multiplier if news_catalyst_result else 1.0,
                 # Pass through satellite provenance so confidence calc can
                 # penalize SAR-only and stale data (was always trusting 1.0).
-                satellite_data_source=region_data.get('data_source', 'optical'),
+                satellite_data_source=effective_satellite_source,
                 satellite_data_age_days=region_data.get('data_age_days', 0),
                 cancel_event=cancel_event,
             )
@@ -1414,8 +1427,11 @@ class AutomatedMonitor:
                 'data_sources': {
                     **corrected_result.data_sources,
                     'availability': corrected_result.data_availability,
-                    # Satellite provenance for PDF/email confidence display
-                    'satellite': region_data.get('data_source', 'optical'),
+                    # Satellite provenance for PDF/email confidence display.
+                    # Use effective_satellite_source so sar_only fusion mode
+                    # (optical_changes==0 with SAR signal) shows truthfully
+                    # in PDF/email instead of mislabeled as 'optical'.
+                    'satellite': effective_satellite_source,
                     'satellite_data_age_days': region_data.get('data_age_days', 0),
                     'satellite_confidence_penalty': region_data.get('confidence_penalty', 0),
                     'satellite_date_range': region_data.get('date_range_used', ''),
