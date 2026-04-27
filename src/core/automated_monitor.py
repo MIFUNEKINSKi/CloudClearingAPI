@@ -1133,6 +1133,48 @@ class AutomatedMonitor:
         
         return summary
 
+    def _load_previous_region_state(self) -> Dict[str, Dict[str, Any]]:
+        """Load per-region (recommendation tier, score) from the most recent prior run.
+
+        Used by `_compute_tier_transitions` to surface regions that crossed
+        a tier boundary this week — directly serves "see opportunities early":
+        a region moving from PASS→WATCH or BUY→STRONG_BUY is a high-signal
+        event that should jump to the top of the briefing.
+        """
+        import glob as glob_mod
+        monitoring_dir = getattr(self, 'monitoring_dir', './output/monitoring')
+        pattern = os.path.join(monitoring_dir, 'weekly_monitoring_*.json')
+        files = sorted(glob_mod.glob(pattern), reverse=True)
+
+        prev_state: Dict[str, Dict[str, Any]] = {}
+        for filepath in files[:3]:
+            try:
+                with open(filepath, 'r') as f:
+                    data = json.load(f)
+                yog = data.get('investment_analysis', {}).get('yogyakarta_analysis', {})
+                regions = (yog.get('strong_buy_recommendations', []) +
+                           yog.get('buy_recommendations', []) +
+                           yog.get('watch_list', []) + yog.get('pass_list', []))
+                for r in regions:
+                    if not isinstance(r, dict):
+                        continue
+                    name = r.get('region_name') or r.get('region', '')
+                    if not name:
+                        continue
+                    prev_state[name] = {
+                        'recommendation': r.get('recommendation', 'PASS'),
+                        'investment_score': r.get('investment_score', 0),
+                        'snapshot_path': os.path.basename(filepath),
+                    }
+                if prev_state:
+                    logger.info(f"   📊 Loaded previous tier state for {len(prev_state)} regions from {os.path.basename(filepath)}")
+                    return prev_state
+            except Exception as e:
+                logger.debug(f"prev-state loader skipped {filepath}: {e}")
+                continue
+        logger.info("   📊 No previous tier state available (first run? or all priors empty)")
+        return prev_state
+
     def _load_previous_news_counts(self) -> Dict[str, int]:
         """Load per-region news article counts from the most recent prior monitoring run.
 

@@ -307,6 +307,32 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
             )
         body_lines.append("")
 
+        # --- Tier transitions vs prior run (the "early signal" section) ---
+        transitions = data.get('tier_transitions', {})
+        upgrades = transitions.get('upgrades', [])
+        downgrades = transitions.get('downgrades', [])
+        if upgrades or downgrades:
+            body_lines.append("📈 TIER CHANGES SINCE LAST RUN")
+            body_lines.append("-" * 55)
+            if upgrades:
+                body_lines.append(f"  ⬆ UPGRADES ({len(upgrades)}):")
+                for u in upgrades[:8]:
+                    region = u['region'].replace('_', ' ').title()
+                    arrow_emoji = '🔥' if u['to_tier'] == 'STRONG_BUY' else '✅' if u['to_tier'] == 'BUY' else '👀'
+                    body_lines.append(
+                        f"     {arrow_emoji} {region}: {u['from_tier']} ({u['from_score']:.1f}) "
+                        f"→ {u['to_tier']} ({u['to_score']:.1f}, {u['score_delta']:+.1f}pts)"
+                    )
+            if downgrades:
+                body_lines.append(f"  ⬇ DOWNGRADES ({len(downgrades)}):")
+                for d in downgrades[:5]:
+                    region = d['region'].replace('_', ' ').title()
+                    body_lines.append(
+                        f"     ⚠ {region}: {d['from_tier']} ({d['from_score']:.1f}) "
+                        f"→ {d['to_tier']} ({d['to_score']:.1f}, {d['score_delta']:+.1f}pts)"
+                    )
+            body_lines.append("")
+
         # --- Top BUY Opportunities (STRONG_BUY first, then BUY) ---
         priority_recs = strong_buy + buy
         if priority_recs:
@@ -649,10 +675,60 @@ async def main(all_regions: bool = False, auto_confirm: bool = False):
             "'Overpass 1/2/3' and 'Scoring [n/N]' lines."
         )
         investment_analysis = monitor._generate_investment_analysis(monitoring_results)
-        
+
         # Add investment analysis to final results
         results = monitoring_results
         results['investment_analysis'] = investment_analysis
+
+        # Tier transitions vs prior run — directly serves "see opportunities
+        # early": a region moving from PASS→WATCH or WATCH→BUY this week is
+        # a high-signal event that the briefing should highlight first.
+        try:
+            prev_state = monitor._load_previous_region_state()
+            yog = investment_analysis.get('yogyakarta_analysis', {})
+            current_recs = (yog.get('strong_buy_recommendations', []) +
+                            yog.get('buy_recommendations', []) +
+                            yog.get('watch_list', []) +
+                            yog.get('pass_list', []))
+            tier_rank = {'PASS': 0, 'WATCH': 1, 'BUY': 2, 'STRONG_BUY': 3}
+            upgrades, downgrades, new_regions = [], [], []
+            for r in current_recs:
+                name = r.get('region') or r.get('region_name')
+                if not name:
+                    continue
+                curr_tier = r.get('recommendation', 'PASS')
+                curr_score = r.get('investment_score', 0)
+                prev = prev_state.get(name)
+                if prev is None:
+                    new_regions.append({'region': name, 'tier': curr_tier, 'score': curr_score})
+                    continue
+                prev_tier = prev.get('recommendation', 'PASS')
+                prev_score = prev.get('investment_score', 0)
+                if tier_rank.get(curr_tier, 0) > tier_rank.get(prev_tier, 0):
+                    upgrades.append({
+                        'region': name, 'from_tier': prev_tier, 'to_tier': curr_tier,
+                        'from_score': prev_score, 'to_score': curr_score,
+                        'score_delta': round(curr_score - prev_score, 1),
+                    })
+                elif tier_rank.get(curr_tier, 0) < tier_rank.get(prev_tier, 0):
+                    downgrades.append({
+                        'region': name, 'from_tier': prev_tier, 'to_tier': curr_tier,
+                        'from_score': prev_score, 'to_score': curr_score,
+                        'score_delta': round(curr_score - prev_score, 1),
+                    })
+            # Sort upgrades by destination tier (most promoted first), then by score delta
+            upgrades.sort(key=lambda x: (-tier_rank.get(x['to_tier'], 0), -x['score_delta']))
+            downgrades.sort(key=lambda x: (-tier_rank.get(x['from_tier'], 0), x['score_delta']))
+            results['tier_transitions'] = {
+                'upgrades': upgrades,
+                'downgrades': downgrades,
+                'new_regions': new_regions,
+                'compared_against': next((p['snapshot_path'] for p in prev_state.values()), None),
+            }
+            if upgrades or downgrades:
+                logger.info(f"   📈 Tier transitions: {len(upgrades)} upgrade(s), {len(downgrades)} downgrade(s)")
+        except Exception as e:
+            logger.warning(f"   ⚠️ Failed to compute tier transitions: {e}")
         
         # ✅ CCAPI-27.2: Track benchmark drift after monitoring completes
         print()
