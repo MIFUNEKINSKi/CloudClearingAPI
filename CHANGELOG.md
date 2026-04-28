@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.16.6] - 2026-04-25 - News Dedup + Medan Corridor Slug Override
+
+### Added
+- **News article dedup** via title-bigram overlap (≥2 shared bigrams = duplicate). Drops 4 of 9 Bekasi rail-accident articles in the test corpus while keeping LRT/MRT/Tol stories correctly distinct. Runs after relevance-sort so the highest-scoring framing wins.
+- **`REGION_SPECIFIC_SLUGS` override map** in `lamudi_scraper.py`. First entry: `medan_kuala_namu_corridor` → `deli-serdang` (median Rp 18.5M/m² → Rp 9.9M/m², below 5× clamp).
+
+### Investigated
+- (c) Cloud-cover handling: the CRITICAL drift alerts on `lake_toba`/`lombok_mandalika`/`bitung` are price-history drift artifacts (history archives held pre-clamp avg Rp 2.18B/m² values; current runs now use post-clamp Rp 1.2M median → -99.9% drift). v2.16.4 outlier-resistant mean already fixes the source. Alerts will self-clear over 4–8 weekly runs as polluted history rolls out of the window. No code change.
+
+### A/B-test results (documented in code so future iterations don't re-explore dead ends)
+- `cikarang_mega_industrial`: cikarang-utara only returns 5 listings (too few); ORIG `cikarang` n=20 wins.
+- `jakarta_*_sprawl`: `jakarta-utara` returns premium central-N (Rp 25M); generic `jakarta` returns the right sprawl-tier price (Rp 9.7M).
+- `bitung_port_industrial`: `bitung` slug returns mostly rural at Rp 0.6M (too low); ORIG `manado` is more representative.
+- `bogor_puncak_highland`, `lake_toba_*`: similar between alternatives — no improvement.
+
 ## [2.16.5] - 2026-04-25 - Lamudi Slug Refresh (kulon-progo, gunung-kidul)
 
 ### Fixed

@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.16.5 (Lamudi Slug Refresh: kulon-progo + gunung-kidul)
+**Version:** 2.16.6 (News Dedup + Medan Corridor Slug Override)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,14 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.16.6 (April 25, 2026) — News Dedup + Medan Corridor Slug Override
+
+**News article dedup via title-bigram overlap.** Apr 27 run pulled 9 articles for `bekasi_industrial_belt` all about the same train accident (different paraphrasings). Pure Jaccard on tokens was too strict (13–23% overlap). Bigrams catch named-entity + event combos like "tabrakan kereta" or "bekasi timur" that reliably co-occur across paraphrases. Threshold ≥2 shared bigrams: drops 4 of 9 Bekasi rail articles, keeps separate LRT/MRT/Tol stories correctly distinct. Dedup runs after relevance-sort so the highest-scoring framing wins.
+
+**Medan Kuala Namu corridor → 'deli-serdang' Lamudi slug.** The `medan` city slug returned urban-Medan premium listings (median Rp 18.5M/m² = 5.22× benchmark, triggering the 5× outlier clamp every run). `deli-serdang` regency contains Kuala Namu airport — listings reflect peripheral airport-corridor land: median Rp 9.9M/m² = 2.81× benchmark (within clamp threshold, will keep live data). A/B-tested 6 candidate regions; only Medan benefited (other cases documented in `REGION_SPECIFIC_SLUGS`).
+
+**Cloud-cover handling — investigated, no code change.** The CRITICAL drift alerts on `lake_toba`/`lombok_mandalika`/`bitung` were PRICE-history drift artifacts (history held pre-clamp Rp 2.18B/m² values; current runs use post-clamp Rp 1.2M median → -99.9% drift). v2.16.4 fixes the source; alerts will self-clear over 4–8 weekly runs. Real cloud-cover regions correctly fell to SAR-only path with proper provenance flagging.
 
 ### v2.16.5 (April 25, 2026) — Lamudi Slug Refresh
 
