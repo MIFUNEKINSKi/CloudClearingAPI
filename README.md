@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.19.0 (Region Splits: Bitung / Subang / Balikpapan — 65 → 68 regions)
+**Version:** 2.19.1 (Pooled-Slug Clamp + Zoning-Aware Dev Cost — Sub-Region Audit Fixes)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,16 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.19.1 (April 28, 2026) — Pooled-Slug Clamp + Zoning-Aware Dev Cost
+
+Two follow-on fixes from the v2.19.0 audit run:
+
+**1. Tighter clamp for split sub-regions sharing a Lamudi slug.** The v2.19.0 split correctly differentiated the satellite signal (each bbox runs its own analysis) but the market signal stayed pooled — both Subang halves share `subang` slug, both Balikpapan halves share `balikpapan`, both Bitung halves share `bitung`. So both sub-regions extract the same Lamudi median, and the 5× clamp let the agrarian Subang side accept industrial-priced listings (Rp 1.84M vs Rp 0.45M anchor = 4.09×, passed). Fix: `_POOLED_SLUG_REGIONS` set with tighter 2.5× clamp. `subang_pantura_agrarian` now clamps correctly to its research anchor.
+
+**2. Zoning-aware development cost.** `bitung_kek_sez_industrial` showed ROI −44.6% in v2.19.0 because the financial model assumed Rp 800K/m² dev cost on Rp 728K/m² land. SEZ plots ship with infrastructure preinstalled, so per-plot dev cost is ~30% of greenfield baseline. `_estimate_development_costs` now reads `region_feasibility.zoning_overlays`: `sez_designated`/`government_subsidized` → 0.30×; `zoning_class == 'industrial'` → 0.60×; default → 1.00×. Also added the SEZ overlays to `batang_industrial_sez`.
+
+**Net impact on Bitung KEK SEZ:** dev cost Rp 800K → Rp 240K, 5yr ROI −44.6% → +26.7% (sign flip, now realistic).
 
 ### v2.19.0 (April 28, 2026) — Region Splits (3 over-broad regions → 6 sub-regions)
 

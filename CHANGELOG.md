@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.19.1] - 2026-04-28 - Pooled-Slug Clamp + Zoning-Aware Dev Cost
+
+### Fixed
+- **Pooled-slug clamp**: split sub-regions sharing a Lamudi slug now use a tighter 2.5× clamp (vs standard 5×). New `_POOLED_SLUG_REGIONS` set covers the 6 sub-regions from v2.19.0. `subang_pantura_agrarian` was previously accepting industrial-priced Subang listings; now correctly clamps to its research anchor (Rp 450K/m²).
+- **Zoning-aware development cost** in `_estimate_development_costs`: SEZ-designated / government-subsidized industrial regions get 0.30× dev cost (infra preinstalled by SEZ authority); plain `industrial` zoning gets 0.60× (estate-provided utilities); other zoning gets 1.00× greenfield baseline. Bitung KEK SEZ ROI flipped from −44.6% to +26.7% — the −44% number was a model artifact, not a real signal.
+
+### Changed
+- Clamp log message now prints the actual multiplier used (was hard-coded "5.0×" even when the pooled-slug 2.5× threshold fired).
+- `batang_industrial_sez` feasibility profile gained `sez_designated` + `government_subsidized` overlays (was missing — only bitung_kek had them).
+
+### Verified
+- Smoke test: pooled-slug clamp behavior verified across all 6 split sub-regions plus a non-pooled control (cikarang). Zoning multipliers verified across SEZ / industrial / agrarian / tourism / mixed regions.
+- Tests: 26 passed, 22 skipped, 0 failed.
+
 ## [2.19.0] - 2026-04-28 - Region Splits (3 over-broad regions → 6 sub-regions)
 
 ### Changed

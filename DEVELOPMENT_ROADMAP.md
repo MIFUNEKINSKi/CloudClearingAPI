@@ -1,7 +1,7 @@
 # CloudClearingAPI Development Roadmap
 
 **Updated:** April 28, 2026
-**Current Version:** v2.19.0 (Region Splits — 65 → 68 regions)
+**Current Version:** v2.19.1 (Pooled-Slug Clamp + Zoning-Aware Dev Cost)
 
 ---
 
@@ -147,6 +147,7 @@ How CloudClearingAPI maps to common DE-job requirements. Track B phases close mo
 
 | Version | Date | Key Features |
 |---|---|---|
+| **v2.19.1** | Apr 28, 2026 | Two follow-on fixes from v2.19 audit. (1) Pooled-slug clamp tightening: 6 split sub-regions sharing a Lamudi parent slug now use 2.5× outlier threshold instead of 5×. `subang_pantura_agrarian` correctly clamps from inflated Rp 1.84M to research-anchored Rp 450K. (2) Zoning-aware dev cost: SEZ-designated regions get 0.30× cost (infra preinstalled), industrial 0.60×, default 1.00×. Bitung KEK SEZ ROI flipped −44.6% → +26.7% (model artifact, not real signal) |
 | **v2.19.0** | Apr 28, 2026 | Region splits — Subang/Balikpapan/Bitung each split into 2 sub-regions where deep-research found 3-10× pricing spreads inside one bbox. New: `subang_patimban_industrial` + `subang_pantura_agrarian`, `balikpapan_kariangau_industrial` + `balikpapan_selatan_commercial`, `bitung_port_corridor` + `bitung_kek_sez_industrial`. Total regions 65 → 68. Each gets distinct bbox + benchmark + feasibility + infra fallback + news routing |
 | **v2.18.0** | Apr 28, 2026 | Prediction Review — closes the feedback loop. New `src/core/prediction_tracker.py` + email/PDF section comparing past forecasts (4w/8w/12w anchors) against today's price-history. Per-region: realized return, annualized, prorated-predicted, status icon (✅⏳🔥⚠❌). Aggregate: tier means, tier integrity check, hit rate. Honest constraints baked in: realized-vs-prorated for short-window fairness, listing_count_shift_flag for coverage-change noise, pre-fix-anchor banner for v2.16.x recalibration era. Forecast log writer enriched with predicted_roi_3yr/5yr + feasibility + weeks_at_tier |
 | **v2.17.1** | Apr 28, 2026 | PDF lock-step with email — v2.16.x + v2.17.0 fields (feasibility, observed liquidity, weeks_at_tier, score breakdown, action links, portfolio section) now render in PDF report. Decision matrix gains Feas + Wks columns; investment analysis gains 6 bullet types per top-5 region; new YOUR PORTFOLIO table when positions.jsonl exists |
