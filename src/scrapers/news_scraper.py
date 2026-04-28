@@ -197,7 +197,10 @@ class NewsScraper:
         self.session.headers.update({
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9,id;q=0.8',
-            'Accept-Encoding': 'gzip, deflate, br',
+            # 'br' (brotli) omitted — requests can't decode brotli without the
+            # `brotli` pip package; an undecoded body silently produces garbage
+            # HTML with 0 tags. Caught 2026-04-25 (Antara news = 0 articles).
+            'Accept-Encoding': 'gzip, deflate',
             'Connection': 'keep-alive',
         })
 

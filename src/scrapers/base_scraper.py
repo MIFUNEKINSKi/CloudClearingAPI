@@ -185,7 +185,11 @@ class BaseLandPriceScraper(ABC):
             'User-Agent': random.choice(self.user_agents),
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Accept-Encoding': 'gzip, deflate, br',
+            # NOTE: 'br' (brotli) intentionally omitted — requests can't decode
+            # brotli without the `brotli` pip package, and an undecoded body
+            # silently produces garbage HTML with 0 tags. Caught 2026-04-25
+            # via Antara news returning 0 articles for two weeks straight.
+            'Accept-Encoding': 'gzip, deflate',
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1'
         }
@@ -393,32 +397,41 @@ class BaseLandPriceScraper(ABC):
     
     def _calculate_statistics(self, listings: List[ScrapedListing]) -> Dict[str, float]:
         """
-        Calculate average and median prices from listings
-        
-        Args:
-            listings: List of scraped listings
-            
+        Calculate average and median prices from listings.
+
+        Apr 27 audit found 22/65 regions hitting the orchestrator's 5×-benchmark
+        outlier clamp. Root cause: 1–2 misparsed listings per scrape (e.g.
+        Jakarta_north_sprawl avg Rp 1.1B/m² but median Rp 9.7M/m² — exactly
+        the right answer was already in the median). Average was being polluted
+        by the broken listings dragging it 100×+ above truth.
+
+        Fix: median anchors the calculation; mean is computed only over listings
+        whose price-per-m² is within 10× the median. Genuinely premium listings
+        within a normal range (≤10× median) still contribute; misparses like
+        "Rp 22 BILLION/m²" get filtered out.
+
         Returns:
             Dict with 'average' and 'median' prices per m²
         """
         if not listings:
             return {'average': 0, 'median': 0}
-        
-        prices = [listing.price_per_m2 for listing in listings if listing.price_per_m2 > 0]
-        
+
+        prices = sorted(l.price_per_m2 for l in listings if l.price_per_m2 > 0)
         if not prices:
             return {'average': 0, 'median': 0}
-        
-        average = sum(prices) / len(prices)
-        
-        # Calculate median
-        sorted_prices = sorted(prices)
-        n = len(sorted_prices)
-        if n % 2 == 0:
-            median = (sorted_prices[n//2 - 1] + sorted_prices[n//2]) / 2
+
+        n = len(prices)
+        median = prices[n // 2] if n % 2 else (prices[n // 2 - 1] + prices[n // 2]) / 2
+
+        # Outlier-resistant mean: filter listings whose price is >10× median.
+        # Falls back to plain mean if median is 0 (shouldn't happen here, but
+        # defensive — keeps the mean defined under all inputs).
+        if median > 0:
+            filtered = [p for p in prices if p <= 10 * median]
+            average = sum(filtered) / len(filtered) if filtered else median
         else:
-            median = sorted_prices[n//2]
-        
+            average = sum(prices) / n
+
         return {'average': average, 'median': median}
     
     def clear_cache(self, region_name: Optional[str] = None):
