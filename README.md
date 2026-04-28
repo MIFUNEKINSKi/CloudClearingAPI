@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.16.11 (Phase 3: Portfolio-Aware Action — Track A Complete)
+**Version:** 2.16.12 (Phase 2 Polish: Empirical Liquidity from Archived Listings)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,21 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.16.12 (April 28, 2026) — Empirical Liquidity from Archived Listings (Phase 2 polish)
+
+The static `liquidity_tier` field in `region_feasibility.py` was research-validated for 13 regions and tier-default-derived for the rest — but never sanity-checked against actual observed listing volumes. v2.16.12 adds that check using 8+ weeks of archived `listing_count` data per region.
+
+**Components:**
+- **`src/core/liquidity_estimator.py`** — `estimate_liquidity(region)` reads price-history JSONL, returns observed tier (very_low / low / moderate / cap_saturated). The scraper's `max_listings=20` cap means observations above ~15 hit a ceiling; below that, the count is real signal.
+- **Asymmetric mismatch detection** — `liquidity_mismatch()` only fires when research overstates liquidity (research-rank > observed-rank by ≥2). Understatements are positive surprises, not warnings.
+- **`tools/liquidity_audit.py`** — CLI for periodic review. `--thin` (avg < 10), `--mismatch` (research vs observed disagree).
+
+**Findings on current data:**
+- 5 mismatches: yogyakarta_urban_core, surabaya_east/west, cikarang_mega_industrial, gresik_port_industrial — all tier-1 metros where research expected `very_high` but Lamudi retail visibility is `moderate` (~10-13 listings/scrape). Institutional liquidity may be high but retail isn't.
+- 5 genuinely thin markets: Jayapura (1.0/scrape), Ambon (4.7), Probolinggo (5.1), Yogyakarta urban core (7.8), Padang (8.8).
+
+**Email integration:** each priority opportunity now shows a one-line liquidity-mismatch warning when research/observed disagree; YOUR PORTFOLIO section adds an "Observed liquidity" line per position.
 
 ### v2.16.11 (April 28, 2026) — Phase 3: Portfolio-Aware Action (Track A complete)
 

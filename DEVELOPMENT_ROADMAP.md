@@ -1,7 +1,7 @@
 # CloudClearingAPI Development Roadmap
 
 **Updated:** April 28, 2026
-**Current Version:** v2.16.11 (Phase 3: Portfolio-Aware Action — Track A Complete)
+**Current Version:** v2.16.12 (Phase 2 Polish: Empirical Liquidity from Archived Listings)
 
 ---
 
@@ -80,7 +80,7 @@ Status: all 8 mandatory items shipped (v2.16.3 through v2.16.9). The harness for
 | Transactions-per-month liquidity estimate (tier-based proxy) | shipped v2.16.10 | ✅ |
 | Surface feasibility flags in PDF + email (🚫 / ⚠️ / ✅) | shipped v2.16.10 (email) | ✅ email; PDF picks up automatically via JSON object |
 | **Live RTRW API integration** — replace static profiles with bbox-lookup against the OSS KKPR API | 8-12h | 🔲 P2 (static is fine for now) |
-| **Liquidity from listing turnover** — compute transactions/month proxy from our archived Lamudi scrapes | 4-8h | 🔲 P2 (tier-based default works) |
+| **Liquidity from listing turnover** — `liquidity_estimator.py` reads price-history JSONL, classifies observed tier, asymmetric mismatch flag fires when research overstates liquidity by ≥2 levels. Audit tool at `tools/liquidity_audit.py`. Surfaced 5 real mismatches (Surabaya/Cikarang/Gresik retail < tier_default presumption) | shipped v2.16.12 | ✅ |
 
 **Phase 2 done when:** ✅ every STRONG_BUY in the email carries a feasibility tag and the investor can immediately tell whether a region is closeable, requires leasehold, requires PT PMA, or is restricted. The live-API enhancements are P2 polish — the static layer carries the load for now.
 
@@ -147,6 +147,7 @@ How CloudClearingAPI maps to common DE-job requirements. Track B phases close mo
 
 | Version | Date | Key Features |
 |---|---|---|
+| **v2.16.12** | Apr 28, 2026 | Phase 2 polish: empirical liquidity from archived listing counts. `liquidity_estimator.py` classifies observed tier (very_low / low / moderate / cap_saturated) from price-history JSONL; asymmetric mismatch flag fires when research overstates liquidity by ≥2 tier levels. `tools/liquidity_audit.py` CLI for periodic review. Surfaced 5 real mismatches: Surabaya/Cikarang/Gresik tier-1 metros where research expected `very_high` but Lamudi retail shows `moderate` (~10-13 listings/scrape) — institutional ≠ retail liquidity |
 | **v2.16.11** | Apr 28, 2026 | Phase 3 portfolio-aware action ships — closes Track A. `src/core/portfolio_manager.py` with Position dataclass + load_positions + compute_position_pnl + correlation_hint + per-position alerts (EXIT_WATCH, LIQUIDITY_RISK, TIER_DOWNGRADE). YOUR PORTFOLIO section at top of email when positions.jsonl exists. Correlation hints in priority-opportunities surface "📌 already hold X" when candidates land in same bucket as existing holdings. Track B (AWS/dbt/CI-CD/observability) now genuinely optional polish |
 | **v2.16.10** | Apr 28, 2026 | Phase 2 acquisition-feasibility layer ships. `src/core/region_feasibility.py` with `FeasibilityProfile` dataclass + 27 explicit profiles (13 deep-research-validated + 14 inferred from regulatory data) + 38 tier-based defaults. Three dimensions: ownership_pathway, zoning_class+overlays, liquidity_tier. Renders ✅⚠️🚫 flag + one-line summary under each STRONG_BUY/BUY in the email. 3 regions land restricted (Nusantara×2 + Labuan Bajo); 5+ flagged for verification. Soft annotation, not a hard filter |
 | **v2.16.9** | Apr 28, 2026 | Forecast log + backtest harness — closes Phase 1 with the gating measurement infrastructure. `tools/backtest.py` reports per-tier mean delta (2w/4w/8w) + Spearman ρ; `forecast_log.jsonl` writer hooked into weekly monitor. Methodology guards: frozen regions excluded, listing_count-shift filter, pre-fix anchor banner. Current data pre-dates v2.16.x fixes; harness ready for meaningful signal once 4+ weeks of post-2026-04-28 history accumulates |

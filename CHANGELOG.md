@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.16.12] - 2026-04-28 - Empirical Liquidity from Archived Listings (Phase 2 polish)
+
+### Added
+- **`src/core/liquidity_estimator.py`** — `estimate_liquidity(region)` reads price-history JSONL, returns LiquidityEstimate with n_samples, avg/median/min/max listings, observed_tier, and scraper_saturated flag. `liquidity_mismatch(research_tier, observed)` flags asymmetric disagreement (research overstating liquidity by ≥2 tier levels).
+- **`tools/liquidity_audit.py`** — CLI tool for periodic review (`--thin`, `--mismatch` filters).
+
+### Changed
+- `automated_monitor` now attaches `observed_listings` dict + `liquidity_mismatch_flag` to every recommendation's feasibility object.
+- Priority opportunities in email now print a one-line liquidity-mismatch warning when research and observed disagree.
+- YOUR PORTFOLIO section adds an "Observed liquidity: X listings/scrape avg" line per position.
+
+### Findings on current archive (8 weeks)
+- 5 mismatches: yogyakarta_urban_core (high → low, 7.8/scrape), surabaya_east/west (very_high → moderate, 10.6), cikarang_mega_industrial (very_high → moderate, 12.5), gresik_port_industrial (very_high → moderate, 13.1). All tier-1 metro patterns suggesting institutional liquidity ≠ retail visibility.
+- 5 genuinely thin markets (avg < 10/scrape): Jayapura, Ambon, Probolinggo, Yogyakarta urban core, Padang.
+
+### Verified
+- Tests: 26 passed, 22 skipped, 0 failed.
+
 ## [2.16.11] - 2026-04-28 - Phase 3: Portfolio-Aware Action (Track A complete)
 
 ### Added
