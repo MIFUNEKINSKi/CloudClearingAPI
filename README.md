@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.16.10 (Phase 2: Acquisition Feasibility Layer)
+**Version:** 2.16.11 (Phase 3: Portfolio-Aware Action — Track A Complete)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,25 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.16.11 (April 28, 2026) — Phase 3: Portfolio-Aware Action (Track A complete)
+
+The weekly briefing now bridges "what's hot in the 65-region universe" with "what's missing from the investor's book". Three components:
+
+**Position log** (`data/positions.jsonl`, manually maintained, gitignored as investor-private; schema in `docs/positions.jsonl.example`):
+```json
+{"region": "cikarang_mega_industrial", "size_m2": 500, "acquisition_date": "2025-12-01", "cost_per_m2": 2300000, "title_type": "HGB", "notes": "Lippo Cikarang plot"}
+```
+
+**`YOUR PORTFOLIO` section** at the top of the weekly email — only renders when positions exist:
+- Cost basis + size + title type per position
+- Current price + unrealized P&L (IDR, %, annualized)
+- Feasibility line (✅⚠️🚫 + ownership pathway + zoning + liquidity)
+- Per-position alerts: `EXIT_WATCH` (price decline >5% over 4 samples), `LIQUIDITY_RISK` (listing volume drop ≥50%), `TIER_DOWNGRADE` (picked up from tier_transitions)
+
+**Correlation hints** in the priority-opportunities section: a STRONG_BUY in the same bucket as an existing holding gets a 📌 flag noting it adds correlation, not diversification.
+
+**Track A complete**: Phase 1 (signal trustworthiness, v2.16.3-9) + Phase 2 (acquisition feasibility, v2.16.10) + Phase 3 (portfolio-aware action, this version) all shipped. Track B (AWS/dbt/CI-CD/observability) is now genuinely optional polish — the investment-alpha goal is fully addressed.
 
 ### v2.16.10 (April 28, 2026) — Phase 2: Acquisition Feasibility Layer
 

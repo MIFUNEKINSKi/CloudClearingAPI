@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.16.11] - 2026-04-28 - Phase 3: Portfolio-Aware Action (Track A complete)
+
+### Added
+- **`src/core/portfolio_manager.py`** — `Position` dataclass + `load_positions()` + `compute_position_pnl()` + per-position alerts (`EXIT_WATCH`, `LIQUIDITY_RISK`, `TIER_DOWNGRADE`).
+- **`correlation_hint(candidate, positions)`** — same-bucket detection that surfaces "📌 You already hold X — adds correlation" hints in the priority-opportunities section.
+- **`docs/positions.jsonl.example`** — schema reference. Actual positions log lives at `data/positions.jsonl` (gitignored, investor-private).
+- **YOUR PORTFOLIO section** at top of weekly email — only renders when positions exist; lists each position with cost basis, current price, unrealized P&L (IDR, %, annualized), feasibility line, and any active alerts.
+
+### Track A status
+- All three Phase 1-3 mandatory items shipped:
+  - Phase 1 signal trustworthiness: v2.16.3-9
+  - Phase 2 acquisition feasibility: v2.16.10
+  - Phase 3 portfolio-aware action: v2.16.11
+- Track B (AWS/dbt/CI-CD/observability) is now genuinely optional polish.
+
+### Verified
+- Smoke test: 2-position book (Cikarang HGB + Lombok Senggigi leasehold) renders cleanly. Correlation flags fire on Tangerang (Jakarta bucket) and Mandalika (Lombok bucket). LIQUIDITY_RISK alert fired on Senggigi (listings 12→5).
+- Tests: 26 passed, 22 skipped, 0 failed.
+
 ## [2.16.10] - 2026-04-28 - Phase 2: Acquisition Feasibility Layer
 
 ### Added

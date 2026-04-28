@@ -1,7 +1,7 @@
 # CloudClearingAPI Development Roadmap
 
 **Updated:** April 28, 2026
-**Current Version:** v2.16.10 (Phase 2: Acquisition Feasibility Layer)
+**Current Version:** v2.16.11 (Phase 3: Portfolio-Aware Action — Track A Complete)
 
 ---
 
@@ -84,18 +84,18 @@ Status: all 8 mandatory items shipped (v2.16.3 through v2.16.9). The harness for
 
 **Phase 2 done when:** ✅ every STRONG_BUY in the email carries a feasibility tag and the investor can immediately tell whether a region is closeable, requires leasehold, requires PT PMA, or is restricted. The live-API enhancements are P2 polish — the static layer carries the load for now.
 
-## Phase 3 — Portfolio-aware action
+## Phase 3 — Portfolio-aware action ✅ SHIPPED (2026-04-28, v2.16.11)
 
-**Why:** The email currently says "what's hot this week" but never "what's missing from your book." If the investor already owns Cikarang, another Cikarang STRONG_BUY adds correlation, not diversification. The signal-to-action gap is significant.
+**Why:** The email said "what's hot this week" but never "what's missing from your book." Phase 3 closes that gap.
 
-| Task | Effort | Notes |
+| Task | Effort | Status |
 |---|---|---|
-| Position log (`data/positions.jsonl`) — manually maintained, region + size + acquisition date + cost basis | 2-4h | Plain text, edited by hand |
-| Email "Two columns" rendering: **Owned positions** (current price, drift vs cost) + **Suggested additions** (BUYs filtered by correlation to existing positions) | 4-8h | Correlation = same tier + same island bucket |
-| Weekly "what changed for your book" delta — flag price moves >5% on owned positions | 2-4h | Alerts on owned regions even when unranked in scoring |
-| Exit-signal heuristics — flag owned positions whose drift trend turns negative for 4+ weeks or whose listing volume crashes | 4-8h | Liquidity is half the trade |
+| Position log (`data/positions.jsonl`) — manually maintained, gitignored | shipped v2.16.11 | ✅ |
+| Email "YOUR PORTFOLIO" section: positions with P&L (IDR, %, annualized), feasibility line, per-position alerts | shipped v2.16.11 | ✅ |
+| Correlation hints — same-bucket detection adds "📌 already hold X" flag to candidate STRONG_BUYs | shipped v2.16.11 | ✅ |
+| Exit-signal heuristics — `EXIT_WATCH` (price down >5% over 4 samples), `LIQUIDITY_RISK` (listing volume drop ≥50%), `TIER_DOWNGRADE` (from tier_transitions) | shipped v2.16.11 | ✅ |
 
-**Phase 3 done when:** the email is structured around the investor's actual book, not a leaderboard of all 65 regions. The user can read it in 2 minutes and know exactly what to add, hold, or watch for exit.
+**Phase 3 done when:** ✅ the email is structured around the investor's actual book, not a leaderboard of all 65 regions. Reading it in 2 minutes tells the investor what to add, hold, or watch for exit.
 
 ---
 
@@ -147,6 +147,7 @@ How CloudClearingAPI maps to common DE-job requirements. Track B phases close mo
 
 | Version | Date | Key Features |
 |---|---|---|
+| **v2.16.11** | Apr 28, 2026 | Phase 3 portfolio-aware action ships — closes Track A. `src/core/portfolio_manager.py` with Position dataclass + load_positions + compute_position_pnl + correlation_hint + per-position alerts (EXIT_WATCH, LIQUIDITY_RISK, TIER_DOWNGRADE). YOUR PORTFOLIO section at top of email when positions.jsonl exists. Correlation hints in priority-opportunities surface "📌 already hold X" when candidates land in same bucket as existing holdings. Track B (AWS/dbt/CI-CD/observability) now genuinely optional polish |
 | **v2.16.10** | Apr 28, 2026 | Phase 2 acquisition-feasibility layer ships. `src/core/region_feasibility.py` with `FeasibilityProfile` dataclass + 27 explicit profiles (13 deep-research-validated + 14 inferred from regulatory data) + 38 tier-based defaults. Three dimensions: ownership_pathway, zoning_class+overlays, liquidity_tier. Renders ✅⚠️🚫 flag + one-line summary under each STRONG_BUY/BUY in the email. 3 regions land restricted (Nusantara×2 + Labuan Bajo); 5+ flagged for verification. Soft annotation, not a hard filter |
 | **v2.16.9** | Apr 28, 2026 | Forecast log + backtest harness — closes Phase 1 with the gating measurement infrastructure. `tools/backtest.py` reports per-tier mean delta (2w/4w/8w) + Spearman ρ; `forecast_log.jsonl` writer hooked into weekly monitor. Methodology guards: frozen regions excluded, listing_count-shift filter, pre-fix anchor banner. Current data pre-dates v2.16.x fixes; harness ready for meaningful signal once 4+ weeks of post-2026-04-28 history accumulates |
 | **v2.16.8** | Apr 28, 2026 | Per-region history-anchored clamp closes Phase 1's last mandatory item. `_resolve_clamp_anchor` chain: frozen → history (≥3 samples within 0.5–3× of static) → region override → bucket → unmapped. Median-of-medians (last 8 samples) is doubly robust — week-level shock absorption on top of v2.16.4's listing-level filter. Sanity band protects against banjarmasin/bitung/mandalika cases where history is itself wrong. 64 of 67 regions eligible for live calibration |
