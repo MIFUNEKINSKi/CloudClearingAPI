@@ -148,7 +148,10 @@ class PDFReportGenerator:
         
         # Add executive summary
         story.extend(self._build_executive_summary(data))
-        
+
+        # Add YOUR PORTFOLIO section (only renders if data/positions.jsonl exists)
+        story.extend(self._build_portfolio_section(data))
+
         # Add monitoring results
         story.extend(self._build_monitoring_results(data))
         
@@ -280,13 +283,114 @@ class PDFReportGenerator:
             )
             data_source_items.append(
                 f"News Catalyst: {news_active_count}/{total_regions} regions with matched articles "
-                f"(Jakarta Post, Kompas, Antara, Detik Infrastruktur)"
+                f"(Jakarta Post, Kompas, Antara, Detik [×3 subsections], CNBC Indonesia)"
             )
             for item in data_source_items:
                 story.append(Paragraph(f"   {item}", self.styles['Normal']))
 
         story.append(Spacer(1, 15))
 
+        return story
+
+    def _build_portfolio_section(self, data: Dict[str, Any]) -> List:
+        """Build YOUR PORTFOLIO section — only renders when data/positions.jsonl exists.
+
+        Mirrors the email's portfolio rendering: per-position cost basis,
+        current value, unrealized P&L, feasibility flag, observed liquidity,
+        and any active alerts (EXIT_WATCH / LIQUIDITY_RISK / TIER_DOWNGRADE).
+        Phase 3 / v2.16.11 — added to PDF in v2.17.0 alongside the other
+        email-PDF lock-step fixes.
+        """
+        story: List = []
+        try:
+            from .portfolio_manager import (
+                load_positions, compute_position_pnl, position_tier_downgrade_alert,
+            )
+            from .region_feasibility import get_feasibility
+            from .market_config import classify_region_tier
+            from .liquidity_estimator import estimate_liquidity, liquidity_summary_label
+        except Exception:
+            return story
+
+        positions = load_positions()
+        if not positions:
+            return story  # feature dormant when no positions configured
+
+        downgrades = (data.get('tier_transitions') or {}).get('downgrades', [])
+
+        story.append(Paragraph("💼 YOUR PORTFOLIO", self.styles['SectionHeader']))
+
+        cost_total = sum(p.total_cost for p in positions)
+        pnls = []
+        for p in positions:
+            pnl = compute_position_pnl(p)
+            td = position_tier_downgrade_alert(p, downgrades)
+            if td:
+                pnl.alerts.append(td)
+            pnls.append(pnl)
+        pnl_total = sum(p.unrealized_pnl_idr for p in pnls)
+        book_pnl_pct = (pnl_total / cost_total * 100) if cost_total > 0 else 0
+        alert_count = sum(len(p.alerts) for p in pnls)
+
+        story.append(Paragraph(
+            f"<b>{len(positions)} active position(s) · "
+            f"{alert_count} alert(s) · "
+            f"Book value: Rp {(cost_total + pnl_total):,.0f} "
+            f"({pnl_total:+,.0f} unrealized, {book_pnl_pct:+.1f}%)</b>",
+            self.styles['Normal']
+        ))
+        story.append(Spacer(1, 8))
+
+        cell = ParagraphStyle('PortCell', parent=self.styles['Normal'], fontSize=8, leading=10)
+        header = ParagraphStyle('PortHeader', parent=self.styles['Normal'], fontSize=8, leading=10, textColor=colors.white)
+
+        rows = [[
+            Paragraph('<b>Region</b>', header),
+            Paragraph('<b>Acquired</b>', header),
+            Paragraph('<b>Basis Rp/m²</b>', header),
+            Paragraph('<b>Now Rp/m²</b>', header),
+            Paragraph('<b>P&amp;L</b>', header),
+            Paragraph('<b>Ann. Return</b>', header),
+            Paragraph('<b>Feas / Liquidity / Alerts</b>', header),
+        ]]
+        for pnl in pnls:
+            p = pnl.position
+            feas = get_feasibility(p.region, tier=classify_region_tier(p.region))
+            liq = estimate_liquidity(p.region)
+            extra_lines = [feas.actionability_summary,
+                          f"Observed: {liquidity_summary_label(liq)}"]
+            for a in pnl.alerts:
+                extra_lines.append(f"⚠ {a}")
+            extra = "<br/>".join(extra_lines)
+            rows.append([
+                Paragraph(p.region.replace('_', ' ').title(), cell),
+                Paragraph(p.acquisition_date, cell),
+                Paragraph(f'Rp {p.cost_per_m2:,.0f}', cell),
+                Paragraph(f'Rp {pnl.current_price_per_m2:,.0f}', cell),
+                Paragraph(
+                    f"<font color='{'green' if pnl.unrealized_pnl_idr >= 0 else 'red'}'>"
+                    f"{pnl.unrealized_pnl_idr:+,.0f}<br/>({pnl.unrealized_pnl_pct:+.1f}%)</font>",
+                    cell,
+                ),
+                Paragraph(f'{pnl.annualized_return_pct:+.1f}%', cell),
+                Paragraph(extra, cell),
+            ])
+
+        col_widths = [1.1*inch, 0.7*inch, 0.75*inch, 0.75*inch, 0.85*inch, 0.6*inch, 1.85*inch]
+        table = Table(rows, colWidths=col_widths, repeatRows=1)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E7D32')),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.HexColor('#F1F8E9'), colors.white]),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
+            ('LEFTPADDING', (0, 0), (-1, -1), 5),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        story.append(table)
+        story.append(Spacer(1, 15))
         return story
 
     def _build_monitoring_results(self, data: Dict[str, Any]) -> List:
@@ -434,6 +538,8 @@ class PDFReportGenerator:
             Paragraph('<b>Region</b>', header_style),
             Paragraph('<b>Score</b>', header_style),
             Paragraph('<b>Action</b>', header_style),
+            Paragraph('<b>Feas</b>', header_style),  # v2.17.0: acquisition feasibility
+            Paragraph('<b>Wks</b>', header_style),   # v2.17.0: weeks at current tier
             Paragraph('<b>Price/m²</b>', header_style),
             Paragraph('<b>Heat</b>', header_style),
             Paragraph('<b>RVI</b>', header_style),
@@ -543,10 +649,25 @@ class PDFReportGenerator:
             else:
                 mkt_str = f'{mkt_src[:5]}'
 
+            # v2.17.0: feasibility flag (Phase 2) + weeks-at-tier streak
+            feas_dict = r.get('feasibility') or {}
+            feas_flag = feas_dict.get('flag', '')
+            wat = r.get('weeks_at_tier', 0)
+            if wat == 1:
+                weeks_str = '<font color="green"><b>🆕</b></font>'
+            elif wat >= 4:
+                weeks_str = f'<font color="green"><b>{wat}w</b></font>'
+            elif wat >= 2:
+                weeks_str = f'{wat}w'
+            else:
+                weeks_str = '-'
+
             table_data.append([
                 Paragraph(region_name, cell_style),
                 Paragraph(f'<b>{score:.1f}</b>', cell_style),
                 Paragraph(action_str, cell_style),
+                Paragraph(feas_flag, cell_style),
+                Paragraph(weeks_str, cell_style),
                 Paragraph(f'Rp {price/1e6:.1f}M' if price else '-', cell_style),
                 Paragraph(heat_str, cell_style),
                 Paragraph(rvi_str, cell_style),
@@ -557,7 +678,7 @@ class PDFReportGenerator:
                 Paragraph(data_str, cell_style),
             ])
 
-        col_widths = [1.25*inch, 0.4*inch, 0.4*inch, 0.6*inch, 0.5*inch, 0.35*inch, 0.45*inch, 0.45*inch, 0.55*inch, 0.45*inch, 0.35*inch]
+        col_widths = [1.15*inch, 0.4*inch, 0.4*inch, 0.3*inch, 0.35*inch, 0.55*inch, 0.45*inch, 0.32*inch, 0.4*inch, 0.4*inch, 0.5*inch, 0.42*inch, 0.32*inch]
         table = Table(table_data, colWidths=col_widths, repeatRows=1)
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E86AB')),
@@ -602,6 +723,16 @@ class PDFReportGenerator:
             '<b>Mkt:</b> <font color="green">lam/rum/99co</font> = live | '
             '<font color="#CC8800">cache / lam*</font> = cached or outlier-clamped | '
             '<font color="red">bench</font> = static benchmark (verify pricing independently)</font>',
+            self.styles['Normal']
+        ))
+        story.append(Paragraph(
+            '<font size="7"><b>Feas:</b> '
+            '✅ HGB-via-PT-PMA / clean ownership path | '
+            '⚠️ leasehold or zoning overlay — verify before acting | '
+            '🚫 restricted (Indigenous claims / contested zoning / off-market) &nbsp; '
+            '<b>Wks:</b> <font color="green">🆕</font> = first week at this tier '
+            '(early signal) | <font color="green">Nw</font> = N≥4 consecutive weeks '
+            '(confirmed signal) | Nw = 2-3 weeks (developing)</font>',
             self.styles['Normal']
         ))
 
@@ -771,7 +902,54 @@ class PDFReportGenerator:
                     note = data_sources['missing_data_note']
                     if 'unavailable' in note.lower():
                         key_factors.append(f"<i>{note}</i>")
-                
+
+                # ============================================================
+                # v2.16/v2.17 enhancements — flow PDF in lock-step with email
+                # ============================================================
+                # Tier-streak ("see opportunities early"): 🆕 NEW or
+                # streak length so the investor distinguishes fresh signal
+                # from confirmed signal.
+                wat = rec.get('weeks_at_tier', 0)
+                if wat == 1:
+                    key_factors.insert(0, f"<b>🆕 NEW THIS WEEK at {rec.get('recommendation', '?')} tier</b>")
+                elif wat >= 4:
+                    key_factors.insert(0, f"<b>📌 Held {rec.get('recommendation', '?')} tier for {wat} consecutive weeks</b>")
+                elif wat >= 2:
+                    suffix = {2: 'nd', 3: 'rd'}.get(wat, 'th')
+                    key_factors.insert(0, f"({wat}{suffix} consecutive week at {rec.get('recommendation', '?')})")
+
+                # Score breakdown — trust through visibility. Math is already
+                # computed in automated_monitor; PDF just renders it.
+                if rec.get('score_breakdown'):
+                    key_factors.append(f"<i>Breakdown: {rec['score_breakdown']}</i>")
+
+                # Acquisition feasibility (Phase 2) — actionability flag +
+                # ownership pathway + zoning + liquidity in one line.
+                feas = rec.get('feasibility') or {}
+                if feas.get('summary'):
+                    key_factors.append(f"<b>Feasibility:</b> {feas['summary']}")
+                # Liquidity-mismatch flag (Phase 2 polish)
+                if feas.get('liquidity_mismatch_flag'):
+                    key_factors.append(f"<i>{feas['liquidity_mismatch_flag']}</i>")
+                # Observed listings supplement (sharpens the qualitative tier)
+                obs_lst = feas.get('observed_listings') or {}
+                if obs_lst.get('summary'):
+                    key_factors.append(f"<i>Observed liquidity: {obs_lst['summary']}</i>")
+
+                # Action links (Phase 4 / friction reduction) — render as
+                # live clickable URLs via ReportLab's <a> tag support.
+                links = rec.get('action_links') or {}
+                if links:
+                    link_parts = []
+                    if links.get('lamudi_search'):
+                        link_parts.append(f'<a href="{links["lamudi_search"]}" color="blue">Listings</a>')
+                    if links.get('gmaps_satellite'):
+                        link_parts.append(f'<a href="{links["gmaps_satellite"]}" color="blue">Imagery</a>')
+                    if links.get('osm_map'):
+                        link_parts.append(f'<a href="{links["osm_map"]}" color="blue">OSM</a>')
+                    if link_parts:
+                        key_factors.append(f"<b>🔗 Investigate:</b> " + " · ".join(link_parts))
+
                 # Combine ALL factors into comprehensive explanation (no truncation)
                 if key_factors:
                     key_reason = "<br/>• ".join(key_factors)
