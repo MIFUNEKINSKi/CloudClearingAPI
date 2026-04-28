@@ -125,10 +125,15 @@ class LamudiScraper(BaseLandPriceScraper):
             # Yogyakarta Special Region
             'sleman': 'sleman',
             'bantul': 'bantul',
-            'gunungkidul': 'gunungkidul',
-            'kulonprogo': 'kulonprogo',
-            'kulon progo': 'kulonprogo',
-            
+            'gunungkidul': 'gunung-kidul',  # Lamudi slug is hyphenated
+            # Lamudi switched to hyphenated 'kulon-progo' slug; the no-hyphen
+            # form returns 404. Verified 2026-04-25: the hyphen-form URL
+            # returned a 766KB listing page; the no-hyphen form returned the
+            # 145KB 404 template.
+            'kulonprogo': 'kulon-progo',
+            'kulon progo': 'kulon-progo',
+            'kulon_progo': 'kulon-progo',
+
             # Central Java
             'magelang': 'magelang',
             'salatiga': 'salatiga',
@@ -221,7 +226,7 @@ class LamudiScraper(BaseLandPriceScraper):
             'bandar lampung': 'lampung',
             'lake toba': 'toba-samosir',
             'solo raya': 'sukoharjo',
-            'kulon progo': 'kulonprogo',
+            'kulon progo': 'kulon-progo',  # Lamudi slug is hyphenated
             'labuan bajo': 'manggarai-barat',
         }
         
