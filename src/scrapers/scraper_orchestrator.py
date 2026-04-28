@@ -630,6 +630,27 @@ class LandPriceOrchestrator:
         'batang_industrial_sez': 1_200_000,
     }
 
+    # v2.19.1: regions where the bbox split (in regional_config) doesn't map to a
+    # distinct Lamudi slug — both sub-regions pull listings from the same parent
+    # slug, so the extracted price reflects the WHOLE city, not the specific
+    # sub-region. The 5× outlier clamp is too loose for these: it lets the
+    # agrarian Subang side accept industrial-priced Subang listings (Rp 1.84M
+    # vs Rp 450K agrarian anchor = 4.1× — passes 5× but is clearly inflated).
+    # Tightening to 2.5× catches the worst over-pooling without rejecting
+    # legitimate intra-region variance.
+    _POOLED_SLUG_REGIONS = frozenset({
+        # Subang — both sub-regions pull from `subang` slug
+        'subang_patimban_industrial',
+        'subang_pantura_agrarian',
+        # Balikpapan — both pull from `balikpapan` slug
+        'balikpapan_kariangau_industrial',
+        'balikpapan_selatan_commercial',
+        # Bitung — both pull from `bitung` slug
+        'bitung_port_corridor',
+        'bitung_kek_sez_industrial',
+    })
+    _POOLED_SLUG_OUTLIER_MULTIPLIER = 2.5
+
     # Per-region price-history settings for the history-anchored clamp.
     # When a region has accumulated enough price-history samples, the region's
     # own median-of-medians becomes the live clamp anchor (more responsive
@@ -760,7 +781,15 @@ class LandPriceOrchestrator:
         if benchmark is None or benchmark <= 0:
             # Frozen or unmapped — return as-is, no clamp
             return average, median, False, ""
-        threshold = benchmark * self._PRICE_OUTLIER_MULTIPLIER
+        # v2.19.1: tighter clamp for split sub-regions whose Lamudi slug
+        # pools listings across multiple sub-regions (Subang, Balikpapan,
+        # Bitung). Without this, the agrarian Subang half accepts industrial-
+        # Subang listings at 4× its research anchor — clearly inflated.
+        if region_name in self._POOLED_SLUG_REGIONS:
+            multiplier = self._POOLED_SLUG_OUTLIER_MULTIPLIER
+        else:
+            multiplier = self._PRICE_OUTLIER_MULTIPLIER
+        threshold = benchmark * multiplier
         if average <= threshold:
             return average, median, False, ""
         # Average is implausible. Try median first.
@@ -775,7 +804,7 @@ class LandPriceOrchestrator:
         # Both average and median are wild — fall back to the anchor.
         reason = (
             f"avg Rp {average:,.0f}/m² AND median Rp {median:,.0f}/m² both exceed "
-            f"{self._PRICE_OUTLIER_MULTIPLIER}× anchor Rp {benchmark:,.0f}/m² (from "
+            f"{multiplier}× anchor Rp {benchmark:,.0f}/m² (from "
             f"{anchor_source}) for {region_name} — clamping to anchor "
             f"({listing_count} listings, source={source})"
         )

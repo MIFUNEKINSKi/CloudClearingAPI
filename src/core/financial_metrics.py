@@ -234,9 +234,9 @@ class FinancialMetricsEngine:
             satellite_data, infrastructure_data
         )
         
-        # Step 3: Estimate development costs
+        # Step 3: Estimate development costs (region-aware as of v2.19.1)
         dev_costs = self._estimate_development_costs(
-            dev_cost_index, satellite_data
+            dev_cost_index, satellite_data, region_name=region_name,
         )
         
         # Step 4: Project future value (bear / base / bull scenarios)
@@ -487,13 +487,24 @@ class FinancialMetricsEngine:
     
     def _estimate_development_costs(self,
                                     dev_cost_index: float,
-                                    satellite_data: Dict[str, Any]) -> Dict[str, Any]:
+                                    satellite_data: Dict[str, Any],
+                                    region_name: Optional[str] = None) -> Dict[str, Any]:
         """
-        Estimate per-m² development costs based on development cost index
+        Estimate per-m² development costs based on development cost index.
+
+        v2.19.1: zoning-aware cost adjustment. SEZ-designated and government-
+        subsidized industrial regions ship plots with infrastructure already
+        installed by the SEZ authority (water, electric, roads, primary
+        permits) — buyer's all-in dev cost is closer to ~30% of the
+        greenfield baseline. Mature industrial estates get ~60% of baseline
+        for the same reason. Without this adjustment, SEZ-class plots like
+        bitung_kek_sez_industrial showed ROI -44.6% because the model
+        assumed greenfield Rp 800K/m² dev cost on Rp 728K/m² land — the
+        per-plot dev cost there is more like Rp 240K/m².
         """
         # Base cost starts at clearing cost
         base_cost = self.base_development_costs['land_clearing']
-        
+
         # Add terrain grading cost based on index
         if dev_cost_index >= 70:
             terrain_cost = self.base_development_costs['grading_steep']
@@ -504,29 +515,52 @@ class FinancialMetricsEngine:
         else:
             terrain_cost = self.base_development_costs['grading_flat']
             terrain_difficulty = "Easy"
-        
+
         # Road access cost if needed
         road_cost = 0
         if dev_cost_index >= 60:  # Poor road access
             road_cost = self.base_development_costs['road_access']
-        
+
         # Utilities and permits
         utilities_cost = self.base_development_costs['utilities']
         permits_cost = self.base_development_costs['permits']
-        
-        # Total cost per m²
+
+        # Greenfield total per m²
         total_cost = base_cost + terrain_cost + road_cost + utilities_cost + permits_cost
-        
+
+        # v2.19.1: zoning-aware adjustment.
+        zoning_multiplier = 1.0
+        zoning_note = "greenfield baseline"
+        if region_name:
+            try:
+                from .region_feasibility import get_feasibility
+                from .market_config import classify_region_tier
+                feas = get_feasibility(region_name, tier=classify_region_tier(region_name))
+                overlays = set(feas.zoning_overlays or ())
+                if overlays & {'sez_designated', 'government_subsidized'}:
+                    zoning_multiplier = 0.30
+                    zoning_note = "SEZ/subsidized industrial — most infra preinstalled"
+                elif feas.zoning_class == 'industrial':
+                    zoning_multiplier = 0.60
+                    zoning_note = "industrial estate — partial infra preinstalled"
+            except Exception:
+                pass
+
+        adjusted_total = total_cost * zoning_multiplier
+
         return {
-            'total_per_m2': total_cost,
+            'total_per_m2': adjusted_total,
+            'baseline_per_m2': total_cost,
+            'zoning_multiplier': zoning_multiplier,
+            'zoning_note': zoning_note,
             'breakdown': {
                 'land_clearing': base_cost,
                 'grading': terrain_cost,
                 'road_access': road_cost,
                 'utilities': utilities_cost,
-                'permits': permits_cost
+                'permits': permits_cost,
             },
-            'terrain_difficulty': terrain_difficulty
+            'terrain_difficulty': terrain_difficulty,
         }
     
     def _estimate_appreciation_rate(self,

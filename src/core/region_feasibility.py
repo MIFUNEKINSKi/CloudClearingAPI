@@ -268,10 +268,13 @@ _PROFILES: Dict[str, FeasibilityProfile] = {
         region='batang_industrial_sez',
         ownership_pathway='hgb_pt_pma',
         zoning_class='industrial',
+        zoning_overlays=('sez_designated', 'government_subsidized'),
         liquidity_tier='low',
         confidence='researched',
         notes='Batang Industrial Park (BIP) — government-prioritized FDI '
-              'destination. Lower cost than West Java; institutional-only.',
+              'destination. Phase 1 ships ready-to-build leveled lots with '
+              'integrated utilities, wastewater, port connectivity. Buyer '
+              'dev cost ~30% of greenfield baseline. Institutional-only.',
     ),
     'labuan_bajo_komodo_gateway': FeasibilityProfile(
         region='labuan_bajo_komodo_gateway',
