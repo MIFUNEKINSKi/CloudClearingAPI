@@ -617,6 +617,58 @@ class NewsScraper:
                 matched.append(keyword)
         return matched
 
+    # Indonesian stopwords + journalistic noise that adds nothing to topic identity
+    _DEDUPE_STOPWORDS = frozenset({
+        'di', 'ke', 'dan', 'yang', 'untuk', 'pada', 'dengan', 'dari',
+        'oleh', 'akan', 'sebagai', 'jadi', 'lebih', 'sudah', 'masih',
+        'tak', 'tidak', 'ada', 'itu', 'ini', 'juga', 'atau', 'bisa',
+        'foto', 'video', 'live', 'breaking', 'news',
+        'the', 'a', 'an', 'in', 'on', 'at', 'of', 'and', 'or', 'to',
+    })
+
+    @classmethod
+    def _title_bigrams(cls, title: str) -> set:
+        """Adjacent token bigrams from a normalized title.
+
+        Bigrams (rather than unigrams) catch named-entity + event combos
+        like "tabrakan kereta" or "bekasi timur" — paraphrased headlines
+        about the same story share these multi-word phrases reliably even
+        when single-word Jaccard is low (13–23% on our test corpus).
+        """
+        import re as _re
+        cleaned = _re.sub(r"[^\w\s]", " ", title.lower())
+        toks = [t for t in cleaned.split() if len(t) >= 4 and t not in cls._DEDUPE_STOPWORDS]
+        return {f"{toks[i]} {toks[i+1]}" for i in range(len(toks) - 1)}
+
+    @classmethod
+    def _dedupe_articles(cls, articles: List["NewsArticle"], min_shared_bigrams: int = 2) -> List["NewsArticle"]:
+        """Drop near-duplicate articles by shared title-bigram count.
+
+        Two headlines are treated as duplicates when they share at least
+        ``min_shared_bigrams`` 2-word phrases (post-stopword removal).
+
+        The Apr 27 run pulled 9 articles for bekasi_industrial_belt all about
+        the same train accident (different paraphrasings of the same event).
+        Dedupe keeps the first occurrence in input order — relevance-sorted
+        upstream means the highest-scoring framing wins.
+        """
+        kept: List["NewsArticle"] = []
+        kept_bigram_sets: List[set] = []
+        for art in articles:
+            bigrams = cls._title_bigrams(art.title)
+            if not bigrams:
+                kept.append(art)
+                kept_bigram_sets.append(bigrams)
+                continue
+            is_dup = any(
+                len(bigrams & prev) >= min_shared_bigrams
+                for prev in kept_bigram_sets if prev
+            )
+            if not is_dup:
+                kept.append(art)
+                kept_bigram_sets.append(bigrams)
+        return kept
+
     def _match_cities(self, text: str) -> List[str]:
         """Return any CITY_TO_REGIONS keys mentioned in text (word-boundary).
 
@@ -703,13 +755,20 @@ class NewsScraper:
                 relevance_score=round(relevance, 3),
             ))
         
-        # Sort by relevance
+        # Sort by relevance, then dedupe near-duplicates by title-token Jaccard.
+        # Sorting first ensures the highest-scoring framing of a duplicate
+        # event is the one we keep (e.g. an "infrastructure-keywords-rich"
+        # take wins over a generic news framing of the same Bekasi rail story).
         matched.sort(key=lambda a: a.relevance_score, reverse=True)
-        
+        pre_dedupe = len(matched)
+        matched = self._dedupe_articles(matched)
+
         if matched:
-            logger.info(f"📰 {region_name}: {len(matched)} news articles matched "
-                       f"(top: '{matched[0].title[:60]}...')")
-        
+            dropped = pre_dedupe - len(matched)
+            dedupe_note = f", deduped {dropped}" if dropped else ""
+            logger.info(f"📰 {region_name}: {len(matched)} news articles matched"
+                       f"{dedupe_note} (top: '{matched[0].title[:60]}...')")
+
         return matched
     
     def _analyze_sentiment(self, text: str) -> Tuple[str, int]:

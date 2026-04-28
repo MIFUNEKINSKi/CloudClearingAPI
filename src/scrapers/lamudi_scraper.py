@@ -77,18 +77,37 @@ class LamudiScraper(BaseLandPriceScraper):
             success=True
         )
     
+    # Per-region overrides (checked BEFORE the generic city-extraction).
+    # Use when the city-level slug routes to listings unrepresentative of the
+    # region (e.g., `medan` returns urban-Medan premium listings @ Rp 18.5M/m²,
+    # but `medan_kuala_namu_corridor` is peripheral airport corridor land more
+    # like Rp 3-10M/m²; `deli-serdang` regency captures the right pricing).
+    # A/B-tested 2026-04-25; only add entries here when probe confirms the
+    # alternative slug returns a noticeably more accurate median for the
+    # region's geographic footprint.
+    REGION_SPECIFIC_SLUGS = {
+        'medan_kuala_namu_corridor': 'deli-serdang',
+        # medan_belawan_port: tried 'belawan' (404) and 'medan-belawan' (404);
+        #   no working sub-slug. Stays on 'medan' fallback.
+        # cikarang_*: cikarang-utara only returned 5 listings; cikarang gives
+        #   20. Listing volume > geographic precision here.
+        # jakarta_*_sprawl: jakarta-utara returns premium central-N listings
+        #   (Rp 25M/m²); generic jakarta returns the right sprawl-tier price
+        #   (Rp 9.7M/m²). Don't override.
+    }
+
     def _extract_city_from_region(self, region_name: str) -> str:
         """
         Extract city/location slug from internal region name
-        
+
         Maps internal region identifiers to Lamudi-compatible city slugs.
-        
+
         Args:
             region_name: Internal region identifier (e.g., "jakarta_north_sprawl", "Sleman North")
-            
+
         Returns:
             City slug for Lamudi (e.g., "jakarta", "sleman")
-            
+
         Examples:
             jakarta_north_sprawl → jakarta
             bandung_north_expansion → bandung
@@ -99,6 +118,10 @@ class LamudiScraper(BaseLandPriceScraper):
         """
         # Normalize to lowercase
         normalized = region_name.lower()
+
+        # Region-specific override (checked first — see REGION_SPECIFIC_SLUGS doc)
+        if normalized in self.REGION_SPECIFIC_SLUGS:
+            return self.REGION_SPECIFIC_SLUGS[normalized]
         
         # Location mapping dictionary (internal region name prefix → Lamudi city slug)
         # Maps our region identifiers to Indonesian city names that Lamudi recognizes
