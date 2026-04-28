@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.19.0] - 2026-04-28 - Region Splits (3 over-broad regions → 6 sub-regions)
+
+### Changed
+- **subang_patimban_megaport** split into `subang_patimban_industrial` (eastern, Rp 1.5M/m², HGB) and `subang_pantura_agrarian` (western, Rp 450K/m², nominee-only).
+- **balikpapan_port_industrial** split into `balikpapan_kariangau_industrial` (north, Rp 1.9M/m²) and `balikpapan_selatan_commercial` (south, Rp 2.25M/m²).
+- **bitung_port_industrial** split into `bitung_port_corridor` (east, Rp 2.5M/m²) and `bitung_kek_sez_industrial` (west, Rp 350K/m²).
+- Net region count: 65 → 68.
+
+### Added
+- News routing for sub-region keywords: `aertembaga`, `kek bitung`, `tanjung merah`, `kariangau`, `sepinggan`, `smartpolitan`, `pantura`, `patimban`.
+
+### Files touched (6)
+- `src/indonesia_expansion_regions.py` — bbox definitions
+- `src/core/market_config.py` — tier classification
+- `src/core/region_feasibility.py` — explicit profiles per sub-region
+- `src/core/infrastructure_analyzer.py` — fallback infra scores
+- `src/scrapers/scraper_orchestrator.py` — `_REGION_SPECIFIC_BENCHMARKS`
+- `src/scrapers/news_scraper.py` — `CITY_TO_REGIONS`
+
+### Verified
+- All 6 new regions resolve correctly: classify_region_tier, _resolve_clamp_anchor returns research-anchored Rp value per sub-region, get_feasibility returns researched profile.
+- Tests: 26 passed, 22 skipped, 0 failed.
+
 ## [2.18.0] - 2026-04-28 - Prediction Review (Closes the Feedback Loop)
 
 ### Added

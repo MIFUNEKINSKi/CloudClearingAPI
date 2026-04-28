@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.18.0 (Prediction Review — Closes the Feedback Loop)
+**Version:** 2.19.0 (Region Splits: Bitung / Subang / Balikpapan — 65 → 68 regions)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,16 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.19.0 (April 28, 2026) — Region Splits (3 over-broad regions → 6 sub-regions)
+
+The 2026-04-28 deep-research report flagged three regions where bbox-level bundling masked materially different sub-markets with 3-10× pricing spreads inside one region. Splits at the bbox level so signal differentiation is real, not averaged:
+
+- **subang_patimban_megaport** → `subang_patimban_industrial` (Rp 1.5M/m², HGB, Patimban+Smartpolitan east half) + `subang_pantura_agrarian` (Rp 450K/m², nominee-only, Girik/AJB agrarian west half)
+- **balikpapan_port_industrial** → `balikpapan_kariangau_industrial` (Rp 1.9M/m², heavy industrial north) + `balikpapan_selatan_commercial` (Rp 2.25M/m², residential/commercial south)
+- **bitung_port_industrial** → `bitung_port_corridor` (Rp 2.5M/m², port commercial east) + `bitung_kek_sez_industrial` (Rp 350K/m², KEK SEZ subsidized industrial west)
+
+Net region count: 65 → **68**. Each new region gets bbox + tier + benchmark + feasibility profile + infrastructure fallback + news routing. Old price-history JSONLs become orphaned (per v2.16.7 audit they were unreliable anyway).
 
 ### v2.18.0 (April 28, 2026) — Prediction Review (Closes the Feedback Loop)
 

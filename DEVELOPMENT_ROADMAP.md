@@ -1,7 +1,7 @@
 # CloudClearingAPI Development Roadmap
 
 **Updated:** April 28, 2026
-**Current Version:** v2.18.0 (Prediction Review — Closes the Feedback Loop)
+**Current Version:** v2.19.0 (Region Splits — 65 → 68 regions)
 
 ---
 
@@ -147,6 +147,7 @@ How CloudClearingAPI maps to common DE-job requirements. Track B phases close mo
 
 | Version | Date | Key Features |
 |---|---|---|
+| **v2.19.0** | Apr 28, 2026 | Region splits — Subang/Balikpapan/Bitung each split into 2 sub-regions where deep-research found 3-10× pricing spreads inside one bbox. New: `subang_patimban_industrial` + `subang_pantura_agrarian`, `balikpapan_kariangau_industrial` + `balikpapan_selatan_commercial`, `bitung_port_corridor` + `bitung_kek_sez_industrial`. Total regions 65 → 68. Each gets distinct bbox + benchmark + feasibility + infra fallback + news routing |
 | **v2.18.0** | Apr 28, 2026 | Prediction Review — closes the feedback loop. New `src/core/prediction_tracker.py` + email/PDF section comparing past forecasts (4w/8w/12w anchors) against today's price-history. Per-region: realized return, annualized, prorated-predicted, status icon (✅⏳🔥⚠❌). Aggregate: tier means, tier integrity check, hit rate. Honest constraints baked in: realized-vs-prorated for short-window fairness, listing_count_shift_flag for coverage-change noise, pre-fix-anchor banner for v2.16.x recalibration era. Forecast log writer enriched with predicted_roi_3yr/5yr + feasibility + weeks_at_tier |
 | **v2.17.1** | Apr 28, 2026 | PDF lock-step with email — v2.16.x + v2.17.0 fields (feasibility, observed liquidity, weeks_at_tier, score breakdown, action links, portfolio section) now render in PDF report. Decision matrix gains Feas + Wks columns; investment analysis gains 6 bullet types per top-5 region; new YOUR PORTFOLIO table when positions.jsonl exists |
 | **v2.17.0** | Apr 28, 2026 | Trust + friction reduction release. (1) Weeks-at-tier tracking — 🆕 NEW THIS WEEK / 📌 N-week streak flags directly serve the "early" word in the north-star. (2) Score breakdown — `activity 32 × infra 1.15 × market 1.10 × conf 1.00 × news 1.05 × momentum 1.00 = 52.2` rendered per priority opportunity, builds trust through visibility. (3) Action links — Lamudi search + Google Maps satellite + OSM bbox URLs bundled into each STRONG_BUY/BUY entry, removes ~80 min/week of friction |
