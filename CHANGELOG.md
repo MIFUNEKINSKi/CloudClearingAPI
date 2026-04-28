@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.17.1] - 2026-04-28 - PDF Lock-Step with Email
+
+### Fixed
+- PDF report had drifted out of lock-step with the email. None of the v2.16.x or v2.17.0 fields (feasibility, observed liquidity, correlation hints, weeks_at_tier, score_breakdown, action_links) were rendering in the PDF. Investor reading the PDF as their permanent reference saw a less-actionable view.
+
+### Added (in `pdf_report_generator.py`)
+- Decision matrix: `Feas` column (✅/⚠️/🚫) + `Wks` column (🆕 week 1 / Nw 2-3 / **Nw** ≥4 confirmed) + legend update.
+- Investment analysis (top-5 detail): tier-streak indicator at top of bullet list, score breakdown bullet, feasibility line, liquidity-mismatch warning, observed-listings supplement, action links rendered as live clickable URLs via ReportLab's `<a href>` tag.
+- New `_build_portfolio_section` (Phase 3 mirror): activates only when `data/positions.jsonl` exists; per-position table with cost basis, current price, P&L (color-coded green/red), annualized return, feasibility, observed liquidity, alerts.
+
+### Changed
+- Executive summary news-source list updated to "Jakarta Post, Kompas, Antara, Detik [×3 subsections], CNBC Indonesia" (was the v2.16.0-era 4-source list).
+
+### Verified
+- Smoke-tested PDF generation with synthetic v2.17.0 fields injected; PDF generates cleanly at 1.7 MB both with and without positions.
+- Tests: 26 passed, 22 skipped, 0 failed.
+
 ## [2.17.0] - 2026-04-28 - Trust + Friction Reduction (Weeks-at-Tier + Score Breakdown + Action Links)
 
 ### Added

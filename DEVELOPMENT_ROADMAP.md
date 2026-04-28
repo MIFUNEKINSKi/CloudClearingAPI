@@ -1,7 +1,7 @@
 # CloudClearingAPI Development Roadmap
 
 **Updated:** April 28, 2026
-**Current Version:** v2.17.0 (Trust + Friction Reduction — Weeks-at-Tier + Score Breakdown + Action Links)
+**Current Version:** v2.17.1 (PDF Lock-Step with Email — v2.16.x + v2.17.0 Fields Now Render)
 
 ---
 
@@ -147,6 +147,7 @@ How CloudClearingAPI maps to common DE-job requirements. Track B phases close mo
 
 | Version | Date | Key Features |
 |---|---|---|
+| **v2.17.1** | Apr 28, 2026 | PDF lock-step with email — v2.16.x + v2.17.0 fields (feasibility, observed liquidity, weeks_at_tier, score breakdown, action links, portfolio section) now render in PDF report. Decision matrix gains Feas + Wks columns; investment analysis gains 6 bullet types per top-5 region; new YOUR PORTFOLIO table when positions.jsonl exists |
 | **v2.17.0** | Apr 28, 2026 | Trust + friction reduction release. (1) Weeks-at-tier tracking — 🆕 NEW THIS WEEK / 📌 N-week streak flags directly serve the "early" word in the north-star. (2) Score breakdown — `activity 32 × infra 1.15 × market 1.10 × conf 1.00 × news 1.05 × momentum 1.00 = 52.2` rendered per priority opportunity, builds trust through visibility. (3) Action links — Lamudi search + Google Maps satellite + OSM bbox URLs bundled into each STRONG_BUY/BUY entry, removes ~80 min/week of friction |
 | **v2.16.12** | Apr 28, 2026 | Phase 2 polish: empirical liquidity from archived listing counts. `liquidity_estimator.py` classifies observed tier (very_low / low / moderate / cap_saturated) from price-history JSONL; asymmetric mismatch flag fires when research overstates liquidity by ≥2 tier levels. `tools/liquidity_audit.py` CLI for periodic review. Surfaced 5 real mismatches: Surabaya/Cikarang/Gresik tier-1 metros where research expected `very_high` but Lamudi retail shows `moderate` (~10-13 listings/scrape) — institutional ≠ retail liquidity |
 | **v2.16.11** | Apr 28, 2026 | Phase 3 portfolio-aware action ships — closes Track A. `src/core/portfolio_manager.py` with Position dataclass + load_positions + compute_position_pnl + correlation_hint + per-position alerts (EXIT_WATCH, LIQUIDITY_RISK, TIER_DOWNGRADE). YOUR PORTFOLIO section at top of email when positions.jsonl exists. Correlation hints in priority-opportunities surface "📌 already hold X" when candidates land in same bucket as existing holdings. Track B (AWS/dbt/CI-CD/observability) now genuinely optional polish |

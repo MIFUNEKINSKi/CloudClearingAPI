@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.17.0 (Trust + Friction Reduction — Weeks-at-Tier + Score Breakdown + Action Links)
+**Version:** 2.17.1 (PDF Lock-Step with Email — v2.16.x + v2.17.0 Fields Now Render)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,16 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.17.1 (April 28, 2026) — PDF Lock-Step with Email
+
+The PDF report had drifted out of lock-step with the email. The investor reading the PDF as their permanent reference saw an older, less-actionable view than the email. This commit catches it up across three sections:
+
+1. **Decision matrix** — added Feas column (✅/⚠️/🚫) and Wks column (🆕 / Nw / **Nw** bold for ≥4-week confirmed streaks). Legend updated.
+2. **Investment analysis** (top-5 detail) — tier-streak indicator inserted at top of bullet list, score breakdown bullet, feasibility bullet, liquidity-mismatch warning, observed-listings supplement, action links rendered as live clickable URLs via ReportLab's `<a href>` tag.
+3. **New YOUR PORTFOLIO section** mirrors the email — activates only when `data/positions.jsonl` exists; per-position table with cost basis, current price, P&L (green/red), annualized return, feasibility, observed liquidity, alerts.
+
+Plus an executive summary touch-up: news source list updated to "Jakarta Post, Kompas, Antara, Detik [×3 subsections], CNBC Indonesia" (was the v2.16.0-era 4-source list).
 
 ### v2.17.0 (April 28, 2026) — Trust + Friction Reduction Release
 
