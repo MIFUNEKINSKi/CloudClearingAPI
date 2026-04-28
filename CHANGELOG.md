@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.16.4] - 2026-04-25 - Outlier-Resistant Price Mean + Brotli Bug Fix (Antara revival)
+
+### Fixed
+- **Lamudi misparses corrupting the mean.** `base_scraper._calculate_statistics` mean was a plain arithmetic mean across all listings, so 1–2 misparsed listings per scrape (e.g. Rp 22 BILLION/m²) dragged the average 100×+ above truth in 22/65 regions. The median was correct in every case. Now median anchors the calculation; mean is computed only over listings whose price-per-m² is ≤10× median. Sim against Jakarta_north_sprawl (18 valid + 2 misparses): old mean Rp 2.21B/m² → new mean Rp 9.71M/m².
+- **Brotli accept-encoding silent failure.** Both `base_scraper.py` and `news_scraper.py` advertised `Accept-Encoding: gzip, deflate, br` without `brotli` installed. Sites preferring brotli (Antara) returned bodies the requests lib couldn't decode → BeautifulSoup parsed garbage → 0 tags found → 0 articles for ≥2 weeks. Dropped `br` from both. Antara live count: 0 → 25 per scrape.
+
+### Cleanup
+- Cleared one poisoned 0-article Antara cache entry that would otherwise have masked the brotli fix for up to 2 days (cache TTL).
+
+### Verification
+- Tests: 26 passed, 22 skipped, 0 failed.
+- Net effect on confidence distribution: regions previously clamped to `lamudi_clamped` (data_confidence 0.55) should largely return to plain `lamudi` (data_confidence 0.85) at next run, restoring real live-market coverage.
+
 ## [2.16.3] - 2026-04-25 - sar_only Cap + Confidence Provenance Fix (Merak audit)
 
 ### Fixed

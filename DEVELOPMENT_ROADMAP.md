@@ -1,6 +1,6 @@
 # CloudClearingAPI Development Roadmap
 **Updated:** April 27, 2026
-**Current Version:** v2.16.3 (sar_only Cap + Confidence Provenance Fix — Merak Audit)
+**Current Version:** v2.16.4 (Outlier-Resistant Price Mean + Brotli Bug Fix — Antara Revival)
 
 ---
 
@@ -28,7 +28,7 @@ CloudClearingAPI is an automated land investment analyst for Indonesia that comb
 | **GEE optical caching** | ✅ Working | 14-day cache avoids repeat satellite analysis |
 | **Web scraping pipeline** | ✅ 64/65 live (98%) | Lamudi primary; price-outlier clamp (>5× benchmark); 99.co revived via cloudscraper (best-effort, ~1 region/run before CF rate-limits); Rumah.com unused |
 | **Infrastructure analysis (OSM)** | ✅ 65/65 live | 17 fresh queries + 48 cache hits per run; 0 fallbacks. Email "live infrastructure" metric was incorrectly excluding cached OSM (now fixed). |
-| **News pipeline** | ✅ 5 sources, 17+ regions matched | Jakarta Post, Kompas, Antara, Detik (infrastruktur + properti + berita-ekonomi-bisnis), CNBC Indonesia. Raw articles ~46→~79/run. Genuine 1.05x boost firing for ~6 regions per run. news_wow now populated. |
+| **News pipeline** | ✅ 5 sources, 17+ regions matched | Jakarta Post, Kompas, Antara (revived 2026-04-25 via brotli accept-encoding fix — was returning 0 for 2+ weeks), Detik (infrastruktur + properti + berita-ekonomi-bisnis), CNBC Indonesia. Raw articles ~46→~104/run (next run after Antara revival). Genuine 1.05x boost firing for ~6 regions per run. news_wow now populated. |
 | **Market tier classification** | ✅ 100% | All 65 regions classified (T1: 10, T2: 18, T3: 29, T4: 8) |
 | **Investment scoring engine** | ✅ Working | Multi-factor data transformation pipeline |
 | **PDF with decision matrix** | ✅ Working | Market heat, data quality indicators, expanded columns |
@@ -170,6 +170,7 @@ How CloudClearingAPI maps to common DE job requirements:
 
 | Version | Date | Key Features |
 |---------|------|-------------|
+| **v2.16.4** | Apr 25, 2026 | Outlier-resistant Lamudi mean (10×-median filter) — Jakarta sim: old avg Rp 2.21B/m² → new Rp 9.71M/m²; brotli accept-encoding silent failure fixed (Antara news 0→25 articles, was broken ≥2 weeks); cleared poisoned 0-article cache. Net: 22/65 outlier-clamped regions should return to live data confidence 0.85 |
 | **v2.16.3** | Apr 25, 2026 | Plug sar_only loophole: cap fused at 500K (was uncapped → Merak saturated activity at 38); fix `satellite_data_source` provenance so SAR-only mode triggers the 0.84 confidence cap (was passing 'optical' even when fusion fell to sar_only); stat-calc timeout 60s → 120s (2/65 regions hit the wall on Apr 27 19:15 run). Net effect on Merak: 61.7 → ~51.2 |
 | **v2.16.2** | Apr 25, 2026 | Drift tests cleaned (22 obsolete tier-only tests skipped, suite now 10/22/0); News supply expansion: Detik berita-ekonomi-bisnis + CNBC Indonesia (raw articles 46→79); AWS Terraform: 5 deprecated S3 lifecycle rules fixed (filter{} added) + recursive fmt; 99.co revived via cloudscraper (best-effort, ~1 region/run, breaker trips on first CF block) |
 | **v2.16.1** | Apr 27, 2026 | SAR fusion 20× cap + threshold recalibration (49/42/33); tier transitions tracked week-over-week; thread-safe stats timeout (replaced broken signal.alarm); SAR construction/clearing band-name fix |

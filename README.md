@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.16.3 (sar_only Cap + Confidence Provenance Fix — Merak Audit)
+**Version:** 2.16.4 (Outlier-Resistant Price Mean + Brotli Bug Fix — Antara Revival)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,14 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.16.4 (April 25, 2026) — Outlier-Resistant Price Mean + Brotli Bug Fix (Antara revival)
+
+Two scraper-quality wins from the v2.16.3 audit cycle:
+
+**Outlier-resistant Lamudi mean.** v2.16.3 audit found 22/65 regions hitting the orchestrator's 5×-benchmark outlier clamp. Root cause: 1–2 misparsed listings per scrape (e.g. Jakarta_north_sprawl extracted Rp 2.18 BILLION/m² for a few listings when the real price was Rp 9.7M/m²). The median was correct in every case — only the mean was polluted. Fix: median anchors the calculation; mean is computed only over listings ≤10× median. Sim against Jakarta data: old mean Rp 2.21B/m² (228× median, would clamp) → new mean Rp 9.71M/m² (1.00× median, no clamp). Many regions previously forced onto `_clamped` data_source (confidence 0.55) should now stay on live data (confidence 0.85).
+
+**Brotli accept-encoding bug.** Both `base_scraper.py` and `news_scraper.py` advertised `Accept-Encoding: gzip, deflate, br` without having the `brotli` pip package installed. Sites preferring brotli (Antara was) returned bodies that `requests` couldn't decode, leaving raw brotli bytes that BeautifulSoup parsed as garbage HTML with 0 tags. **Antara had been silently returning 0 articles for at least two weeks.** Fix: drop `br` from accepted encodings. Verified: Antara now returns 25 articles per scrape (Bekasi rail, KAI, Menhub coverage flowing through).
 
 ### v2.16.3 (April 25, 2026) — sar_only Cap + Confidence Provenance Fix (Merak audit)
 
