@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.16.4 (Outlier-Resistant Price Mean + Brotli Bug Fix — Antara Revival)
+**Version:** 2.16.5 (Lamudi Slug Refresh: kulon-progo + gunung-kidul)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,10 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.16.5 (April 25, 2026) — Lamudi Slug Refresh
+
+`yogyakarta_kulon_progo_airport` had been hitting a Lamudi 404 every run (falling through to 99.co → benchmark fallback). Lamudi switched to hyphenated slugs: `kulonprogo` → `kulon-progo` and `gunungkidul` → `gunung-kidul`. Verified with smoke test — kulon-progo now extracts 10 listings at Rp 798K-892K/m². Probed all 31 known location_map slugs while in there; these were the only two stale ones.
 
 ### v2.16.4 (April 25, 2026) — Outlier-Resistant Price Mean + Brotli Bug Fix (Antara revival)
 

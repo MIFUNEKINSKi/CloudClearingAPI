@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.16.5] - 2026-04-25 - Lamudi Slug Refresh (kulon-progo, gunung-kidul)
+
+### Fixed
+- Lamudi switched to hyphenated slugs for `kulon-progo` and `gunung-kidul`; the no-hyphen forms now return a 145KB 404 template. `yogyakarta_kulon_progo_airport` had been hitting this 404 every run for an unknown duration.
+- Probed all 31 known `location_map` slugs; these were the only two stale ones. (`merak`/`purwokerto` are already aliased to `serang`/`banyumas` in the map — no fix needed.)
+
+### Verification
+- Smoke test: kulon-progo extracts 10 listings at Rp 798K-892K/m² (plausible peripheral-Yogya land near YIA airport).
+
 ## [2.16.4] - 2026-04-25 - Outlier-Resistant Price Mean + Brotli Bug Fix (Antara revival)
 
 ### Fixed

@@ -1,6 +1,6 @@
 # CloudClearingAPI Development Roadmap
 **Updated:** April 27, 2026
-**Current Version:** v2.16.4 (Outlier-Resistant Price Mean + Brotli Bug Fix — Antara Revival)
+**Current Version:** v2.16.5 (Lamudi Slug Refresh: kulon-progo + gunung-kidul)
 
 ---
 
@@ -170,6 +170,7 @@ How CloudClearingAPI maps to common DE job requirements:
 
 | Version | Date | Key Features |
 |---------|------|-------------|
+| **v2.16.5** | Apr 25, 2026 | Lamudi slug refresh: kulonprogo→kulon-progo + gunungkidul→gunung-kidul (was hitting 404 → 99.co rate-limit → benchmark fallback). Verified all 31 location_map slugs; only these 2 stale |
 | **v2.16.4** | Apr 25, 2026 | Outlier-resistant Lamudi mean (10×-median filter) — Jakarta sim: old avg Rp 2.21B/m² → new Rp 9.71M/m²; brotli accept-encoding silent failure fixed (Antara news 0→25 articles, was broken ≥2 weeks); cleared poisoned 0-article cache. Net: 22/65 outlier-clamped regions should return to live data confidence 0.85 |
 | **v2.16.3** | Apr 25, 2026 | Plug sar_only loophole: cap fused at 500K (was uncapped → Merak saturated activity at 38); fix `satellite_data_source` provenance so SAR-only mode triggers the 0.84 confidence cap (was passing 'optical' even when fusion fell to sar_only); stat-calc timeout 60s → 120s (2/65 regions hit the wall on Apr 27 19:15 run). Net effect on Merak: 61.7 → ~51.2 |
 | **v2.16.2** | Apr 25, 2026 | Drift tests cleaned (22 obsolete tier-only tests skipped, suite now 10/22/0); News supply expansion: Detik berita-ekonomi-bisnis + CNBC Indonesia (raw articles 46→79); AWS Terraform: 5 deprecated S3 lifecycle rules fixed (filter{} added) + recursive fmt; 99.co revived via cloudscraper (best-effort, ~1 region/run, breaker trips on first CF block) |
