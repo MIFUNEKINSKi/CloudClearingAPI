@@ -113,7 +113,14 @@ class LandPriceOrchestrator:
                 'data_source': 'static_benchmark',
             },
             'medan': {
-                'current_avg': 3_540_000,  # was 4,000,000 — refreshed -11.5%
+                # 2026-04-28 deep-research recalibration: deep-research report
+                # validates Kuala Namu industrial Rp 1.6M (3 institutional
+                # sources within ±15%); previous 3.54M was urban-Medan-Sunggal
+                # premium pricing routing badly to the corridor regions. Lake
+                # Toba interior also tracks ~Rp 1.5M. Drop to 1.6M as the
+                # bucket median.
+                # Sources: brighton.co.id (Mar 2026), masuksini.com Q1 2026.
+                'current_avg': 1_600_000,  # was 3,540,000 — research-validated -54.8%
                 'historical_appreciation': 10.0,
                 'market_liquidity': 'moderate',
                 'data_source': 'static_benchmark',
@@ -144,7 +151,15 @@ class LandPriceOrchestrator:
                 'data_source': 'static_benchmark',
             },
             'balikpapan': {
-                'current_avg': 3_705_000,  # was 3,800,000 — refreshed -2.5% (basically right)
+                # 2026-04-28 deep-research recalibration: report establishes
+                # Balikpapan industrial Rp 1.65-2.1M (Kariangau heavy/logistics)
+                # and residential Rp 1.99-2.5M (Selatan/Sepinggan). Mature,
+                # legally transparent market — high source agreement. Drop
+                # bucket to industrial midpoint Rp 1.9M; banjarmasin gets a
+                # region-specific override since this bucket also covered it
+                # incorrectly. Sources: 99.co/id/jual/tanah/kalimantan-timur
+                # (Apr 2026), CBRE/Savills institutional broker consensus.
+                'current_avg': 1_900_000,  # was 3,705,000 — research-validated -48.7%
                 'historical_appreciation': 10.0,
                 'market_liquidity': 'moderate',
                 'data_source': 'static_benchmark',
@@ -560,6 +575,70 @@ class LandPriceOrchestrator:
     # 5× the regional benchmark is almost certainly garbage.
     _PRICE_OUTLIER_MULTIPLIER = 5.0
 
+    # Per-region benchmark overrides. Use when the bucket-level benchmark routes
+    # a region wrong by 2×+ (e.g., Cikarang industrial belongs in the Jakarta
+    # bucket geographically, but Cikarang industrial land is Rp 2.6-3.0M while
+    # urban Jakarta is Rp 8M+). Source: 2026-04-28 deep-research report
+    # cross-checked across Bank Indonesia SHPR, MAPPI, BPS, CBRE/Savills/Cushman
+    # institutional broker reports, and 5 retail platforms (rumah.com, OLX,
+    # 99.co, Lamudi, fazwaz.id).
+    _REGION_SPECIFIC_BENCHMARKS = {
+        # Patimban Logistics Super-Hub — Smartpolitan/Kalijati formal estates +
+        # agrarian Pantura corridor. Rp 1.3-1.95M industrial range, midpoint.
+        'subang_patimban_megaport': 1_500_000,
+        # Cikarang Industrial — institutional broker consensus Rp 2.6-3.0M
+        # (CBRE/Savills/Cushman). Was hitting Jakarta bucket Rp 8.56M, causing
+        # Cikarang's correct Rp 2.5M extracted median to look "wrong" at 0.29×.
+        'cikarang_mega_industrial': 2_800_000,
+        'karawang_industrial_corridor': 2_600_000,  # Suryacipta belt anchor
+        # Cilegon-Serang petrochemical/heavy-industry belt. Industrial Rp 4.78-5M
+        # (incl. structures); raw land Rp 4.9M is the institutional anchor.
+        'serang_cilegon_industrial': 4_900_000,
+        'merak_port_corridor': 4_900_000,
+        # Anyer/Carita coastal resort strip — domestic-tourism economy, Rp 1.0M
+        # for residential/resort (industrial N/A — coastal zoning).
+        'anyer_carita_coastal': 1_000_000,
+        # Medan Kuala Namu corridor — Deli Serdang regency airport corridor.
+        # Rp 1.6M industrial baseline (already routed to deli-serdang slug
+        # since v2.16.6; benchmark now matches).
+        'medan_kuala_namu_corridor': 1_600_000,
+        # Bitung — port-side commercial Rp 1.8-3.5M; SEZ-side industrial is
+        # Rp 99-450k but a single benchmark for both is impossible (10× spread).
+        # Anchoring at port-commercial Rp 2.5M; SEZ side will trip the clamp,
+        # which is correct — the SEZ is its own sub-market and needs its own
+        # bbox region in regional_config.py to be scoreable.
+        'bitung_port_industrial': 2_500_000,
+        # Banjarmasin — South Kalimantan port; Rp 1.2-1.5M institutional range,
+        # midpoint Rp 1.35M. Was incorrectly routed to balikpapan bucket.
+        'banjarmasin_port_development': 1_350_000,
+        # Mandalika SEZ — USD-pegged tourism land, Rp 2.4-5M commercial, Rp 1.12-3.2M
+        # residential. Anchoring at residential midpoint Rp 2.0M; commercial
+        # plots will exceed but with high confidence (USD-pegged stability).
+        'lombok_mandalika_resort': 3_500_000,  # commercial midpoint
+        'lombok_senggigi_coast': 2_000_000,    # residential midpoint
+        # Batang Industrial Park — government-prioritized lower-cost manufacturing
+        # alternative to West Java. Rp 850k-1.6M industrial, Rp 1.6-2.0M
+        # residential near civic centers. Anchoring at industrial-mid Rp 1.2M.
+        'batang_industrial_sez': 1_200_000,
+    }
+
+    # Regions where retail-platform pricing data is too noisy/sparse/speculative
+    # to use as a clamp anchor. These bypass the 5× outlier check entirely;
+    # extracted prices are used as-is (with confidence appropriately set
+    # downstream by listing_count / clamped_data_source flags).
+    #
+    # 2026-04-28 deep-research finding: IKN/Sepaku is "fundamentally un-investable
+    # via automated retail screening methodologies" — platform aggregates show
+    # 40× source disagreement and systemic per-meter calculation errors. Labuan
+    # Bajo is off-market traded between hospitality conglomerates with single-
+    # data-point retail visibility. Both should be flagged for manual underwriter
+    # review rather than auto-scored.
+    _FROZEN_BENCHMARK_REGIONS = frozenset({
+        'nusantara_capital_core',
+        'nusantara_balikpapan_corridor',
+        'labuan_bajo_komodo_gateway',
+    })
+
     def _sanity_check_price(
         self,
         region_name: Optional[str],
@@ -573,10 +652,21 @@ class LandPriceOrchestrator:
         Returns (avg, med, was_clamped, reason). When the average is implausibly
         high we return the median (more outlier-resistant), or fall through to
         the benchmark if the median is also wild.
+
+        Frozen-benchmark regions bypass the clamp entirely — see
+        _FROZEN_BENCHMARK_REGIONS for rationale (IKN platform errors, Labuan
+        Bajo off-market trading, etc.).
         """
         if not region_name:
             return average, median, False, ""
-        benchmark = self._find_nearest_benchmark(region_name).get('current_avg', 0)
+        # Frozen regions: no clamp, no benchmark comparison. Caller should
+        # downgrade confidence via the listing_count / data_confidence path.
+        if region_name in self._FROZEN_BENCHMARK_REGIONS:
+            return average, median, False, ""
+        # Region-specific override > bucket benchmark.
+        benchmark = self._REGION_SPECIFIC_BENCHMARKS.get(region_name)
+        if benchmark is None:
+            benchmark = self._find_nearest_benchmark(region_name).get('current_avg', 0)
         if benchmark <= 0:
             return average, median, False, ""
         threshold = benchmark * self._PRICE_OUTLIER_MULTIPLIER
