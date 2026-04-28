@@ -21,6 +21,7 @@ import ee  # type: ignore[import]
 
 from .change_detector import ChangeDetector
 from .config import get_config
+from .liquidity_estimator import estimate_liquidity, liquidity_mismatch, liquidity_summary_label
 from .region_feasibility import get_feasibility  # Track A / Phase 2: acquisition-feasibility layer
 from .satellite_image_saver import SatelliteImageSaver
 # from .database import DatabaseManager  # Disabled due to SQLAlchemy compatibility issues
@@ -2024,6 +2025,12 @@ class AutomatedMonitor:
             # tradeable liquidity)? See src/core/region_feasibility.py.
             try:
                 feasibility = get_feasibility(region_name, tier=classify_region_tier(region_name))
+                # Empirical liquidity from archived listing counts (Phase 2
+                # polish). Static research tier stays primary; observed
+                # listings supplement and flag mismatch when research
+                # expectation is off by ≥2 levels.
+                liq = estimate_liquidity(region_name)
+                mismatch = liquidity_mismatch(feasibility.liquidity_tier, liq)
                 feasibility_dict = {
                     'flag': feasibility.actionability_flag,
                     'summary': feasibility.actionability_summary,
@@ -2033,6 +2040,15 @@ class AutomatedMonitor:
                     'liquidity_tier': feasibility.liquidity_tier,
                     'confidence': feasibility.confidence,
                     'notes': feasibility.notes,
+                    'observed_listings': {
+                        'n_samples': liq.n_samples,
+                        'avg': round(liq.avg_listings, 1),
+                        'median': liq.median_listings,
+                        'observed_tier': liq.observed_tier,
+                        'scraper_saturated': liq.scraper_saturated,
+                        'summary': liquidity_summary_label(liq),
+                    },
+                    'liquidity_mismatch_flag': mismatch,
                 }
             except Exception as e:
                 logger.debug(f"feasibility lookup failed for {region_name}: {e}")

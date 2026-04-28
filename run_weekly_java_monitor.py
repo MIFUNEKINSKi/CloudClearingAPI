@@ -326,6 +326,9 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
             )
             from src.core.region_feasibility import get_feasibility
             from src.core.market_config import classify_region_tier
+            from src.core.liquidity_estimator import (
+                estimate_liquidity, liquidity_mismatch, liquidity_summary_label,
+            )
 
             positions = load_positions()
             transitions_for_alerts = data.get('tier_transitions', {})
@@ -359,6 +362,8 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
                 for pnl in pnls:
                     p = pnl.position
                     feas = get_feasibility(p.region, tier=classify_region_tier(p.region))
+                    liq = estimate_liquidity(p.region)
+                    liq_mismatch = liquidity_mismatch(feas.liquidity_tier, liq)
                     body_lines.append(f"  {p.region.replace('_', ' ').title()}")
                     body_lines.append(
                         f"    Acquired {p.acquisition_date} · {p.size_m2:.0f} m² @ "
@@ -371,6 +376,9 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
                         f"annualized {pnl.annualized_return_pct:+.1f}%)"
                     )
                     body_lines.append(f"    {feas.actionability_summary}")
+                    body_lines.append(f"    Observed liquidity: {liquidity_summary_label(liq)}")
+                    if liq_mismatch:
+                        body_lines.append(f"    {liq_mismatch}")
                     for alert in pnl.alerts:
                         body_lines.append(f"    ⚠ {alert}")
                     if p.notes:
@@ -452,6 +460,12 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
                 feas = r.get('feasibility') or {}
                 if feas.get('summary'):
                     body_lines.append(f"     {feas['summary']}")
+                # Liquidity-mismatch flag (Phase 2 polish): when archived
+                # listing volume contradicts the research-validated tier by
+                # ≥2 levels, surface it so the investor doesn't trust a
+                # "high liquidity" tag against thin actual market data.
+                if feas.get('liquidity_mismatch_flag'):
+                    body_lines.append(f"     {feas['liquidity_mismatch_flag']}")
                 # Correlation hint (Phase 3): if the investor already holds a
                 # region in this candidate's bucket, surface that — adding the
                 # candidate is correlation, not diversification.
