@@ -312,6 +312,73 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
             )
         body_lines.append("")
 
+        # --- YOUR PORTFOLIO (Phase 3) — only renders when positions.jsonl exists ---
+        # The investor's actual book is more actionable than a leaderboard. We
+        # show owned positions first with current value vs cost basis, alerts
+        # (price decline, liquidity risk, tier downgrade), and feasibility flag
+        # so this section is the first thing the investor sees.
+        positions = []
+        try:
+            from src.core.portfolio_manager import (
+                load_positions,
+                compute_position_pnl,
+                position_tier_downgrade_alert,
+            )
+            from src.core.region_feasibility import get_feasibility
+            from src.core.market_config import classify_region_tier
+
+            positions = load_positions()
+            transitions_for_alerts = data.get('tier_transitions', {})
+            downgrades_for_alerts = transitions_for_alerts.get('downgrades', [])
+
+            if positions:
+                pnl_total_idr = 0.0
+                cost_total_idr = sum(p.total_cost for p in positions)
+                pnls = []
+                for p in positions:
+                    pnl = compute_position_pnl(p)
+                    pnls.append(pnl)
+                    pnl_total_idr += pnl.unrealized_pnl_idr
+                    # Add tier-downgrade alert if this position tripped a downgrade
+                    td = position_tier_downgrade_alert(p, downgrades_for_alerts)
+                    if td:
+                        pnl.alerts.append(td)
+
+                book_pnl_pct = (pnl_total_idr / cost_total_idr * 100) if cost_total_idr > 0 else 0
+                alert_count = sum(len(p.alerts) for p in pnls)
+                body_lines.append(
+                    f"YOUR PORTFOLIO — {len(positions)} active position(s), "
+                    f"{alert_count} alert(s)"
+                )
+                body_lines.append("-" * 55)
+                body_lines.append(
+                    f"  Book value: Rp {cost_total_idr + pnl_total_idr:,.0f}  "
+                    f"({pnl_total_idr:+,.0f} unrealized, {book_pnl_pct:+.1f}%)"
+                )
+                body_lines.append("")
+                for pnl in pnls:
+                    p = pnl.position
+                    feas = get_feasibility(p.region, tier=classify_region_tier(p.region))
+                    body_lines.append(f"  {p.region.replace('_', ' ').title()}")
+                    body_lines.append(
+                        f"    Acquired {p.acquisition_date} · {p.size_m2:.0f} m² @ "
+                        f"Rp {p.cost_per_m2:,.0f}/m² (Rp {p.total_cost:,.0f} basis, "
+                        f"{p.title_type})"
+                    )
+                    body_lines.append(
+                        f"    Now: Rp {pnl.current_price_per_m2:,.0f}/m² · "
+                        f"P&L {pnl.unrealized_pnl_idr:+,.0f} ({pnl.unrealized_pnl_pct:+.1f}%, "
+                        f"annualized {pnl.annualized_return_pct:+.1f}%)"
+                    )
+                    body_lines.append(f"    {feas.actionability_summary}")
+                    for alert in pnl.alerts:
+                        body_lines.append(f"    ⚠ {alert}")
+                    if p.notes:
+                        body_lines.append(f"    Note: {p.notes}")
+                    body_lines.append("")
+        except Exception as e:
+            logger.debug(f"Portfolio section skipped: {e}")
+
         # --- Tier transitions vs prior run (the "early signal" section) ---
         transitions = data.get('tier_transitions', {})
         upgrades = transitions.get('upgrades', [])
@@ -385,6 +452,17 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
                 feas = r.get('feasibility') or {}
                 if feas.get('summary'):
                     body_lines.append(f"     {feas['summary']}")
+                # Correlation hint (Phase 3): if the investor already holds a
+                # region in this candidate's bucket, surface that — adding the
+                # candidate is correlation, not diversification.
+                try:
+                    from src.core.portfolio_manager import correlation_hint as _corr_hint
+                    region_id = r.get('region', '')
+                    hint = _corr_hint(region_id, positions) if positions else None
+                    if hint:
+                        body_lines.append(f"     {hint}")
+                except Exception:
+                    pass
                 body_lines.append(f"     Entry Price: Rp {price:,.0f}/m² → Rp {future_val:,.0f}/m² (projected)")
                 body_lines.append(f"     ROI: 3Y {land_roi_3y*100:.1f}% | 5Y {land_roi_5y*100:.1f}%")
                 if entry_cost:

@@ -1,0 +1,22 @@
+# CloudClearingAPI Position Log — Example
+#
+# Copy this file to data/positions.jsonl and edit to reflect your actual
+# acquired positions. The portfolio section of the weekly email will only
+# render if data/positions.jsonl exists and has at least one entry.
+#
+# Format: one JSON object per line. Lines starting with # are ignored.
+#
+# Required fields:
+#   region           — must match a region from src/core/market_config.py
+#                      (e.g., "cikarang_mega_industrial")
+#   size_m2          — plot size in square meters
+#   acquisition_date — ISO 8601 date (YYYY-MM-DD)
+#   cost_per_m2      — IDR per square meter at acquisition (your basis)
+#
+# Optional fields:
+#   title_type — "HGB" | "leasehold" | "hak_pakai" | "SHM_nominee"
+#   notes      — free-form text, surfaced in the portfolio section
+#
+# Examples (delete and replace with your actual positions):
+{"region": "cikarang_mega_industrial", "size_m2": 500, "acquisition_date": "2025-12-01", "cost_per_m2": 2300000, "title_type": "HGB", "notes": "Lippo Cikarang industrial plot, PT PMA holding"}
+{"region": "lombok_senggigi_coast", "size_m2": 800, "acquisition_date": "2024-06-15", "cost_per_m2": 1500000, "title_type": "leasehold", "notes": "30-year leasehold, beachfront"}
