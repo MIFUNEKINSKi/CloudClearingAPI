@@ -9,8 +9,10 @@ Coordinates multiple scrapers with priority logic:
 3. Fallback to static regional benchmarks
 """
 
+import json
 import logging
-from typing import Dict, Any, Optional, List
+import statistics
+from typing import Dict, Any, Optional, List, Tuple
 from pathlib import Path
 
 from .base_scraper import ScrapeResult
@@ -622,6 +624,19 @@ class LandPriceOrchestrator:
         'batang_industrial_sez': 1_200_000,
     }
 
+    # Per-region price-history settings for the history-anchored clamp.
+    # When a region has accumulated enough price-history samples, the region's
+    # own median-of-medians becomes the live clamp anchor (more responsive
+    # than a static benchmark). The static benchmark stays as fallback for
+    # regions without history and as a sanity bound (history is only used
+    # when within 0.5–3× of static — protects against a region that's been
+    # mis-routed for weeks producing a confidently-wrong history).
+    _PRICE_HISTORY_DIR = Path("output/scraper_cache/price_history")
+    _HISTORY_MIN_SAMPLES = 3       # need at least this many samples to trust history
+    _HISTORY_RECENT_WINDOW = 8     # take the last N samples for median-of-medians
+    _HISTORY_LISTING_FLOOR = 3     # ignore samples with fewer than N listings (noisy)
+    _HISTORY_STATIC_BAND = (0.5, 3.0)  # history must lie within this band of static
+
     # Regions where retail-platform pricing data is too noisy/sparse/speculative
     # to use as a clamp anchor. These bypass the 5× outlier check entirely;
     # extracted prices are used as-is (with confidence appropriately set
@@ -639,6 +654,82 @@ class LandPriceOrchestrator:
         'labuan_bajo_komodo_gateway',
     })
 
+    def _get_history_anchor(self, region_name: str) -> Optional[Tuple[float, int]]:
+        """Median-of-medians from this region's recent price-history JSONL.
+
+        Reads ``output/scraper_cache/price_history/<region>.jsonl``, takes
+        the last ``_HISTORY_RECENT_WINDOW`` samples with at least
+        ``_HISTORY_LISTING_FLOOR`` listings each, and returns
+        (median_of_medians, n_samples). Returns None if the region has
+        fewer than ``_HISTORY_MIN_SAMPLES`` reliable samples.
+
+        Median-of-medians (vs mean-of-medians) is doubly robust: each weekly
+        median already filtered listing-level outliers (v2.16.4 fix); the
+        outer median absorbs week-level shocks (e.g., one bad scrape with
+        bias toward a single neighborhood).
+        """
+        history_file = self._PRICE_HISTORY_DIR / f"{region_name}.jsonl"
+        if not history_file.exists():
+            return None
+        medians: List[float] = []
+        try:
+            with open(history_file) as fh:
+                for line in fh:
+                    try:
+                        rec = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    m = rec.get('median_price_m2') or 0
+                    n = rec.get('listing_count') or 0
+                    if m > 0 and n >= self._HISTORY_LISTING_FLOOR:
+                        medians.append(float(m))
+        except OSError:
+            return None
+        if len(medians) < self._HISTORY_MIN_SAMPLES:
+            return None
+        recent = medians[-self._HISTORY_RECENT_WINDOW:]
+        return statistics.median(recent), len(recent)
+
+    def _resolve_clamp_anchor(
+        self, region_name: str
+    ) -> Tuple[Optional[float], str]:
+        """Return (anchor_price, source_label) for the clamp comparison.
+
+        Resolution order:
+          1. Frozen → (None, 'frozen')      [signals: skip clamp entirely]
+          2. History median (≥3 samples, within 0.5–3× of static benchmark)
+          3. Region-specific override (research-validated, see _REGION_SPECIFIC_BENCHMARKS)
+          4. Bucket benchmark
+          5. (None, 'unmapped')             [no anchor available]
+
+        The 0.5–3× sanity band on history protects against a region whose
+        history is itself wrong (mis-routed slug for weeks → consistently-low
+        history that would now be self-validating). Research benchmark wins
+        when history diverges by more than a factor of 3.
+        """
+        if region_name in self._FROZEN_BENCHMARK_REGIONS:
+            return None, 'frozen'
+
+        static = self._REGION_SPECIFIC_BENCHMARKS.get(region_name)
+        static_kind = 'region-override' if static else None
+        if static is None:
+            static = self._find_nearest_benchmark(region_name).get('current_avg', 0)
+            static_kind = 'bucket' if static else None
+
+        history = self._get_history_anchor(region_name)
+        if history and static:
+            anchor, n = history
+            ratio = anchor / static
+            lo, hi = self._HISTORY_STATIC_BAND
+            if lo <= ratio <= hi:
+                return anchor, f'history (n={n}, {ratio:.2f}× static)'
+        if history and not static:
+            anchor, n = history
+            return anchor, f'history (n={n}, no static)'
+        if static:
+            return float(static), static_kind
+        return None, 'unmapped'
+
     def _sanity_check_price(
         self,
         region_name: Optional[str],
@@ -653,21 +744,15 @@ class LandPriceOrchestrator:
         high we return the median (more outlier-resistant), or fall through to
         the benchmark if the median is also wild.
 
-        Frozen-benchmark regions bypass the clamp entirely — see
-        _FROZEN_BENCHMARK_REGIONS for rationale (IKN platform errors, Labuan
-        Bajo off-market trading, etc.).
+        Anchor resolution: history-median (≥3 samples) > region-specific
+        override > bucket benchmark; frozen regions bypass clamp entirely.
+        See _resolve_clamp_anchor for the full chain.
         """
         if not region_name:
             return average, median, False, ""
-        # Frozen regions: no clamp, no benchmark comparison. Caller should
-        # downgrade confidence via the listing_count / data_confidence path.
-        if region_name in self._FROZEN_BENCHMARK_REGIONS:
-            return average, median, False, ""
-        # Region-specific override > bucket benchmark.
-        benchmark = self._REGION_SPECIFIC_BENCHMARKS.get(region_name)
-        if benchmark is None:
-            benchmark = self._find_nearest_benchmark(region_name).get('current_avg', 0)
-        if benchmark <= 0:
+        benchmark, anchor_source = self._resolve_clamp_anchor(region_name)
+        if benchmark is None or benchmark <= 0:
+            # Frozen or unmapped — return as-is, no clamp
             return average, median, False, ""
         threshold = benchmark * self._PRICE_OUTLIER_MULTIPLIER
         if average <= threshold:
@@ -675,19 +760,20 @@ class LandPriceOrchestrator:
         # Average is implausible. Try median first.
         if 0 < median <= threshold:
             reason = (
-                f"avg Rp {average:,.0f}/m² is {average / benchmark:.1f}× benchmark "
-                f"(Rp {benchmark:,.0f}/m²) for {region_name} — using median Rp {median:,.0f}/m² "
-                f"({listing_count} listings, source={source})"
+                f"avg Rp {average:,.0f}/m² is {average / benchmark:.1f}× anchor "
+                f"(Rp {benchmark:,.0f}/m², from {anchor_source}) for {region_name} — "
+                f"using median Rp {median:,.0f}/m² ({listing_count} listings, source={source})"
             )
             logger.warning(f"⚠️ Price outlier clamped: {reason}")
             return median, median, True, reason
-        # Both average and median are wild — fall back to the benchmark.
+        # Both average and median are wild — fall back to the anchor.
         reason = (
             f"avg Rp {average:,.0f}/m² AND median Rp {median:,.0f}/m² both exceed "
-            f"{self._PRICE_OUTLIER_MULTIPLIER}× benchmark Rp {benchmark:,.0f}/m² for "
-            f"{region_name} — clamping to benchmark ({listing_count} listings, source={source})"
+            f"{self._PRICE_OUTLIER_MULTIPLIER}× anchor Rp {benchmark:,.0f}/m² (from "
+            f"{anchor_source}) for {region_name} — clamping to anchor "
+            f"({listing_count} listings, source={source})"
         )
-        logger.error(f"🚨 Price outlier — using benchmark: {reason}")
+        logger.error(f"🚨 Price outlier — using anchor: {reason}")
         return float(benchmark), float(benchmark), True, reason
 
     def _convert_scrape_result_to_dict(self, result: ScrapeResult, region_name: Optional[str] = None) -> Dict[str, Any]:
