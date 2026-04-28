@@ -1,7 +1,7 @@
 # CloudClearingAPI Development Roadmap
 
 **Updated:** April 28, 2026
-**Current Version:** v2.16.6 (News Dedup + Medan Corridor Slug Override)
+**Current Version:** v2.16.7 (Benchmark Recalibration from 2026-04-28 Deep Research)
 
 ---
 
@@ -61,7 +61,7 @@ If the system can't be trusted to surface real opportunities, none of Track B ma
 | Lamudi slug refresh (kulon-progo, gunung-kidul) | shipped v2.16.5 | ✅ |
 | News title-bigram dedup | shipped v2.16.6 | ✅ |
 | **Per-region history-anchored outlier clamp** (use region's own 4-week median when ≥4 samples; bucket benchmark only as fallback) | 4-6h | 🔲 P0 |
-| **Benchmark recalibration** — pending external research; per-region not just per-bucket given 10–41× spreads | 4-8h | 🔲 P0 |
+| **Benchmark recalibration** from 2026-04-28 deep-research report — bucket updates (medan/balikpapan), 11 region-specific overrides, 3 frozen regions | shipped v2.16.7 | ✅ |
 | **Forecast log + backtest harness** — append top-5 BUYs each week to `data/forecast_log.jsonl`; build a job that revisits N-week-old forecasts vs current price-history medians for the same regions and reports hit-rate by tier | 8-12h | 🔲 P0 |
 | Region routing for stuck regions (medan_belawan_port, ambon, papua) | 4-8h | 🔲 P1 |
 
@@ -143,6 +143,7 @@ How CloudClearingAPI maps to common DE-job requirements. Track B phases close mo
 
 | Version | Date | Key Features |
 |---|---|---|
+| **v2.16.7** | Apr 28, 2026 | Benchmark recalibration from 2026-04-28 deep-research report. Bucket updates: medan Rp 3.54M→1.6M (-54.8%), balikpapan Rp 3.71M→1.9M (-48.7%). 11 region-specific overrides (cikarang Rp 2.8M, serang/cilegon Rp 4.9M, anyer Rp 1.0M, mandalika Rp 3.5M, batang Rp 1.2M, etc.). 3 frozen regions (nusantara_capital_core, nusantara_balikpapan_corridor, labuan_bajo_komodo_gateway) bypass clamp entirely per research finding that platform aggregates show 40× source disagreement |
 | **v2.16.6** | Apr 25, 2026 | News dedup via title-bigram overlap (≥2 shared bigrams = dup); drops 4/9 Bekasi rail-accident articles. Medan Kuala Namu corridor → `deli-serdang` slug (median Rp 18.5M→9.9M, escapes 5× outlier clamp). A/B-tested 6 problem regions; only Medan benefited |
 | **v2.16.5** | Apr 25, 2026 | Lamudi slug refresh: kulonprogo→kulon-progo + gunungkidul→gunung-kidul (was hitting 404 → 99.co rate-limit → benchmark fallback). Verified all 31 location_map slugs |
 | **v2.16.4** | Apr 25, 2026 | Outlier-resistant Lamudi mean (10×-median filter) — Jakarta sim: old avg Rp 2.21B/m² → new Rp 9.71M/m²; brotli accept-encoding silent failure fixed (Antara news 0→25 articles, was broken ≥2 weeks). Net: 22/65 outlier-clamped regions should return to live data confidence 0.85 |

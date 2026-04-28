@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.16.6 (News Dedup + Medan Corridor Slug Override)
+**Version:** 2.16.7 (Benchmark Recalibration from 2026-04-28 Deep Research)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,23 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.16.7 (April 28, 2026) — Benchmark Recalibration from Deep-Research Report
+
+A 2026-04-28 deep-research report cross-checked Bank Indonesia SHPR Q3 2025, MAPPI/BPS, CBRE/Savills/Cushman institutional broker consensus, and 5 retail platforms across 13 target regions. Three concrete changes:
+
+**Bucket benchmarks** (`scraper_orchestrator.regional_benchmarks`):
+- medan: Rp 3.54M → **1.6M** (-54.8%) — was urban-Medan-Sunggal pricing routing wrong to Kuala Namu corridor. 3 institutional sources within ±15%.
+- balikpapan: Rp 3.71M → **1.9M** (-48.7%) — research establishes Kariangau industrial Rp 1.65-2.1M.
+
+**`_REGION_SPECIFIC_BENCHMARKS`** override map for regions where bucket routing was off by 2×+:
+- `subang_patimban_megaport` → Rp 1.5M (was 5.85M); `cikarang_mega_industrial` → Rp 2.8M (was 8.56M); `karawang_industrial_corridor` → Rp 2.6M; `serang_cilegon_industrial` / `merak_port_corridor` → Rp 4.9M; `anyer_carita_coastal` → Rp 1.0M; `medan_kuala_namu_corridor` → Rp 1.6M; `bitung_port_industrial` → Rp 2.5M; `banjarmasin_port_development` → Rp 1.35M; `lombok_mandalika_resort` → Rp 3.5M; `lombok_senggigi_coast` → Rp 2.0M; `batang_industrial_sez` → Rp 1.2M.
+
+**`_FROZEN_BENCHMARK_REGIONS`** — bypass clamp entirely (retail-platform data fundamentally unreliable per research):
+- `nusantara_capital_core` / `nusantara_balikpapan_corridor` — IKN platform aggregates show 40× source disagreement and systemic per-meter calculation errors. Manual underwriter review only.
+- `labuan_bajo_komodo_gateway` — KSPN-tier land trades off-market between hospitality conglomerates; single-data-point retail visibility.
+
+Smoke-test against actual Apr 27 run extracts: Cikarang Rp 2.5M extracted → now PASS (was clamped to 8.56M); Serang/Cilegon Rp 4.5M extracted → now PASS (was clamped to 4.0M); Bitung Rp 616K extracted → now PASS (SEZ-side accepted). This is Track A / Phase 1 work per the rewritten roadmap.
 
 ### v2.16.6 (April 25, 2026) — News Dedup + Medan Corridor Slug Override
 

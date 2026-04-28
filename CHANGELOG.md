@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.16.7] - 2026-04-28 - Benchmark Recalibration from Deep-Research Report
+
+### Recalibrated
+- **medan bucket**: Rp 3.54M → 1.6M (-54.8%); 3 institutional sources within ±15%.
+- **balikpapan bucket**: Rp 3.71M → 1.9M (-48.7%); CBRE/Savills/Cushman consensus.
+
+### Added (`_REGION_SPECIFIC_BENCHMARKS`)
+- 11 region-level overrides for cases where bucket routing was off by 2×+. Notable: `cikarang_mega_industrial` Rp 2.8M (was Jakarta 8.56M); `serang_cilegon_industrial` / `merak_port_corridor` Rp 4.9M; `anyer_carita_coastal` Rp 1.0M; `lombok_mandalika_resort` Rp 3.5M; `batang_industrial_sez` Rp 1.2M.
+
+### Added (`_FROZEN_BENCHMARK_REGIONS`)
+- 3 regions bypass the clamp entirely: `nusantara_capital_core`, `nusantara_balikpapan_corridor`, `labuan_bajo_komodo_gateway`. Research finding: retail-platform data here is "fundamentally un-investable via automated retail screening methodologies" — IKN shows 40× source disagreement; Labuan Bajo trades off-market.
+
+### Verified
+- Smoke-test against Apr 27 run extracts: Cikarang Rp 2.5M PASS (was clamped 8.56M), Serang/Cilegon Rp 4.5M PASS (was 4.0M), Bitung Rp 616K PASS (SEZ-side now accepted), Banjarmasin Rp 17M still clamps to research Rp 1.35M.
+- Tests: 26 passed, 22 skipped, 0 failed.
+
 ## [2.16.6] - 2026-04-25 - News Dedup + Medan Corridor Slug Override
 
 ### Added
