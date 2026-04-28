@@ -152,6 +152,9 @@ class PDFReportGenerator:
         # Add YOUR PORTFOLIO section (only renders if data/positions.jsonl exists)
         story.extend(self._build_portfolio_section(data))
 
+        # Add PREDICTION REVIEW section (v2.18.0) — closes the feedback loop
+        story.extend(self._build_prediction_review_section(data))
+
         # Add monitoring results
         story.extend(self._build_monitoring_results(data))
         
@@ -391,6 +394,159 @@ class PDFReportGenerator:
         ]))
         story.append(table)
         story.append(Spacer(1, 15))
+        return story
+
+    def _build_prediction_review_section(self, data: Dict[str, Any]) -> List:
+        """Build the Prediction Review section — closes the feedback loop.
+
+        Reads forecast_log.jsonl + run-archive forecasts via prediction_tracker,
+        compares each anchor period's forecasts to current price-history.
+        Renders 4w / 8w / 12w windows; gracefully handles sparse data with
+        an honest "tracking begins X" placeholder.
+
+        v2.18.0 — adds the "is the system actually predictive?" answer to the
+        permanent-reference PDF, not just the email.
+        """
+        story: List = []
+        try:
+            from .prediction_tracker import (
+                load_all_forecasts, build_review, _NOISE_FLOOR_DATE,
+            )
+        except Exception:
+            return story
+
+        forecasts = load_all_forecasts()
+        if not forecasts:
+            return story
+
+        story.append(Paragraph("📊 PREDICTION REVIEW — How past calls are tracking",
+                               self.styles['SectionHeader']))
+        story.append(Paragraph(
+            "<font size='8'><i>Compares past forecasts against today's price-history "
+            "extracts. Flags listing-pool shifts (coverage change rather than market move). "
+            "Anchors before 2026-04-25 predate the v2.16.x scoring fixes — deltas in those "
+            "windows reflect scraper recalibration as much as real market movement.</i></font>",
+            self.styles['Normal']
+        ))
+        story.append(Spacer(1, 8))
+
+        cell = ParagraphStyle('PredCell', parent=self.styles['Normal'], fontSize=8, leading=10)
+        header = ParagraphStyle('PredHeader', parent=self.styles['Normal'], fontSize=8, leading=10, textColor=colors.white)
+
+        for target_weeks, tol in [(4, 1.0), (8, 1.5), (12, 2.0)]:
+            review = build_review(forecasts, target_age_weeks=target_weeks, tolerance_weeks=tol)
+            if review is None:
+                from datetime import timedelta
+                target_date = (_NOISE_FLOOR_DATE + timedelta(weeks=target_weeks)).date().isoformat()
+                story.append(Paragraph(
+                    f"<b>{target_weeks} weeks ago:</b> ⏳ <i>Insufficient post-fix history. "
+                    f"Becomes meaningful ~{target_date} (when 4+ weeks of post-2026-04-25 history accumulate).</i>",
+                    self.styles['Normal']
+                ))
+                story.append(Spacer(1, 4))
+                continue
+
+            anchor_date = review.anchor_run_timestamp.date().isoformat()
+            header_text = (f"<b>{review.anchor_age_weeks:.0f} weeks ago "
+                          f"(anchor {anchor_date}):</b>")
+            if review.pre_noise_floor:
+                header_text += " <i>⚠ pre-fix anchor — see caveat above</i>"
+            story.append(Paragraph(header_text, self.styles['Normal']))
+
+            # Table: Region | Tier | Anchor Price | Now | Realized | vs Predicted | Status
+            rows = [[
+                Paragraph('<b>Region</b>', header),
+                Paragraph('<b>Tier</b>', header),
+                Paragraph('<b>Then Rp/m²</b>', header),
+                Paragraph('<b>Now Rp/m²</b>', header),
+                Paragraph('<b>Realized</b>', header),
+                Paragraph('<b>vs Predicted</b>', header),
+                Paragraph('<b>Status</b>', header),
+            ]]
+            tier_order = {'STRONG_BUY': 0, 'BUY': 1, 'WATCH': 2}
+            sorted_rzs = sorted(
+                review.realizations,
+                key=lambda r: (tier_order.get(r.forecast.tier, 99), -r.realized_return_pct),
+            )[:9]  # cap PDF table at 9 to fit on a page
+            for rz in sorted_rzs:
+                f = rz.forecast
+                # Status icon
+                if rz.listing_shift_flag:
+                    icon = '⚠'
+                elif rz.on_track == 'ahead':
+                    icon = '🔥'
+                elif rz.on_track == 'on_track':
+                    icon = '✅'
+                elif rz.on_track == 'lagging':
+                    icon = '⏳'
+                else:
+                    icon = '✅' if rz.directional_correct else '❌'
+
+                color = ('green' if rz.realized_return_pct > 0 else
+                         'red' if rz.realized_return_pct < 0 else 'black')
+                # Cap display when annualized is absurd
+                if abs(rz.realized_annualized_pct) > 500:
+                    realized_text = f'<font color="{color}">{rz.realized_return_pct:+.1f}%<br/><i>(ann saturated)</i></font>'
+                else:
+                    realized_text = f'<font color="{color}">{rz.realized_return_pct:+.1f}%<br/>(ann {rz.realized_annualized_pct:+.1f}%)</font>'
+                if rz.prorated_predicted_pct is not None:
+                    pred_text = f'+{rz.prorated_predicted_pct:.1f}%'
+                else:
+                    pred_text = 'n/a'
+                shift_note = ' ⚠*' if rz.listing_shift_flag else ''
+                rows.append([
+                    Paragraph(f.region.replace('_', ' ').title() + shift_note, cell),
+                    Paragraph(f.tier, cell),
+                    Paragraph(f'Rp {f.price_at_forecast:,.0f}', cell),
+                    Paragraph(f'Rp {rz.current_price:,.0f}', cell),
+                    Paragraph(realized_text, cell),
+                    Paragraph(pred_text, cell),
+                    Paragraph(icon + ' ' + (rz.on_track or '-'), cell),
+                ])
+            col_widths = [1.4*inch, 0.65*inch, 0.85*inch, 0.85*inch, 1.0*inch, 0.65*inch, 0.85*inch]
+            table = Table(rows, colWidths=col_widths, repeatRows=1)
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4A5568')),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('FONTSIZE', (0, 0), (-1, -1), 7),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.HexColor('#F7FAFC'), colors.white]),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
+                ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+                ('TOPPADDING', (0, 0), (-1, -1), 3),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ]))
+            story.append(table)
+
+            # Aggregate metrics
+            agg_lines = []
+            if review.tier_means:
+                tier_str = ' / '.join(
+                    f'<b>{t}</b> {v:+.1f}%' for t, v in review.tier_means.items())
+                agg_lines.append(f"Tier means (clean only): {tier_str}")
+                if 'STRONG_BUY' in review.tier_means and 'WATCH' in review.tier_means:
+                    sb = review.tier_means['STRONG_BUY']
+                    w = review.tier_means['WATCH']
+                    if sb > w:
+                        agg_lines.append(f'<font color="green">✅ Tier integrity preserved (STRONG_BUY {sb:+.1f}% > WATCH {w:+.1f}%)</font>')
+                    else:
+                        agg_lines.append(f'<font color="red">❌ Tier integrity inverted — review scoring weights</font>')
+            if review.hit_rate:
+                positive, total = review.hit_rate
+                pct = 100.0 * positive / total if total else 0
+                agg_lines.append(
+                    f"Hit rate: <b>{positive}/{total}</b> STRONG_BUY+BUY moved positively "
+                    f"(<b>{pct:.0f}%</b>)"
+                )
+            if review.excluded_listing_shifted or review.excluded_no_history:
+                agg_lines.append(
+                    f"<i>Excluded: {review.excluded_listing_shifted} listing-shifted, "
+                    f"{review.excluded_no_history} no current price history</i>"
+                )
+            for line in agg_lines:
+                story.append(Paragraph(f"<font size='8'>{line}</font>", self.styles['Normal']))
+            story.append(Spacer(1, 10))
+
         return story
 
     def _build_monitoring_results(self, data: Dict[str, Any]) -> List:

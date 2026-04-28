@@ -413,6 +413,18 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
                     )
             body_lines.append("")
 
+        # --- PREDICTION REVIEW (v2.18.0) — closes the feedback loop ---
+        # Reads forecast_log.jsonl + run archive, picks anchor runs at 4w/8w/12w
+        # ages, compares each anchor's forecasts against current price-history.
+        # Renders empty/sparse gracefully (forecast log writer activated 2026-04-28).
+        try:
+            from src.core.prediction_tracker import build_full_review_section
+            review_lines = build_full_review_section()
+            if review_lines:
+                body_lines.extend(review_lines)
+        except Exception as e:
+            logger.debug(f"Prediction review skipped: {e}")
+
         # --- Top BUY Opportunities (STRONG_BUY first, then BUY) ---
         priority_recs = strong_buy + buy
         if priority_recs:
@@ -937,6 +949,22 @@ async def main(all_regions: bool = False, auto_confirm: bool = False):
                     region = entry.get('region') or entry.get('region_name')
                     if not region:
                         continue
+                    # v2.18.0: enriched forecast schema. Adds the predicted
+                    # ROI numbers (so prediction_tracker can compare predicted
+                    # vs realized in the weekly Prediction Review section)
+                    # plus feasibility flag and weeks-at-tier streak so we
+                    # can filter out frozen-benchmark regions and contextualize
+                    # whether a "miss" was a fresh signal or a long-running call.
+                    fp = entry.get('financial_projection')
+                    if hasattr(fp, 'land_only_roi_3yr'):
+                        roi_3yr = getattr(fp, 'land_only_roi_3yr', None) or getattr(fp, 'projected_roi_3yr', None)
+                        roi_5yr = getattr(fp, 'land_only_roi_5yr', None) or getattr(fp, 'projected_roi_5yr', None)
+                    elif isinstance(fp, dict):
+                        roi_3yr = fp.get('land_only_roi_3yr', fp.get('projected_roi_3yr'))
+                        roi_5yr = fp.get('land_only_roi_5yr', fp.get('projected_roi_5yr'))
+                    else:
+                        roi_3yr = roi_5yr = None
+                    feas = entry.get('feasibility') or {}
                     picks.append({
                         'run_timestamp': run_ts,
                         'tier': tier_label,
@@ -947,6 +975,12 @@ async def main(all_regions: bool = False, auto_confirm: bool = False):
                         'satellite_changes': entry.get('satellite_changes'),
                         'data_sources': (entry.get('data_sources') or {}).get('satellite'),
                         'market_clamped': (entry.get('data_sources') or {}).get('market', '').endswith('_clamped'),
+                        # v2.18.0 enrichment for prediction tracking:
+                        'predicted_roi_3yr': roi_3yr,
+                        'predicted_roi_5yr': roi_5yr,
+                        'feasibility_flag': feas.get('flag'),
+                        'feasibility_path': feas.get('ownership_pathway'),
+                        'weeks_at_tier': entry.get('weeks_at_tier'),
                     })
             log_path = forecast_dir / 'forecast_log.jsonl'
             with open(log_path, 'a') as f:
