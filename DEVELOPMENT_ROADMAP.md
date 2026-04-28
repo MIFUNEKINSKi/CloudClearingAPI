@@ -1,7 +1,7 @@
 # CloudClearingAPI Development Roadmap
 
 **Updated:** April 28, 2026
-**Current Version:** v2.16.9 (Forecast Log + Backtest Harness — Phase 1 Mandatory Items Complete)
+**Current Version:** v2.16.10 (Phase 2: Acquisition Feasibility Layer)
 
 ---
 
@@ -69,18 +69,20 @@ Status: all 8 mandatory items shipped (v2.16.3 through v2.16.9). The harness for
 
 **Phase 1 done when:** the weekly email STRONG_BUY list, replayed against 4–8 weeks of post-fact price history, shows tier separation (STRONG_BUY > BUY > WATCH > PASS in cumulative price movement). Until that's measurable, "see opportunities early" is unverified.
 
-## Phase 2 — Acquisition feasibility
+## Phase 2 — Acquisition feasibility ✅ STATIC LAYER SHIPPED (2026-04-28, v2.16.10)
 
-**Why:** A BUY signal in a region the investor cannot legally close on, or one that's on protected forest / future-PSN right-of-way, is wasted alert weight. Indonesia restricts foreign ownership (`hak milik` is closed; workable paths are `hak guna bangunan`, leasehold via PT PMA, or local nominee); zoning (RTRW) classifies parcels as residential/commercial/industrial/agricultural/conservation. Currently the system scores all 65 regions as if they're equally actionable. They aren't.
+**Why:** A BUY signal in a region the investor cannot legally close on, or one that's on protected forest / future-PSN right-of-way, is wasted alert weight.
 
-| Task | Effort | Notes |
+| Task | Effort | Status |
 |---|---|---|
-| Per-region ownership-pathway lookup (foreign-OK vs nominee vs no-go) | 4-8h | Static config; sourced from BKPM + property-lawyer references |
-| RTRW zoning class per region | 4-8h | KKPR / OSS RTRW APIs are public; bbox-level lookup is enough at first |
-| Transactions-per-month liquidity estimate | 4-8h | Approximated from Lamudi listing turnover + BPN transaction reports if available |
-| Surface feasibility flags in PDF + email (🚫 / ⚠️ / ✅) | 2-4h | One column in the decision matrix; one tag per BUY in the email |
+| Per-region ownership-pathway lookup (foreign-OK vs nominee vs no-go) | shipped v2.16.10 | ✅ |
+| RTRW zoning class per region (static, deep-research-validated for 13 cases + inferred for 14) | shipped v2.16.10 | ✅ |
+| Transactions-per-month liquidity estimate (tier-based proxy) | shipped v2.16.10 | ✅ |
+| Surface feasibility flags in PDF + email (🚫 / ⚠️ / ✅) | shipped v2.16.10 (email) | ✅ email; PDF picks up automatically via JSON object |
+| **Live RTRW API integration** — replace static profiles with bbox-lookup against the OSS KKPR API | 8-12h | 🔲 P2 (static is fine for now) |
+| **Liquidity from listing turnover** — compute transactions/month proxy from our archived Lamudi scrapes | 4-8h | 🔲 P2 (tier-based default works) |
 
-**Phase 2 done when:** every STRONG_BUY in the email carries a feasibility tag and the investor can immediately tell whether a region is closeable, requires nominee structure, or is off-limits.
+**Phase 2 done when:** ✅ every STRONG_BUY in the email carries a feasibility tag and the investor can immediately tell whether a region is closeable, requires leasehold, requires PT PMA, or is restricted. The live-API enhancements are P2 polish — the static layer carries the load for now.
 
 ## Phase 3 — Portfolio-aware action
 
@@ -145,6 +147,7 @@ How CloudClearingAPI maps to common DE-job requirements. Track B phases close mo
 
 | Version | Date | Key Features |
 |---|---|---|
+| **v2.16.10** | Apr 28, 2026 | Phase 2 acquisition-feasibility layer ships. `src/core/region_feasibility.py` with `FeasibilityProfile` dataclass + 27 explicit profiles (13 deep-research-validated + 14 inferred from regulatory data) + 38 tier-based defaults. Three dimensions: ownership_pathway, zoning_class+overlays, liquidity_tier. Renders ✅⚠️🚫 flag + one-line summary under each STRONG_BUY/BUY in the email. 3 regions land restricted (Nusantara×2 + Labuan Bajo); 5+ flagged for verification. Soft annotation, not a hard filter |
 | **v2.16.9** | Apr 28, 2026 | Forecast log + backtest harness — closes Phase 1 with the gating measurement infrastructure. `tools/backtest.py` reports per-tier mean delta (2w/4w/8w) + Spearman ρ; `forecast_log.jsonl` writer hooked into weekly monitor. Methodology guards: frozen regions excluded, listing_count-shift filter, pre-fix anchor banner. Current data pre-dates v2.16.x fixes; harness ready for meaningful signal once 4+ weeks of post-2026-04-28 history accumulates |
 | **v2.16.8** | Apr 28, 2026 | Per-region history-anchored clamp closes Phase 1's last mandatory item. `_resolve_clamp_anchor` chain: frozen → history (≥3 samples within 0.5–3× of static) → region override → bucket → unmapped. Median-of-medians (last 8 samples) is doubly robust — week-level shock absorption on top of v2.16.4's listing-level filter. Sanity band protects against banjarmasin/bitung/mandalika cases where history is itself wrong. 64 of 67 regions eligible for live calibration |
 | **v2.16.7** | Apr 28, 2026 | Benchmark recalibration from 2026-04-28 deep-research report. Bucket updates: medan Rp 3.54M→1.6M (-54.8%), balikpapan Rp 3.71M→1.9M (-48.7%). 11 region-specific overrides (cikarang Rp 2.8M, serang/cilegon Rp 4.9M, anyer Rp 1.0M, mandalika Rp 3.5M, batang Rp 1.2M, etc.). 3 frozen regions (nusantara_capital_core, nusantara_balikpapan_corridor, labuan_bajo_komodo_gateway) bypass clamp entirely per research finding that platform aggregates show 40× source disagreement |

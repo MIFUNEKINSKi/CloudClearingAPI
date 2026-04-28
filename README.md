@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.16.9 (Forecast Log + Backtest Harness — Phase 1 Mandatory Items Complete)
+**Version:** 2.16.10 (Phase 2: Acquisition Feasibility Layer)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,26 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.16.10 (April 28, 2026) — Phase 2: Acquisition Feasibility Layer
+
+Indonesia's land system gates which regions are closeable. A STRONG_BUY in a region with Indigenous claims, military overlap, off-market trading, or contested zoning is wasted alert weight. This adds a per-region feasibility profile alongside the score.
+
+**Three dimensions per region:**
+1. **ownership_pathway** — `hgb_pt_pma` / `leasehold` / `hak_pakai` / `nominee_only` / `restricted` / `off_limits`
+2. **zoning_class + overlays** — RTRW classification (industrial/tourism/residential/mixed) plus overlays (coastal_protection, indigenous_claim, psn_right_of_way, kspn_strict, sharia_qanun, hak_ulayat, etc.)
+3. **liquidity_tier** — exit-speed proxy (very_high → very_low)
+
+**Coverage**: 27 explicit profiles (13 deep-research-validated + 14 inferred from public regulatory data) + 38 tier-based defaults.
+
+**Renders in email** as a one-line summary per STRONG_BUY/BUY entry, e.g.:
+- `cikarang_mega_industrial`: ✅ HGB via PT PMA · industrial · very high liquidity
+- `lake_toba_tourism_zone`: ⚠️ leasehold (25-30y) · tourism · shoreline_conservation, kspn_priority · very low liquidity
+- `nusantara_capital_core`: 🚫 restricted access · mixed · indigenous_claim, contested_zoning, psn_right_of_way · very low liquidity
+
+Soft annotation, not a hard filter — score is still shown so the investor sees signal AND friction together.
+
+This is Phase 2 / Track A per the rewritten roadmap. Phase 3 (portfolio-aware action) is the natural follow-on.
 
 ### v2.16.9 (April 28, 2026) — Forecast Log + Backtest Harness (Phase 1 Mandatory Items Complete)
 

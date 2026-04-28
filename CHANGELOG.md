@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.16.10] - 2026-04-28 - Phase 2: Acquisition Feasibility Layer
+
+### Added
+- **`src/core/region_feasibility.py`** — `FeasibilityProfile` dataclass + 27 explicit per-region profiles (13 deep-research-validated, 14 inferred from public regulatory data) + tier-based defaults for the remaining 38 regions.
+- **3 dimensions per region**: `ownership_pathway` (hgb_pt_pma / leasehold / hak_pakai / nominee_only / restricted / off_limits), `zoning_class` + `zoning_overlays`, `liquidity_tier`.
+- **Actionability flag** (✅ ⚠️ 🚫) computed from path + overlays + liquidity, plus a one-line `actionability_summary` rendered in the email beneath each STRONG_BUY/BUY entry.
+
+### Changed
+- `automated_monitor._generate_dynamic_recommendations` now attaches a `feasibility` dict to every recommendation (used by email rendering, JSON output, future PDF integration).
+- `run_weekly_java_monitor` priority-opportunity rendering surfaces the feasibility summary line alongside Score/Confidence/Market.
+
+### Restricted regions surfaced this round
+- `nusantara_capital_core`, `nusantara_balikpapan_corridor` — Indigenous claims, contested zoning, speculative platform pricing
+- `labuan_bajo_komodo_gateway` — KSPN strict; off-market trading
+
+### Flagged-for-verification regions (⚠️)
+- `jayapura_urban_development` (hak ulayat + military), `banda_aceh_reconstruction` (Sharia), `subang_patimban_megaport` (PSN ROW), `lake_toba_tourism_zone` (KSPN + shoreline), tier-4 frontiers.
+
+### Verified
+- Tests: 26 passed, 22 skipped, 0 failed.
+- End-to-end smoke: feasibility renders correctly for 6 sample regions across the spectrum.
+
 ## [2.16.9] - 2026-04-28 - Forecast Log + Backtest Harness (Phase 1 mandatory items complete)
 
 ### Added
