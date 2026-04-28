@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.16.8 (Per-Region History-Anchored Clamp — Phase 1 Close)
+**Version:** 2.16.9 (Forecast Log + Backtest Harness — Phase 1 Mandatory Items Complete)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,18 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.16.9 (April 28, 2026) — Forecast Log + Backtest Harness (Phase 1 Mandatory Items Complete)
+
+Adds two pieces of infrastructure that make "see opportunities early" measurable:
+
+**`tools/backtest.py`** — admin tool reading historical `weekly_monitoring_*.json` runs + per-region price history. For each anchor run, reports per-tier mean price-change over 2/4/8-week windows + Spearman rank correlation between `investment_score` and realized delta. Methodology guards: frozen regions excluded; `listing_count` shift ≥2× flags suspect samples (scraper-coverage change vs real market move); pre-fix anchor banner prints when anchor pre-dates the last v2.16.x fix (2026-04-28).
+
+Current backtest results: every available anchor pre-dates the last week of fixes (sar_only cap, outlier-resistant mean, 11 region-specific benchmarks, history-anchored clamp). The reported deltas are mostly scraper-fix artifacts (e.g., kulon_progo "dropped 81%" because we fixed its slug; semarang "dropped 41%" because v2.16.4 stripped misparsed listings). The numbers will become meaningful after 4+ weeks of stable post-2026-04-28 history. The harness is ready; the data isn't yet.
+
+**`run_weekly_java_monitor.py`** — appends each run's BUY/STRONG_BUY/WATCH picks to `data/forecasts/forecast_log.jsonl` after scoring completes. Slim, schema-stable archive of "what we predicted at time T", immune to scoring-engine schema churn. Once 8+ weeks accumulate, becomes the canonical predictiveness oracle.
+
+This closes the last mandatory Phase 1 item from the rewritten roadmap.
 
 ### v2.16.8 (April 28, 2026) — Per-Region History-Anchored Clamp (Phase 1 Close)
 

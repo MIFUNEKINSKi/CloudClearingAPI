@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.16.9] - 2026-04-28 - Forecast Log + Backtest Harness (Phase 1 mandatory items complete)
+
+### Added
+- **`tools/backtest.py`** — reads historical `weekly_monitoring_*.json` + per-region price history; for each anchor run reports per-tier mean price-change (2w/4w/8w windows) + Spearman ρ(score, realized delta).
+- **`data/forecasts/forecast_log.jsonl`** writer hooked into `run_weekly_java_monitor.py` — slim, schema-stable archive of each run's BUY/STRONG_BUY/WATCH picks (region, tier, score, confidence, current price, satellite changes, market_clamped flag).
+
+### Methodology guards in backtest
+- Frozen regions (Nusantara, Labuan Bajo) excluded — unreliable per deep-research.
+- `listing_count` shift ≥2× flags suspect samples; headline tier-mean uses only "clean" samples.
+- Pre-fix anchor banner prints when anchor pre-dates the last v2.16.x fix (2026-04-28). Calls out specific examples (kulon_progo slug fix, outlier-resistant mean side effects).
+
+### Current backtest results (informational, not a verdict)
+- Every available anchor pre-dates v2.16.4–8 fixes; deltas reflect scraper-extraction corrections more than real market movement.
+- 2w window: BUY +5.37%, WATCH +19.21% (inverted/unclear).
+- Spearman ρ ≈ -0.19 (weak, near-noise).
+- The harness is ready; the data isn't yet. Re-run after 4+ weeks of stable post-2026-04-28 history.
+
+### Phase 1 status
+- All mandatory items from the rewritten roadmap's Phase 1 are now shipped: outlier-resistant Lamudi mean (v2.16.4), sar_only cap (v2.16.3), Antara brotli fix (v2.16.4), slug refresh (v2.16.5), news dedup (v2.16.6), benchmark recalibration (v2.16.7), per-region history-anchored clamp (v2.16.8), forecast log + backtest harness (v2.16.9).
+
 ## [2.16.8] - 2026-04-28 - Per-Region History-Anchored Clamp (Phase 1 close)
 
 ### Added

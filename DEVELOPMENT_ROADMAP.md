@@ -1,7 +1,7 @@
 # CloudClearingAPI Development Roadmap
 
 **Updated:** April 28, 2026
-**Current Version:** v2.16.8 (Per-Region History-Anchored Clamp — Phase 1 Close)
+**Current Version:** v2.16.9 (Forecast Log + Backtest Harness — Phase 1 Mandatory Items Complete)
 
 ---
 
@@ -49,7 +49,9 @@ Historically the roadmap centered Track B, with signal-quality work scattered ac
 
 If the system can't be trusted to surface real opportunities, none of Track B matters. These phases are non-optional.
 
-## Phase 1 — Signal trustworthiness (in progress)
+## Phase 1 — Signal trustworthiness ✅ MANDATORY ITEMS COMPLETE (2026-04-28)
+
+Status: all 8 mandatory items shipped (v2.16.3 through v2.16.9). The harness for measuring predictiveness exists; meaningful tier-predictiveness numbers will emerge after 4+ weeks of stable post-fix history accumulates. Re-run `python tools/backtest.py` weekly to track.
 
 **Why:** The October 2025 → April 2026 audit cycle uncovered five distinct classes of silent miscalibration (sar_only loophole, brotli-broken Antara, Lamudi misparse pollution, slug 404s, sar/optical units mismatch). All shipped fixes are real wins, but it's not yet proven the surfaced BUYs are predictive of actual price movement.
 
@@ -62,7 +64,7 @@ If the system can't be trusted to surface real opportunities, none of Track B ma
 | News title-bigram dedup | shipped v2.16.6 | ✅ |
 | **Per-region history-anchored outlier clamp** (use region's own 8-sample median-of-medians when ≥3 samples, bounded by 0.5–3× of static) | shipped v2.16.8 | ✅ |
 | **Benchmark recalibration** from 2026-04-28 deep-research report — bucket updates (medan/balikpapan), 11 region-specific overrides, 3 frozen regions | shipped v2.16.7 | ✅ |
-| **Forecast log + backtest harness** — append top-5 BUYs each week to `data/forecast_log.jsonl`; build a job that revisits N-week-old forecasts vs current price-history medians for the same regions and reports hit-rate by tier | 8-12h | 🔲 P0 |
+| **Forecast log + backtest harness** — `tools/backtest.py` reads historical runs + price history, reports per-tier mean delta (2w/4w/8w) + Spearman ρ(score, delta); `forecast_log.jsonl` writer hooked into weekly monitor. Methodology guards: frozen regions excluded, listing_count-shift filter, pre-fix anchor banner. Current data pre-dates v2.16.x fixes so deltas reflect fix-artifacts; harness ready for meaningful signal once 4+ weeks of post-2026-04-28 history accumulates | shipped v2.16.9 | ✅ |
 | Region routing for stuck regions (medan_belawan_port, ambon, papua) | 4-8h | 🔲 P1 |
 
 **Phase 1 done when:** the weekly email STRONG_BUY list, replayed against 4–8 weeks of post-fact price history, shows tier separation (STRONG_BUY > BUY > WATCH > PASS in cumulative price movement). Until that's measurable, "see opportunities early" is unverified.
@@ -143,6 +145,7 @@ How CloudClearingAPI maps to common DE-job requirements. Track B phases close mo
 
 | Version | Date | Key Features |
 |---|---|---|
+| **v2.16.9** | Apr 28, 2026 | Forecast log + backtest harness — closes Phase 1 with the gating measurement infrastructure. `tools/backtest.py` reports per-tier mean delta (2w/4w/8w) + Spearman ρ; `forecast_log.jsonl` writer hooked into weekly monitor. Methodology guards: frozen regions excluded, listing_count-shift filter, pre-fix anchor banner. Current data pre-dates v2.16.x fixes; harness ready for meaningful signal once 4+ weeks of post-2026-04-28 history accumulates |
 | **v2.16.8** | Apr 28, 2026 | Per-region history-anchored clamp closes Phase 1's last mandatory item. `_resolve_clamp_anchor` chain: frozen → history (≥3 samples within 0.5–3× of static) → region override → bucket → unmapped. Median-of-medians (last 8 samples) is doubly robust — week-level shock absorption on top of v2.16.4's listing-level filter. Sanity band protects against banjarmasin/bitung/mandalika cases where history is itself wrong. 64 of 67 regions eligible for live calibration |
 | **v2.16.7** | Apr 28, 2026 | Benchmark recalibration from 2026-04-28 deep-research report. Bucket updates: medan Rp 3.54M→1.6M (-54.8%), balikpapan Rp 3.71M→1.9M (-48.7%). 11 region-specific overrides (cikarang Rp 2.8M, serang/cilegon Rp 4.9M, anyer Rp 1.0M, mandalika Rp 3.5M, batang Rp 1.2M, etc.). 3 frozen regions (nusantara_capital_core, nusantara_balikpapan_corridor, labuan_bajo_komodo_gateway) bypass clamp entirely per research finding that platform aggregates show 40× source disagreement |
 | **v2.16.6** | Apr 25, 2026 | News dedup via title-bigram overlap (≥2 shared bigrams = dup); drops 4/9 Bekasi rail-accident articles. Medan Kuala Namu corridor → `deli-serdang` slug (median Rp 18.5M→9.9M, escapes 5× outlier clamp). A/B-tested 6 problem regions; only Medan benefited |
