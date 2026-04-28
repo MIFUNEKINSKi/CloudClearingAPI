@@ -767,7 +767,47 @@ async def main(all_regions: bool = False, auto_confirm: bool = False):
                 logger.info(f"   📈 Tier transitions: {len(upgrades)} upgrade(s), {len(downgrades)} downgrade(s)")
         except Exception as e:
             logger.warning(f"   ⚠️ Failed to compute tier transitions: {e}")
-        
+
+        # Forecast log: focused snapshot of this run's BUY/STRONG_BUY picks +
+        # the price + confidence at forecast time. Used by tools/backtest.py
+        # to measure tier-predictiveness once 4+ weeks of post-v2.16.x history
+        # accumulates. The full weekly_monitoring_*.json already has this
+        # data; the forecast log is a slim, focused archive that doesn't churn
+        # with scoring-engine schema changes.
+        try:
+            from datetime import datetime as _dt
+            from pathlib import Path as _Path
+            forecast_dir = _Path('data/forecasts')
+            forecast_dir.mkdir(parents=True, exist_ok=True)
+            yog = investment_analysis.get('yogyakarta_analysis', {})
+            run_ts = _dt.now().isoformat()
+            picks = []
+            for tier_label, key in [('STRONG_BUY', 'strong_buy_recommendations'),
+                                    ('BUY', 'buy_recommendations'),
+                                    ('WATCH', 'watch_list')]:
+                for entry in yog.get(key, []) or []:
+                    region = entry.get('region') or entry.get('region_name')
+                    if not region:
+                        continue
+                    picks.append({
+                        'run_timestamp': run_ts,
+                        'tier': tier_label,
+                        'region': region,
+                        'investment_score': entry.get('investment_score'),
+                        'confidence': entry.get('confidence'),
+                        'current_price_per_m2': entry.get('current_price_per_m2'),
+                        'satellite_changes': entry.get('satellite_changes'),
+                        'data_sources': (entry.get('data_sources') or {}).get('satellite'),
+                        'market_clamped': (entry.get('data_sources') or {}).get('market', '').endswith('_clamped'),
+                    })
+            log_path = forecast_dir / 'forecast_log.jsonl'
+            with open(log_path, 'a') as f:
+                for p in picks:
+                    f.write(__import__('json').dumps(p, default=str) + '\n')
+            logger.info(f"   📋 Forecast log: appended {len(picks)} picks to {log_path}")
+        except Exception as e:
+            logger.warning(f"   ⚠️ Failed to write forecast log: {e}")
+
         # ✅ CCAPI-27.2: Track benchmark drift after monitoring completes
         print()
         print("📊 Tracking benchmark drift...")
