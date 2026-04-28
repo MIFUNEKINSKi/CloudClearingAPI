@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.16.7 (Benchmark Recalibration from 2026-04-28 Deep Research)
+**Version:** 2.16.8 (Per-Region History-Anchored Clamp — Phase 1 Close)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,21 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.16.8 (April 28, 2026) — Per-Region History-Anchored Clamp (Phase 1 Close)
+
+Closes the last mandatory item in the rewritten roadmap's Phase 1: when a region has ≥3 weeks of price-history samples (≥3 listings each), the region's own median-of-medians becomes the live clamp anchor instead of a static benchmark. Static benchmarks (region overrides from v2.16.7 + bucket fallback) become the floor; history must lie within 0.5–3× of static to be trusted.
+
+Resolution chain (`_resolve_clamp_anchor`):
+1. **Frozen regions** → no clamp (nusantara, labuan_bajo)
+2. **History median** (≥3 samples, within 0.5–3× of static)
+3. **Region-specific override** (research-validated, v2.16.7)
+4. **Bucket benchmark**
+5. unmapped → no clamp
+
+The 0.5–3× sanity band is load-bearing — protects against history that's itself wrong. Examples: `banjarmasin_port_development` history Rp 17M (urban listings, 12.6× research Rp 1.35M, research wins); `bitung_port_industrial` history Rp 616K (SEZ-side dominated, 0.25× research Rp 2.5M, research wins); `lombok_mandalika_resort` history Rp 1.6M lower than research Rp 3.5M (0.46×, research wins).
+
+Smoke-test across 18 known-tricky regions: 8 history-anchored (Jakarta/Cikarang/Anyer/Sidoarjo/Senggigi/Subang/Lake Toba — within reasonable bounds), 7 region-override, 2 bucket fallback, 2 frozen. 64 of 67 regions have ≥3 history samples available — near-universal eligibility for live calibration.
 
 ### v2.16.7 (April 28, 2026) — Benchmark Recalibration from Deep-Research Report
 

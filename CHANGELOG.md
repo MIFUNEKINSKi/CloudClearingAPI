@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.16.8] - 2026-04-28 - Per-Region History-Anchored Clamp (Phase 1 close)
+
+### Added
+- `_get_history_anchor(region)` reads `output/scraper_cache/price_history/<region>.jsonl`, returns median-of-medians from the last 8 samples (≥3 listings each).
+- `_resolve_clamp_anchor(region)` returns (anchor, source_label) following: frozen → history (within 0.5–3× of static) → region override → bucket → unmapped.
+- Clamp log messages now include the anchor source (e.g., "history (n=8, 1.20× static)" vs "region-override").
+
+### Changed
+- `_sanity_check_price` refactored to use `_resolve_clamp_anchor` instead of going straight to `_find_nearest_benchmark`.
+
+### Why median-of-medians
+- Each weekly median already filtered listing-level outliers (v2.16.4's 10×-median filter).
+- The outer median absorbs week-level shocks (one bad scrape with neighborhood bias).
+- 8-sample window keeps the anchor responsive without letting one stale week dominate.
+
+### Why the 0.5–3× sanity band
+- `banjarmasin_port_development` history Rp 17M from urban listings → 12.6× research benchmark Rp 1.35M → research wins (correctly).
+- `bitung_port_industrial` history Rp 616K SEZ-dominated → 0.25× research Rp 2.5M port-side → research wins (correctly; real fix is bbox-level sub-market split).
+- `lombok_mandalika_resort` history Rp 1.6M → 0.46× research Rp 3.5M → research wins on USD-pegged commercial premium.
+- `bogor_puncak_highland` history Rp 1.95M → 0.23× Jakarta-bucket Rp 8.56M → bucket retained (region needs its own override in next research round).
+
+### Verified
+- Smoke test across 18 known-tricky regions: 8 history-anchored, 7 region-override, 2 bucket fallback, 2 frozen.
+- 64 of 67 regions have ≥3 history samples available.
+- Tests: 26 passed, 22 skipped, 0 failed.
+
 ## [2.16.7] - 2026-04-28 - Benchmark Recalibration from Deep-Research Report
 
 ### Recalibrated
