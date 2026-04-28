@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.18.0] - 2026-04-28 - Prediction Review (Closes the Feedback Loop)
+
+### Added
+- **`src/core/prediction_tracker.py`** — `Forecast`, `Realization`, `PredictionReview` dataclasses; `load_forecasts_from_log` + `load_forecasts_from_run_archive` + `compute_realization` + `build_review` + `build_full_review_section` rendering helpers.
+- **PREDICTION REVIEW section** in the weekly email — sits between TIER CHANGES and PRIORITY OPPORTUNITIES.
+- **Prediction Review table in PDF** — `_build_prediction_review_section` renders 4w/8w/12w windows with per-region detail (Region / Tier / Then / Now / Realized / vs Predicted / Status) plus aggregate metrics (tier means + tier integrity + hit rate).
+
+### Changed
+- `forecast_log.jsonl` writer now records `predicted_roi_3yr`, `predicted_roi_5yr`, `feasibility_flag`, `feasibility_path`, `weeks_at_tier` per pick (backwards-compatible).
+- Annualized-return display capped at ±500% with "ann saturated (likely data artifact, not market)" fallback to prevent absurd numbers from short-window extreme deltas misleading the investor.
+
+### Honest design notes
+- Realized vs prorated-predicted (not vs full 3-yr ROI) — fair comparison for short windows.
+- `listing_count_shift_flag` excludes coverage-change noise from aggregate hit-rate.
+- Anchors before 2026-04-25 surface a "pre-fix" banner; clean post-fix data starts ~2026-05-23 (4w window).
+
+### Verified
+- Smoke test: 4w anchor (2026-03-28) renders correctly with pre-fix banner; 6 listing-shift flags fire on Surabaya/Bandung/Cikarang regions whose listing pools changed.
+- 8w/12w windows correctly render "insufficient post-fix history" placeholder with projected meaningful-data date.
+- PDF generates cleanly at 1.7 MB; tests: 26 passed, 22 skipped, 0 failed.
+
 ## [2.17.1] - 2026-04-28 - PDF Lock-Step with Email
 
 ### Fixed

@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.17.1 (PDF Lock-Step with Email — v2.16.x + v2.17.0 Fields Now Render)
+**Version:** 2.18.0 (Prediction Review — Closes the Feedback Loop)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,17 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.18.0 (April 28, 2026) — Prediction Review (Closes the Feedback Loop)
+
+The system surfaced what's signaling NOW but never told the investor whether past calls panned out. v2.18.0 adds a **PREDICTION REVIEW** section to email + PDF that picks anchor runs aged 4w / 8w / 12w, compares each pick's forecast against today's price-history, and reports per-region realized return + status flag + aggregate hit-rate.
+
+**Three honest constraints in the design:**
+1. Indonesian land prices don't move weekly — comparison uses **prorated-predicted** (predicted 3-yr ROI scaled to elapsed weeks) so a 4-week "+0.2%" on a "+12%/yr predicted" registers as on-track, not failing.
+2. Listing-pool noise — `listing_count_shift_flag` carried inline; aggregate hit-rate excludes shifted samples.
+3. Sparse near-term data — forecast_log.jsonl was added 2026-04-28; clean post-fix anchors materialize 2026-05-23 (4w) and 2026-06-20 (8w). Pre-fix anchors render with banner: "deltas reflect scraper recalibration as much as real market movement."
+
+**Components:** `src/core/prediction_tracker.py` (loaders + realization computation + rendering), enriched `forecast_log.jsonl` writer (predicted_roi_3yr/5yr + feasibility + weeks_at_tier), email + PDF section integration. Annualized-return display capped at ±500% with "ann saturated (likely data artifact)" fallback so absurd numbers don't mislead.
 
 ### v2.17.1 (April 28, 2026) — PDF Lock-Step with Email
 
