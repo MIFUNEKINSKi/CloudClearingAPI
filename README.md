@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.16.12 (Phase 2 Polish: Empirical Liquidity from Archived Listings)
+**Version:** 2.17.0 (Trust + Friction Reduction — Weeks-at-Tier + Score Breakdown + Action Links)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,35 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.17.0 (April 28, 2026) — Trust + Friction Reduction Release
+
+Three coordinated additions to the weekly briefing, each addressing a distinct gap to the north-star ("see opportunities early and make money"):
+
+**1. Weeks-at-tier tracking** (the "early" word in the goal):
+```
+🆕 NEW THIS WEEK at STRONG_BUY        (week 1 — fresh signal)
+(2nd consecutive week at BUY)        (weeks 2-3)
+📌 Held STRONG_BUY for 6 weeks       (4+ weeks — confirmed signal)
+```
+`_compute_weeks_at_tier` walks back through historical `weekly_monitoring_*.json` files (deduped by calendar date) and counts consecutive runs each region held its current tier.
+
+**2. Score breakdown** (trust through visibility):
+```
+Score: 52.2/100 | Confidence: 100% | Market: booming
+Breakdown: activity 32 × infra 1.15 × market 1.10 × conf 1.00 × news 1.05 × momentum 1.00 = 52.2
+```
+The investor sees every multiplier that produced the score, not just the final number.
+
+**3. Action links** (friction reduction):
+```
+🔗 Listings: https://www.lamudi.co.id/tanah/jual/cikarang/?sort=newest
+🛰️ Imagery:  https://www.google.com/maps/@-6.30000,107.15000,14z/data=!3m1!1e3
+🗺️ OSM map:  https://www.openstreetmap.org/?bbox=107.0,-6.4,107.3,-6.2
+```
+Click-through due diligence — saves ~10 min of manual URL construction per recommendation × 8 STRONG_BUYs/run.
+
+This closes the "trust + friction" gap I identified in the v2.16.12 audit. Track A is fully shipped (Phase 1+2+3 in v2.16.x); v2.17.0 makes the email more decisively actionable. Next valuable step is patience — let the backtest harness accumulate 4+ weeks of post-fix history.
 
 ### v2.16.12 (April 28, 2026) — Empirical Liquidity from Archived Listings (Phase 2 polish)
 

@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.17.0] - 2026-04-28 - Trust + Friction Reduction (Weeks-at-Tier + Score Breakdown + Action Links)
+
+### Added
+- **`AutomatedMonitor._compute_weeks_at_tier`** — walks back through last 12 `weekly_monitoring_*.json` files (deduplicated by calendar date), counts consecutive runs each region held its current tier. Surfaced in email as 🆕 NEW THIS WEEK / Nth consecutive week / 📌 N weeks at tier.
+- **`AutomatedMonitor._build_score_breakdown`** — one-line provenance string `"activity X × infra Y × market Z × conf W × news V × momentum U = final"`. Re-derives confidence multiplier from the same formula `corrected_scoring.py` uses.
+- **`AutomatedMonitor._build_action_links`** — bundle of due-diligence URLs per region (Lamudi search, Google Maps satellite, OSM bbox).
+- Three new fields on every recommendation dict: `weeks_at_tier`, `score_breakdown`, `action_links`.
+
+### Changed
+- `run_weekly_java_monitor` priority-opportunity rendering: weeks-at-tier flag, score breakdown line, and three action-link lines added to each STRONG_BUY/BUY entry.
+
+### Why
+- "See opportunities **early**" was unmeasured — weeks_at_tier closes that.
+- Score was opaque — breakdown makes the math visible (trust).
+- 80+ min/week of manual URL construction was friction the investor didn't need — action links collapse it to a click.
+
+### Verified
+- Tests: 26 passed, 22 skipped, 0 failed.
+- Smoke test: weeks_at_tier on Apr 28 run shows distribution {2: 18, 3: 19, 4: 19, 5: 4, 7: 1, 10: 3, 11: 1}, all 8 STRONG_BUYs on 2-3 week streaks.
+- Score breakdown handles all three confidence-multiplier branches (≥0.85 linear, 0.50-0.85 quadratic, <0.50 floor).
+
+### Track A status
+- All Phase 1+2+3 mandatory items shipped through v2.16.11.
+- Phase 2 polish (empirical liquidity) shipped v2.16.12.
+- Trust + friction reduction shipped v2.17.0.
+- Track A is fully addressed; further code work is optional polish or Track B (AWS/dbt/CI-CD).
+
 ## [2.16.12] - 2026-04-28 - Empirical Liquidity from Archived Listings (Phase 2 polish)
 
 ### Added
