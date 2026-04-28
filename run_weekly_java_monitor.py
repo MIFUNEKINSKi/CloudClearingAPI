@@ -452,7 +452,21 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
                     wow_str = f" | News: {nwow.get('previous_articles', 0)}→{nwow.get('current_articles', 0)} ({nwow['trend']})"
 
                 body_lines.append(f"  {i}. [{tier}] {name}")
+                # v2.17.0: weeks-at-tier streak — directly serves "see early"
+                # in the north-star. New regions get a 🆕 flag so the
+                # investor sees freshly-emerging signals first.
+                wat = r.get('weeks_at_tier', 0)
+                if wat == 1:
+                    body_lines.append(f"     🆕 NEW THIS WEEK at {r.get('recommendation', '?')} tier")
+                elif wat >= 4:
+                    body_lines.append(f"     📌 Held {r.get('recommendation', '?')} tier for {wat} consecutive weeks")
+                elif wat >= 2:
+                    suffix = {2: 'nd', 3: 'rd'}.get(wat, 'th')
+                    body_lines.append(f"     ({wat}{suffix} consecutive week at {r.get('recommendation', '?')})")
                 body_lines.append(f"     Score: {score:.1f}/100 | Confidence: {conf*100:.0f}% | Market: {heat}")
+                # v2.17.0: score-reasoning breakdown — trust through visibility
+                if r.get('score_breakdown'):
+                    body_lines.append(f"     Breakdown: {r['score_breakdown']}")
                 # Acquisition feasibility (Phase 2): closeable for foreign/PMA?
                 # Surfaces ownership pathway, zoning class, liquidity tier so
                 # a high score on an off-limits/restricted region is honest
@@ -525,6 +539,18 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
                         "common at ports/coast where ship traffic + water surface change. "
                         "Verify with satellite imagery before acting."
                     )
+                # v2.17.0: action links — direct due-diligence URLs so the
+                # investor can click straight from email into Lamudi listings,
+                # Google Maps satellite view, or OSM bbox map. Removes ~10 min
+                # of manual URL-construction per recommendation × 8 STRONG_BUYs/run.
+                links = r.get('action_links') or {}
+                if links:
+                    if links.get('lamudi_search'):
+                        body_lines.append(f"     🔗 Listings: {links['lamudi_search']}")
+                    if links.get('gmaps_satellite'):
+                        body_lines.append(f"     🛰️ Imagery:  {links['gmaps_satellite']}")
+                    if links.get('osm_map'):
+                        body_lines.append(f"     🗺️ OSM map:  {links['osm_map']}")
                 body_lines.append("")
 
         # --- WATCH List ---
@@ -864,6 +890,29 @@ async def main(all_regions: bool = False, auto_confirm: bool = False):
             }
             if upgrades or downgrades:
                 logger.info(f"   📈 Tier transitions: {len(upgrades)} upgrade(s), {len(downgrades)} downgrade(s)")
+
+            # v2.17.0: weeks-at-tier per region (the "early signal" framing).
+            # 1 = first week at this tier (NEW THIS WEEK); higher = consecutive
+            # weeks holding the tier. Counted across deduped calendar dates so
+            # multiple-runs-same-day don't inflate the streak.
+            try:
+                current_tiers_for_streak = {
+                    (r.get('region') or r.get('region_name')): r.get('recommendation', 'PASS')
+                    for r in current_recs
+                    if r.get('region') or r.get('region_name')
+                }
+                weeks_at_tier = monitor._compute_weeks_at_tier(current_tiers_for_streak)
+                # Inject the count back into each recommendation dict for email rendering.
+                for r in current_recs:
+                    name = r.get('region') or r.get('region_name')
+                    if name and name in weeks_at_tier:
+                        r['weeks_at_tier'] = weeks_at_tier[name]
+                results['weeks_at_tier'] = weeks_at_tier
+                streak_count = sum(1 for w in weeks_at_tier.values() if w >= 4)
+                logger.info(f"   ⏳ Weeks-at-tier: {streak_count} regions on a 4+ week streak; "
+                          f"{sum(1 for w in weeks_at_tier.values() if w == 1)} new at current tier")
+            except Exception as e:
+                logger.warning(f"   ⚠️ Failed to compute weeks-at-tier: {e}")
         except Exception as e:
             logger.warning(f"   ⚠️ Failed to compute tier transitions: {e}")
 

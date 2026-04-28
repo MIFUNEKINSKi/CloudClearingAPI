@@ -1177,6 +1177,116 @@ class AutomatedMonitor:
         logger.info("   📊 No previous tier state available (first run? or all priors empty)")
         return prev_state
 
+    def _compute_weeks_at_tier(self, current_assignments: Dict[str, str], history_depth: int = 12) -> Dict[str, int]:
+        """For each region, count consecutive prior runs where it was at the
+        same tier as the current run. Directly serves "see opportunities early":
+        a region newly upgraded to STRONG_BUY this week is the *early* signal;
+        one that's been STRONG_BUY for 6 weeks is a confirmed opportunity.
+
+        Dedupes by calendar date — multiple runs on the same day count as one
+        "week" so the streak number is honest. Returns {region: weeks}, where
+        1 = "this run only" (i.e., new at current tier).
+        """
+        import glob as glob_mod
+        monitoring_dir = getattr(self, 'monitoring_dir', './output/monitoring')
+        pattern = os.path.join(monitoring_dir, 'weekly_monitoring_*.json')
+        files = sorted(glob_mod.glob(pattern), reverse=True)
+
+        # Group runs by calendar date — dedupe so multiple runs same day = 1 week
+        seen_dates = set()
+        unique_files = []
+        for fp in files:
+            base = os.path.basename(fp)
+            # weekly_monitoring_YYYYMMDD_HHMMSS.json → take the date prefix
+            try:
+                date_key = base.split('_')[2]
+            except IndexError:
+                continue
+            if date_key in seen_dates:
+                continue
+            seen_dates.add(date_key)
+            unique_files.append(fp)
+            if len(unique_files) >= history_depth:
+                break
+
+        weeks = {region: 1 for region in current_assignments}  # 1 = current run
+        streak_broken: set = set()
+
+        for filepath in unique_files:
+            if len(streak_broken) >= len(current_assignments):
+                break
+            try:
+                with open(filepath, 'r') as f:
+                    data = json.load(f)
+            except (OSError, json.JSONDecodeError):
+                continue
+            yog = data.get('investment_analysis', {}).get('yogyakarta_analysis', {}) or {}
+            historical_tiers: Dict[str, str] = {}
+            for tier_label, key in [('STRONG_BUY', 'strong_buy_recommendations'),
+                                    ('BUY', 'buy_recommendations'),
+                                    ('WATCH', 'watch_list'),
+                                    ('PASS', 'pass_list')]:
+                for entry in yog.get(key, []) or []:
+                    if not isinstance(entry, dict):
+                        continue
+                    name = entry.get('region') or entry.get('region_name')
+                    if name:
+                        historical_tiers[name] = tier_label
+            for region, current_tier in current_assignments.items():
+                if region in streak_broken:
+                    continue
+                if historical_tiers.get(region) == current_tier:
+                    weeks[region] += 1
+                else:
+                    streak_broken.add(region)
+        return weeks
+
+    @staticmethod
+    def _build_score_breakdown(corrected_result, news_mult: float, momentum_mult: float) -> str:
+        """One-line provenance string showing how the score was assembled.
+
+        Trust through transparency: the investor sees activity (the satellite
+        signal) × infra × market × confidence × news × momentum = final.
+        """
+        dev = corrected_result.development_score
+        infra = corrected_result.infrastructure_multiplier
+        market = corrected_result.market_multiplier
+        # Confidence multiplier (re-derive from raw confidence — see corrected_scoring lines 197-211)
+        c = corrected_result.confidence_level
+        if c >= 0.85:
+            conf_mult = 0.97 + (c - 0.85) * 0.30
+        elif c >= 0.50:
+            normalized = (c - 0.50) / 0.35
+            conf_mult = 0.70 + 0.27 * (normalized ** 1.2)
+        else:
+            conf_mult = 0.70
+        conf_mult = max(0.70, min(1.00, conf_mult))
+        final = corrected_result.final_investment_score
+        return (f"activity {dev:.0f} × infra {infra:.2f} × market {market:.2f} "
+                f"× conf {conf_mult:.2f} × news {news_mult:.2f} × momentum {momentum_mult:.2f} "
+                f"= {final:.1f}")
+
+    @staticmethod
+    def _build_action_links(region_name: str, bbox: Dict, lamudi_slug: str) -> Dict[str, str]:
+        """URL bundle for the investor to start due-diligence on a recommendation.
+
+        - lamudi_search: live listing page for that region's slug
+        - gmaps_satellite: Google Maps satellite-imagery view of the bbox center
+        - osm_map: OpenStreetMap with bbox highlighted
+        """
+        try:
+            west = bbox['west']; south = bbox['south']
+            east = bbox['east']; north = bbox['north']
+            center_lat = (south + north) / 2
+            center_lon = (west + east) / 2
+        except (KeyError, TypeError):
+            return {}
+        return {
+            'lamudi_search': f"https://www.lamudi.co.id/tanah/jual/{lamudi_slug}/?sort=newest",
+            'gmaps_satellite': f"https://www.google.com/maps/@{center_lat:.5f},{center_lon:.5f},14z/data=!3m1!1e3",
+            'osm_map': f"https://www.openstreetmap.org/?bbox={west},{south},{east},{north}",
+        }
+
     def _load_previous_news_counts(self) -> Dict[str, int]:
         """Load per-region news article counts from the most recent prior monitoring run.
 
@@ -1389,6 +1499,7 @@ class AutomatedMonitor:
             
             # Momentum analysis
             momentum_data = None
+            momentum_mult_applied = 1.0  # captured for score-breakdown rendering
             if self.momentum_analyzer:
                 try:
                     momentum_data = self.momentum_analyzer.calculate_momentum(region_name)
@@ -1404,11 +1515,30 @@ class AutomatedMonitor:
                             )
                         corrected_result.final_investment_score = min(100,
                             corrected_result.final_investment_score * momentum_mult)
+                        momentum_mult_applied = momentum_mult
                         logger.info(f"   📈 [{region_name}] Momentum: {momentum_data['momentum_ratio']:.2f}x → "
                                   f"{momentum_mult:.2f}x multiplier ({momentum_data['trend']})")
                 except Exception as e:
                     logger.warning(f"   ⚠️ [{region_name}] Momentum analysis failed: {e}")
             
+            # v2.17.0 trust + friction-reduction additions:
+            # - score_breakdown: one-line provenance string showing how the
+            #   final score was assembled (activity × infra × market × conf
+            #   × news × momentum). Builds investor trust through visibility.
+            # - action_links: bundle of due-diligence URLs (Lamudi search,
+            #   Google Maps satellite, OSM bbox map). Removes friction
+            #   between "I see this" and "I'm investigating it".
+            news_mult_applied = (news_catalyst_result.multiplier
+                                 if news_catalyst_result else 1.0)
+            score_breakdown = self._build_score_breakdown(
+                corrected_result, news_mult_applied, momentum_mult_applied,
+            )
+            try:
+                lamudi_slug = self.land_orchestrator.lamudi._extract_city_from_region(region_name)
+            except Exception:
+                lamudi_slug = region_name.split('_')[0]
+            action_links = self._build_action_links(region_name, bbox, lamudi_slug)
+
             dynamic_score = {
                 'region_name': region_name,
                 'satellite_changes': corrected_result.satellite_changes,
@@ -1421,6 +1551,10 @@ class AutomatedMonitor:
                 'infrastructure_multiplier': corrected_result.infrastructure_multiplier,
                 'infrastructure_details': corrected_result.infrastructure_details,
                 'market_multiplier': corrected_result.market_multiplier,
+                'news_catalyst_multiplier': news_mult_applied,
+                'momentum_multiplier_applied': momentum_mult_applied,
+                'score_breakdown': score_breakdown,
+                'action_links': action_links,
                 'speculative_score': corrected_result.development_score,
                 'final_investment_score': corrected_result.final_investment_score,
                 'overall_confidence': corrected_result.confidence_level,
@@ -2078,6 +2212,9 @@ class AutomatedMonitor:
                 'momentum': region_score.get('momentum'),
                 'rvi_data': region_score.get('rvi_data'),
                 'feasibility': feasibility_dict,
+                # v2.17.0: trust + friction-reduction
+                'score_breakdown': region_score.get('score_breakdown'),
+                'action_links': region_score.get('action_links'),
             }
             
             # Tightened thresholds — see corrected_scoring.CorrectedInvestmentScorer
