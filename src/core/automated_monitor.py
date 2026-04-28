@@ -21,6 +21,7 @@ import ee  # type: ignore[import]
 
 from .change_detector import ChangeDetector
 from .config import get_config
+from .region_feasibility import get_feasibility  # Track A / Phase 2: acquisition-feasibility layer
 from .satellite_image_saver import SatelliteImageSaver
 # from .database import DatabaseManager  # Disabled due to SQLAlchemy compatibility issues
 from .speculative_scorer import SpeculativeScorer
@@ -2005,12 +2006,38 @@ class AutomatedMonitor:
             reverse=True
         )
         
+        # Resolve tier-classifier lazily (optional dep — fall back to None
+        # if market_config not importable for any reason).
+        try:
+            from .market_config import classify_region_tier
+        except Exception:
+            classify_region_tier = lambda _r: None  # type: ignore
+
         for region_score in sorted_regions:
             region_name = region_score['region_name']
             investment_score = region_score.get('final_investment_score', 0)
             confidence = region_score.get('overall_confidence', 0)
             price_trend = region_score.get('price_trend_30d', 0)
-            
+
+            # Acquisition feasibility — does this region have a workable path
+            # for our investor (foreign-OK ownership, non-restricted zoning,
+            # tradeable liquidity)? See src/core/region_feasibility.py.
+            try:
+                feasibility = get_feasibility(region_name, tier=classify_region_tier(region_name))
+                feasibility_dict = {
+                    'flag': feasibility.actionability_flag,
+                    'summary': feasibility.actionability_summary,
+                    'ownership_pathway': feasibility.ownership_pathway,
+                    'zoning_class': feasibility.zoning_class,
+                    'zoning_overlays': list(feasibility.zoning_overlays),
+                    'liquidity_tier': feasibility.liquidity_tier,
+                    'confidence': feasibility.confidence,
+                    'notes': feasibility.notes,
+                }
+            except Exception as e:
+                logger.debug(f"feasibility lookup failed for {region_name}: {e}")
+                feasibility_dict = None
+
             # Create recommendation based on dynamic scoring
             recommendation = {
                 'region': region_name,
@@ -2034,6 +2061,7 @@ class AutomatedMonitor:
                 'news_wow': region_score.get('news_wow'),
                 'momentum': region_score.get('momentum'),
                 'rvi_data': region_score.get('rvi_data'),
+                'feasibility': feasibility_dict,
             }
             
             # Tightened thresholds — see corrected_scoring.CorrectedInvestmentScorer

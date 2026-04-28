@@ -378,6 +378,13 @@ def _send_report_email(json_path: str, pdf_path: str = None) -> bool:
 
                 body_lines.append(f"  {i}. [{tier}] {name}")
                 body_lines.append(f"     Score: {score:.1f}/100 | Confidence: {conf*100:.0f}% | Market: {heat}")
+                # Acquisition feasibility (Phase 2): closeable for foreign/PMA?
+                # Surfaces ownership pathway, zoning class, liquidity tier so
+                # a high score on an off-limits/restricted region is honest
+                # about its actionability.
+                feas = r.get('feasibility') or {}
+                if feas.get('summary'):
+                    body_lines.append(f"     {feas['summary']}")
                 body_lines.append(f"     Entry Price: Rp {price:,.0f}/m² → Rp {future_val:,.0f}/m² (projected)")
                 body_lines.append(f"     ROI: 3Y {land_roi_3y*100:.1f}% | 5Y {land_roi_5y*100:.1f}%")
                 if entry_cost:
