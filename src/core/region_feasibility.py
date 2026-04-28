@@ -99,15 +99,29 @@ _PROFILES: Dict[str, FeasibilityProfile] = {
 
     # ── Researched (2026-04-28 deep-research report) ──────────────────────
 
-    'subang_patimban_megaport': FeasibilityProfile(
-        region='subang_patimban_megaport',
+    # v2.19.0: subang_patimban_megaport split into industrial + agrarian
+    'subang_patimban_industrial': FeasibilityProfile(
+        region='subang_patimban_industrial',
         ownership_pathway='hgb_pt_pma',
         zoning_class='industrial',
-        zoning_overlays=('psn_right_of_way',),  # Patimban PSN may consume periphery
+        zoning_overlays=('psn_right_of_way',),  # Patimban PSN
         liquidity_tier='moderate',
         confidence='researched',
-        notes='Smartpolitan/Kalijati formal estates HGB-ready. Pantura agrarian '
-              'corridor has mixed Girik/AJB titles — institutional path only.',
+        notes='Smartpolitan + Kalijati formal estates + Patimban port industrial. '
+              'HGB-ready, BYD EV plant + WIKA construction at 83% (Apr 2026). '
+              'Phase 2 operational target Oct 2026.',
+    ),
+    'subang_pantura_agrarian': FeasibilityProfile(
+        region='subang_pantura_agrarian',
+        ownership_pathway='nominee_only',
+        zoning_class='agricultural',
+        zoning_overlays=('agrarian_titles', 'speculative_pricing'),
+        liquidity_tier='low',
+        confidence='researched',
+        notes='Subang Pantura agrarian corridor — mixed Girik/AJB/Letter C '
+              'titles. Highly speculative; pricing varies wildly with road '
+              'access and toll-gate proximity. PSN right-of-way risk for '
+              'plots near port. Institutional-only for HGB conversion.',
     ),
     'cikarang_mega_industrial': FeasibilityProfile(
         region='cikarang_mega_industrial',
@@ -174,14 +188,29 @@ _PROFILES: Dict[str, FeasibilityProfile] = {
         confidence='researched',
         notes='Port industrial; tight retail listings (institutional only).',
     ),
-    'bitung_port_industrial': FeasibilityProfile(
-        region='bitung_port_industrial',
+    # v2.19.0: bitung_port_industrial split into port_corridor + KEK SEZ
+    'bitung_port_corridor': FeasibilityProfile(
+        region='bitung_port_corridor',
         ownership_pathway='hgb_pt_pma',
         zoning_class='industrial',
+        zoning_overlays=('coastal_protection',),
+        liquidity_tier='moderate',
+        confidence='researched',
+        notes='Port-side commercial — Aertembaga / Bitung Timur. '
+              'Spatial scarcity, administrative concentration. '
+              'Port-adjacent land trades ~10x SEZ-side per research.',
+    ),
+    'bitung_kek_sez_industrial': FeasibilityProfile(
+        region='bitung_kek_sez_industrial',
+        ownership_pathway='hgb_pt_pma',
+        zoning_class='industrial',
+        zoning_overlays=('sez_designated', 'government_subsidized'),
         liquidity_tier='low',
         confidence='researched',
-        notes='Bitung KEK (Special Economic Zone) — government-subsidized '
-              'rates. Deep sub-market split: SEZ-side cheap, port-side premium.',
+        notes='Bitung KEK SEZ — Tanjung Merah / Matuari / Sagerat. '
+              'Government-subsidized industrial rates designed to attract '
+              'bulk manufacturing, warehousing, downstream processing. '
+              'Manado-Bitung toll connection.',
     ),
     'banjarmasin_port_development': FeasibilityProfile(
         region='banjarmasin_port_development',
@@ -191,6 +220,30 @@ _PROFILES: Dict[str, FeasibilityProfile] = {
         confidence='researched',
         notes='Commodity processing + South Kalimantan port; institutional '
               'multi-hectare market.',
+    ),
+    # v2.19.0: balikpapan_port_industrial split into Kariangau (north heavy
+    # industrial) + Selatan (south residential/commercial). Institutional
+    # broker consensus per CBRE/Savills/Cushman.
+    'balikpapan_kariangau_industrial': FeasibilityProfile(
+        region='balikpapan_kariangau_industrial',
+        ownership_pathway='hgb_pt_pma',
+        zoning_class='industrial',
+        liquidity_tier='moderate',
+        confidence='researched',
+        notes='Kariangau heavy industrial / container access / warehousing. '
+              'Mature logistics market. UKL/UPL Industri permits required. '
+              'Lifeline corridor for IKN materials.',
+    ),
+    'balikpapan_selatan_commercial': FeasibilityProfile(
+        region='balikpapan_selatan_commercial',
+        ownership_pathway='hgb_pt_pma',
+        zoning_class='mixed',  # residential + commercial
+        liquidity_tier='high',
+        confidence='researched',
+        notes='Balikpapan Selatan / Sepinggan — residential + commercial '
+              'near Semayang Port + Sepinggan Airport. Prime commercial '
+              'plots in Batakan peak ~Rp 10M/m². Established neighborhood '
+              'pricing, foreign-OK via PT PMA.',
     ),
     'lombok_mandalika_resort': FeasibilityProfile(
         region='lombok_mandalika_resort',

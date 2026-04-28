@@ -262,7 +262,9 @@ class InfrastructureAnalyzer:
 
             # West Java Corridors (Tier 2-3)
             'cirebon_port_industrial': {'infra_score': 75, 'highways': 4, 'ports': 2, 'airports': 1, 'railways': 1},
-            'subang_patimban_megaport': {'infra_score': 72, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 0},
+            # v2.19.0: subang_patimban_megaport split into industrial + agrarian
+            'subang_patimban_industrial': {'infra_score': 75, 'highways': 3, 'ports': 1, 'airports': 0, 'railways': 0},
+            'subang_pantura_agrarian':    {'infra_score': 55, 'highways': 2, 'ports': 0, 'airports': 0, 'railways': 0},
 
             # Central Java (Tier 2)
             'semarang_port_expansion': {'infra_score': 85, 'highways': 5, 'ports': 2, 'airports': 1, 'railways': 2},
@@ -323,7 +325,10 @@ class InfrastructureAnalyzer:
             # Kalimantan (6 regions)
             'nusantara_capital_core': {'infra_score': 70, 'highways': 3, 'ports': 1, 'airports': 1, 'railways': 0},
             'nusantara_balikpapan_corridor': {'infra_score': 75, 'highways': 3, 'ports': 1, 'airports': 1, 'railways': 0},
-            'balikpapan_port_industrial': {'infra_score': 78, 'highways': 4, 'ports': 2, 'airports': 1, 'railways': 0},
+            # v2.19.0: balikpapan_port_industrial split into Kariangau (heavy
+            # industrial, north) + Selatan (residential/commercial, south)
+            'balikpapan_kariangau_industrial': {'infra_score': 78, 'highways': 4, 'ports': 2, 'airports': 0, 'railways': 0},
+            'balikpapan_selatan_commercial':   {'infra_score': 80, 'highways': 4, 'ports': 1, 'airports': 1, 'railways': 0},
             'samarinda_urban_expansion': {'infra_score': 68, 'highways': 3, 'ports': 1, 'airports': 1, 'railways': 0},
             'banjarmasin_port_development': {'infra_score': 70, 'highways': 3, 'ports': 2, 'airports': 1, 'railways': 0},
             'pontianak_urban_growth': {'infra_score': 62, 'highways': 2, 'ports': 1, 'airports': 1, 'railways': 0},
@@ -332,7 +337,9 @@ class InfrastructureAnalyzer:
             'makassar_port_corridor': {'infra_score': 82, 'highways': 4, 'ports': 2, 'airports': 1, 'railways': 0},
             'makassar_urban_expansion': {'infra_score': 78, 'highways': 4, 'ports': 1, 'airports': 1, 'railways': 0},
             'manado_tourism_expansion': {'infra_score': 65, 'highways': 2, 'ports': 1, 'airports': 1, 'railways': 0},
-            'bitung_port_industrial': {'infra_score': 68, 'highways': 2, 'ports': 2, 'airports': 1, 'railways': 0},
+            # v2.19.0: bitung_port_industrial split into port_corridor + KEK SEZ
+            'bitung_port_corridor':         {'infra_score': 70, 'highways': 2, 'ports': 2, 'airports': 1, 'railways': 0},
+            'bitung_kek_sez_industrial':    {'infra_score': 65, 'highways': 2, 'ports': 0, 'airports': 0, 'railways': 0},
 
             # Eastern Indonesia (2 regions)
             'jayapura_urban_development': {'infra_score': 52, 'highways': 1, 'ports': 1, 'airports': 1, 'railways': 0},

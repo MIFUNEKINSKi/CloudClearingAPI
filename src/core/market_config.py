@@ -76,8 +76,8 @@ REGIONAL_HIERARCHY = {
         'regions': [
             # West Java
             'bandung_north_expansion',
-            'subang_patimban_megaport',
-            
+            'subang_patimban_industrial',  # v2.19.0: split from subang_patimban_megaport
+
             # Central Java
             'semarang_port_expansion',
             'semarang_south_urban',
@@ -137,6 +137,8 @@ REGIONAL_HIERARCHY = {
             # Java - Tech & Industrial Corridors
             'bandung_east_tech_corridor',
             'cirebon_port_industrial',
+            'subang_pantura_agrarian',  # v2.19.0: split from subang_patimban_megaport (agrarian half)
+
             'merak_port_corridor',
             'purwokerto_south_expansion',
             'probolinggo_bromo_gateway',
@@ -167,15 +169,19 @@ REGIONAL_HIERARCHY = {
             'lombok_senggigi_coast',
             'labuan_bajo_komodo_gateway',
             
-            # Kalimantan
-            'balikpapan_port_industrial',
+            # Kalimantan — v2.19.0: balikpapan_port_industrial split into
+            # Kariangau (heavy industrial) + Selatan (commercial/residential)
+            'balikpapan_kariangau_industrial',
+            'balikpapan_selatan_commercial',
             'samarinda_urban_expansion',
             'banjarmasin_port_development',
-            
-            # Sulawesi
+
+            # Sulawesi — v2.19.0: bitung_port_industrial split into port-
+            # corridor (commercial) + KEK SEZ (subsidized industrial)
             'makassar_port_corridor',
             'manado_tourism_expansion',
-            'bitung_port_industrial',
+            'bitung_port_corridor',
+            'bitung_kek_sez_industrial',
         ],
         'benchmarks': {
             'avg_price_m2': 3_000_000,   # IDR per m² (±Rp 1.5-4.5M range)

@@ -127,8 +127,13 @@ CITY_TO_REGIONS = {
     'merak': ['merak_port_corridor'],
     'anyer': ['anyer_carita_coastal'],
     'cirebon': ['cirebon_port_industrial'],
-    'subang': ['subang_patimban_megaport'],
-    'patimban': ['subang_patimban_megaport'],
+    # v2.19.0: subang_patimban_megaport split — news routes to both halves
+    # (subang token is too coarse to disambiguate from headlines alone).
+    # Patimban-specific stories route preferentially to industrial sub-region.
+    'subang': ['subang_patimban_industrial', 'subang_pantura_agrarian'],
+    'patimban': ['subang_patimban_industrial'],
+    'smartpolitan': ['subang_patimban_industrial'],
+    'pantura': ['subang_pantura_agrarian'],
     'bogor': ['bogor_puncak_highland'],
     'magelang': ['magelang_borobudur_corridor'],
     'borobudur': ['magelang_borobudur_corridor'],
@@ -142,12 +147,23 @@ CITY_TO_REGIONS = {
     'banda aceh': ['banda_aceh_reconstruction'],
     'senggigi': ['lombok_senggigi_coast'],
     'kupang': ['kupang_urban_development'],
+    # v2.19.0 — Bitung sub-region routing. KEK SEZ headlines route to the
+    # SEZ side; bare 'bitung' covers both port and SEZ.
+    'bitung': ['bitung_port_corridor', 'bitung_kek_sez_industrial'],
+    'aertembaga': ['bitung_port_corridor'],
+    'kek bitung': ['bitung_kek_sez_industrial'],
+    'tanjung merah': ['bitung_kek_sez_industrial'],
+    # v2.19.0 — Balikpapan sub-region routing. Kariangau (heavy industrial,
+    # north) vs Sepinggan/Selatan (residential/airport, south).
+    'balikpapan': ['balikpapan_kariangau_industrial', 'balikpapan_selatan_commercial'],
+    'kariangau': ['balikpapan_kariangau_industrial'],
+    'sepinggan': ['balikpapan_selatan_commercial'],
 
     # Province-level matching (articles mentioning province match all regions in it)
     'jawa barat': ['bandung_north_expansion', 'bandung_east_tech_corridor', 'cirebon_port_industrial',
-                   'subang_patimban_megaport', 'bogor_puncak_highland', 'karawang_industrial_corridor'],
+                   'subang_patimban_industrial', 'subang_pantura_agrarian', 'bogor_puncak_highland', 'karawang_industrial_corridor'],
     'west java': ['bandung_north_expansion', 'bandung_east_tech_corridor', 'cirebon_port_industrial',
-                  'subang_patimban_megaport', 'bogor_puncak_highland', 'karawang_industrial_corridor'],
+                  'subang_patimban_industrial', 'subang_pantura_agrarian', 'bogor_puncak_highland', 'karawang_industrial_corridor'],
     'jawa tengah': ['semarang_port_expansion', 'semarang_south_urban', 'solo_raya_expansion',
                     'tegal_brebes_coastal', 'purwokerto_south_expansion', 'magelang_borobudur_corridor',
                     'batang_industrial_sez'],

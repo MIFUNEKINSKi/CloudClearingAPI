@@ -585,9 +585,11 @@ class LandPriceOrchestrator:
     # institutional broker reports, and 5 retail platforms (rumah.com, OLX,
     # 99.co, Lamudi, fazwaz.id).
     _REGION_SPECIFIC_BENCHMARKS = {
-        # Patimban Logistics Super-Hub — Smartpolitan/Kalijati formal estates +
-        # agrarian Pantura corridor. Rp 1.3-1.95M industrial range, midpoint.
-        'subang_patimban_megaport': 1_500_000,
+        # v2.19.0: subang_patimban_megaport split into industrial + agrarian.
+        # Industrial: Smartpolitan/Kalijati formal estates + Patimban port.
+        # Agrarian: Pantura corridor with Girik/AJB titles, speculative pricing.
+        'subang_patimban_industrial': 1_500_000,  # research midpoint Rp 1.3-1.95M
+        'subang_pantura_agrarian': 450_000,        # research midpoint Rp 300-600k
         # Cikarang Industrial — institutional broker consensus Rp 2.6-3.0M
         # (CBRE/Savills/Cushman). Was hitting Jakarta bucket Rp 8.56M, causing
         # Cikarang's correct Rp 2.5M extracted median to look "wrong" at 0.29×.
@@ -604,15 +606,19 @@ class LandPriceOrchestrator:
         # Rp 1.6M industrial baseline (already routed to deli-serdang slug
         # since v2.16.6; benchmark now matches).
         'medan_kuala_namu_corridor': 1_600_000,
-        # Bitung — port-side commercial Rp 1.8-3.5M; SEZ-side industrial is
-        # Rp 99-450k but a single benchmark for both is impossible (10× spread).
-        # Anchoring at port-commercial Rp 2.5M; SEZ side will trip the clamp,
-        # which is correct — the SEZ is its own sub-market and needs its own
-        # bbox region in regional_config.py to be scoreable.
-        'bitung_port_industrial': 2_500_000,
+        # v2.19.0: bitung_port_industrial split — sub-market split now lives
+        # in bbox-level regions (regional_config.py) so each side gets its
+        # own benchmark cleanly.
+        'bitung_port_corridor': 2_500_000,        # research midpoint Rp 1.8-3.5M (port commercial)
+        'bitung_kek_sez_industrial': 350_000,     # research midpoint Rp 99-450k (KEK subsidized)
         # Banjarmasin — South Kalimantan port; Rp 1.2-1.5M institutional range,
         # midpoint Rp 1.35M. Was incorrectly routed to balikpapan bucket.
         'banjarmasin_port_development': 1_350_000,
+        # v2.19.0: balikpapan_port_industrial split — Kariangau heavy industrial
+        # (north) vs Selatan residential/commercial (south). Bucket benchmark
+        # was Rp 1.9M (research industrial midpoint); per-region split:
+        'balikpapan_kariangau_industrial': 1_900_000,  # Rp 1.65-2.1M research
+        'balikpapan_selatan_commercial': 2_250_000,    # Rp 1.99-2.5M research
         # Mandalika SEZ — USD-pegged tourism land, Rp 2.4-5M commercial, Rp 1.12-3.2M
         # residential. Anchoring at residential midpoint Rp 2.0M; commercial
         # plots will exceed but with high confidence (USD-pegged stability).

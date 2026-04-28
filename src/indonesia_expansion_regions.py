@@ -145,14 +145,28 @@ class IndonesiaExpansionManager:
                 priority=2,
                 description="Cirebon port and industrial development"
             ),
+            # v2.19.0: subang_patimban_megaport split into two sub-regions.
+            # Original bbox bundled the formal Patimban port + Smartpolitan
+            # estate (foreign-OK HGB, Rp 1.3-1.95M/m²) with the Pantura
+            # agrarian corridor (Girik/AJB titles, Rp 300-600k/m²) — 3-5x
+            # price spread within one region masked both signals.
             IndonesiaRegion(
-                name="subang_patimban_megaport",
-                bbox=(107.70, -6.50, 108.00, -6.20),
+                name="subang_patimban_industrial",
+                bbox=(107.85, -6.50, 108.00, -6.20),  # eastern half: port + Smartpolitan
                 island="java",
                 province="west_java",
                 focus="infrastructure",
                 priority=1,
-                description="Patimban mega-port development zone"
+                description="Patimban Port + Smartpolitan formal industrial estates (HGB-ready)"
+            ),
+            IndonesiaRegion(
+                name="subang_pantura_agrarian",
+                bbox=(107.70, -6.50, 107.85, -6.20),  # western half: agrarian corridor
+                island="java",
+                province="west_java",
+                focus="agricultural",
+                priority=3,
+                description="Subang Pantura agrarian corridor (Girik/AJB titles, speculative)"
             ),
             IndonesiaRegion(
                 name="bogor_puncak_highland",
@@ -599,14 +613,28 @@ class IndonesiaExpansionManager:
                 priority=1,
                 description="IKN-Balikpapan development corridor"
             ),
+            # v2.19.0: balikpapan_port_industrial split into two sub-regions.
+            # Kariangau (north) is heavy industrial/logistics + container access
+            # at Rp 1.65-2.1M/m². Selatan (south) is residential/commercial at
+            # Rp 1.99-2.5M/m² with prime urban plots peaking at Rp 10M+. Mixing
+            # them produced a polluted "Balikpapan industrial" signal.
             IndonesiaRegion(
-                name="balikpapan_port_industrial",
-                bbox=(116.80, -1.35, 117.00, -1.15),
+                name="balikpapan_kariangau_industrial",
+                bbox=(116.80, -1.22, 117.00, -1.15),  # north half — Kariangau heavy industrial
                 island="kalimantan",
                 province="east_kalimantan",
                 focus="industrial",
                 priority=2,
-                description="Balikpapan port and industrial zone"
+                description="Balikpapan Kariangau heavy industrial / container logistics (north)"
+            ),
+            IndonesiaRegion(
+                name="balikpapan_selatan_commercial",
+                bbox=(116.80, -1.35, 117.00, -1.22),  # south half — Selatan/Sepinggan residential+commercial
+                island="kalimantan",
+                province="east_kalimantan",
+                focus="commercial",
+                priority=2,
+                description="Balikpapan Selatan/Sepinggan residential + commercial near port and airport (south)"
             ),
             IndonesiaRegion(
                 name="samarinda_urban_expansion",
@@ -674,14 +702,29 @@ class IndonesiaExpansionManager:
                 priority=2,
                 description="Manado tourism expansion"
             ),
+            # v2.19.0: bitung_port_industrial split into two sub-regions.
+            # Port-side commercial trades at Rp 1.8-3.5M/m² (Aertembaga/Bitung
+            # Timur). KEK SEZ-side is Rp 99-450k/m² (Tanjung Merah/Sagerat
+            # subsidized industrial). 10× price spread inside one region was
+            # impossible to benchmark cleanly. Per the deep-research report:
+            # "averaging these two zones will destroy benchmark accuracy".
             IndonesiaRegion(
-                name="bitung_port_industrial",
-                bbox=(125.15, 1.40, 125.35, 1.60),
+                name="bitung_port_corridor",
+                bbox=(125.20, 1.40, 125.35, 1.55),  # east half — port + Aertembaga + city core
                 island="sulawesi",
                 province="north_sulawesi",
                 focus="industrial",
                 priority=2,
-                description="Bitung port industrial zone"
+                description="Bitung port commercial + city center (Aertembaga/Bitung Timur)"
+            ),
+            IndonesiaRegion(
+                name="bitung_kek_sez_industrial",
+                bbox=(125.05, 1.40, 125.20, 1.55),  # west half — KEK SEZ Tanjung Merah / Matuari
+                island="sulawesi",
+                province="north_sulawesi",
+                focus="industrial",
+                priority=2,
+                description="Bitung KEK Special Economic Zone industrial gateway (Tanjung Merah / Matuari / Sagerat)"
             ),
         ]
     
