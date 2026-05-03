@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.19.1 (Pooled-Slug Clamp + Zoning-Aware Dev Cost — Sub-Region Audit Fixes)
+**Version:** 2.19.2 (Cron Wrapper IsADirectoryError Fix — Weekly Schedule Restored)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,14 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.19.2 (May 3, 2026) — Cron Wrapper Bug Fix
+
+The launchd cron (`com.cloudclearing.weekly`, scheduled Sundays 9am) had been silently broken since Apr 26. The full pipeline ran to completion each week (analyze + PDF + email via the inner script), but `run_weekly_cron.py` crashed at the end on `IsADirectoryError: 'output/reports/executive_summary_UPDATED.pdf'`.
+
+Root cause: `find_latest_output()`'s `glob('executive_summary_*.pdf')` returns directories too. A legacy `executive_summary_UPDATED.pdf/` directory existed in the reports folder; reverse-sorted it beat the timestamped filenames in ASCII order (`'U' > '2'`), so launchd picked the directory as `latest_pdf` and crashed on `open()`. Fix: filter `glob()` to `.is_file()` only.
+
+Side cleanup: renamed the legacy directory out of the way. Today's missed Sun May 3 run kicked off manually under the fixed wrapper; next calendar fire confirmed for Sun May 10 9am.
 
 ### v2.19.1 (April 28, 2026) — Pooled-Slug Clamp + Zoning-Aware Dev Cost
 

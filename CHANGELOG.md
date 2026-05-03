@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.19.2] - 2026-05-03 - Cron Wrapper IsADirectoryError Fix
+
+### Fixed
+- `run_weekly_cron.py:find_latest_output` now filters `glob()` to `.is_file()` only. Previously a legacy `output/reports/executive_summary_UPDATED.pdf/` *directory* matched the glob and reverse-sorted to the front (`'U' > '2'` in ASCII). The wrapper crashed at the email-attachment step every Sunday for ~2 weeks even though the inner pipeline completed successfully each time.
+
+### Cleanup
+- Renamed `output/reports/executive_summary_UPDATED.pdf/` → `output/reports/_archived_legacy_oct2025_dir/` to prevent recurrence.
+
+### Schedule
+- Today's missed Sunday May 3 run kicked off manually under the fixed wrapper.
+- launchd calendar trigger confirmed for next Sunday May 10 09:00.
+
 ## [2.19.1] - 2026-04-28 - Pooled-Slug Clamp + Zoning-Aware Dev Cost
 
 ### Fixed
