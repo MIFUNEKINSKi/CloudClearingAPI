@@ -59,16 +59,31 @@ def load_env():
 
 
 def find_latest_output():
-    """Find the most recent monitoring JSON and PDF report."""
+    """Find the most recent monitoring JSON and PDF report.
+
+    Bug fix 2026-05-03: glob() returns BOTH files and directories. There's a
+    legacy `executive_summary_UPDATED.pdf/` *directory* in output/reports/
+    (someone created it by mistake at some point). When sorted reverse, the
+    'U' in "UPDATED" beats the '2' in timestamped filenames in ASCII order,
+    so the directory was being picked as latest_pdf — then open(pdf, 'rb')
+    threw IsADirectoryError, crashing the launchd job for ≥1 weekly cycle.
+    Filter to .is_file() only.
+    """
     monitoring_dir = PROJECT_ROOT / 'output' / 'monitoring'
     reports_dir = PROJECT_ROOT / 'output' / 'reports'
-    
-    json_files = sorted(monitoring_dir.glob('weekly_monitoring_*.json'), reverse=True)
-    pdf_files = sorted(reports_dir.glob('executive_summary_*.pdf'), reverse=True)
-    
+
+    json_files = sorted(
+        (p for p in monitoring_dir.glob('weekly_monitoring_*.json') if p.is_file()),
+        reverse=True,
+    )
+    pdf_files = sorted(
+        (p for p in reports_dir.glob('executive_summary_*.pdf') if p.is_file()),
+        reverse=True,
+    )
+
     latest_json = json_files[0] if json_files else None
     latest_pdf = pdf_files[0] if pdf_files else None
-    
+
     return latest_json, latest_pdf
 
 
