@@ -1,7 +1,7 @@
 # CloudClearingAPI Development Roadmap
 
 **Updated:** April 28, 2026
-**Current Version:** v2.19.2 (Cron Wrapper IsADirectoryError Fix)
+**Current Version:** v2.19.3 (Catalyst-Aware Appreciation Floor)
 
 ---
 
@@ -147,6 +147,7 @@ How CloudClearingAPI maps to common DE-job requirements. Track B phases close mo
 
 | Version | Date | Key Features |
 |---|---|---|
+| **v2.19.3** | May 3, 2026 | Catalyst-aware appreciation floor in `_estimate_appreciation_rate`. SEZ regions (sez_designated/government_subsidized overlay) get 10%/yr floor instead of universal 5%; PSN regions 8%; KSPN tourism 7%. Default unchanged. Bitung KEK SEZ 3yr ROI flips from −12.5% to +0.1% (5yr +21.1%) — the v2.19.1 dev-cost fix was correct but the 5% appreciation floor was undershooting SEZ economics |
 | **v2.19.2** | May 3, 2026 | Cron wrapper bug fix. `run_weekly_cron.py:find_latest_output` was matching a legacy `executive_summary_UPDATED.pdf/` directory via `glob()` (reverse-sorted, 'U' > '2' in ASCII), then crashing at `open()` with IsADirectoryError. Fixed via `.is_file()` filter. The launchd cron had been crashing silently every Sunday for ~2 weeks even though the inner pipeline completed cleanly. Schedule restored; next calendar fire Sun May 10 9am |
 | **v2.19.1** | Apr 28, 2026 | Two follow-on fixes from v2.19 audit. (1) Pooled-slug clamp tightening: 6 split sub-regions sharing a Lamudi parent slug now use 2.5× outlier threshold instead of 5×. `subang_pantura_agrarian` correctly clamps from inflated Rp 1.84M to research-anchored Rp 450K. (2) Zoning-aware dev cost: SEZ-designated regions get 0.30× cost (infra preinstalled), industrial 0.60×, default 1.00×. Bitung KEK SEZ ROI flipped −44.6% → +26.7% (model artifact, not real signal) |
 | **v2.19.0** | Apr 28, 2026 | Region splits — Subang/Balikpapan/Bitung each split into 2 sub-regions where deep-research found 3-10× pricing spreads inside one bbox. New: `subang_patimban_industrial` + `subang_pantura_agrarian`, `balikpapan_kariangau_industrial` + `balikpapan_selatan_commercial`, `bitung_port_corridor` + `bitung_kek_sez_industrial`. Total regions 65 → 68. Each gets distinct bbox + benchmark + feasibility + infra fallback + news routing |

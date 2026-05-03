@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.19.3] - 2026-05-03 - Catalyst-Aware Appreciation Floor
+
+### Fixed
+- `_estimate_appreciation_rate` floor was 5%/yr for all regions, including SEZs designed to attract FDI. Now reads `region_feasibility.zoning_overlays` and raises the floor for catalyst regions: `sez_designated` / `government_subsidized` → 10%/yr, `psn_right_of_way` → 8%/yr, `kspn_priority` / `kspn_strict` → 7%/yr, default → 5%/yr.
+
+### Why
+- v2.19.1 dev-cost fix correctly cut Bitung KEK SEZ dev cost from Rp 800K → Rp 240K, but headline ROI was still −12.5% 3yr because the 5% appreciation floor undershot what SEZ economics deliver. With v2.19.3: 3yr ROI 0.1%, 5yr +21.1%.
+
+### Verified
+- Catalyst floors propagate correctly: bitung_kek 10%, batang_industrial_sez 10%, subang_patimban_industrial 8%, lake_toba 7%. Other regions unchanged.
+- Tests: 26 passed, 22 skipped, 0 failed.
+
 ## [2.19.2] - 2026-05-03 - Cron Wrapper IsADirectoryError Fix
 
 ### Fixed

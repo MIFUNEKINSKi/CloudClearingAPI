@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.19.2 (Cron Wrapper IsADirectoryError Fix — Weekly Schedule Restored)
+**Version:** 2.19.3 (Catalyst-Aware Appreciation Floor — SEZ / PSN / KSPN)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,20 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.19.3 (May 3, 2026) — Catalyst-Aware Appreciation Floor
+
+The May 3 v2.19.1 production audit found the SEZ dev-cost fix worked perfectly (Bitung KEK dev cost Rp 800K → Rp 240K), but ROI was still −12.5% 3yr because the appreciation model floored at 5%/yr for everything — too pessimistic for regions with explicit government-investment catalysts.
+
+`_estimate_appreciation_rate` now reads `region_feasibility.zoning_overlays` and raises the floor accordingly:
+- `sez_designated` / `government_subsidized` → **10%/yr** (Bitung KEK, Batang BIP)
+- `psn_right_of_way` → **8%/yr** (subang_patimban_industrial, Patimban national strategic project)
+- `kspn_priority` / `kspn_strict` → **7%/yr** (Lake Toba, Labuan Bajo super-priority tourism)
+- default → 5%/yr (unchanged)
+
+The 30%/yr ceiling is unchanged. Catalyst regions still use the blended model when it produces a rate above the catalyst floor — this only raises the floor.
+
+**Bitung KEK after v2.19.3**: 3yr ROI 0.1%, 5yr ROI +21.1% (was −12.5% / −3.1% before).
 
 ### v2.19.2 (May 3, 2026) — Cron Wrapper Bug Fix
 
