@@ -597,8 +597,34 @@ class FinancialMetricsEngine:
 
         base_rate = blended_appreciation + momentum_boost
 
-        # Cap base at reasonable limits (5-30% annual)
-        base_rate = max(0.05, min(0.30, base_rate))
+        # v2.19.3: catalyst-aware appreciation floor.
+        # The default 5% floor is too pessimistic for regions with explicit
+        # government investment catalysts. SEZs are designed to attract FDI
+        # and accelerate land development; PSN (national strategic project)
+        # rights-of-way carry implicit infrastructure spend. Without this,
+        # bitung_kek_sez_industrial showed -12.5% 3yr ROI because the
+        # tier-3 5% floor undershot what SEZ economics actually deliver.
+        floor_rate = 0.05
+        catalyst_note = None
+        try:
+            from .region_feasibility import get_feasibility
+            from .market_config import classify_region_tier
+            feas = get_feasibility(region_name, tier=classify_region_tier(region_name))
+            overlays = set(feas.zoning_overlays or ())
+            if 'sez_designated' in overlays or 'government_subsidized' in overlays:
+                floor_rate = 0.10  # SEZ catalyst — government subsidies + FDI pipeline
+                catalyst_note = "SEZ floor 10%/yr"
+            elif 'psn_right_of_way' in overlays:
+                floor_rate = 0.08  # PSN catalyst — national strategic project
+                catalyst_note = "PSN floor 8%/yr"
+            elif 'kspn_priority' in overlays or 'kspn_strict' in overlays:
+                floor_rate = 0.07  # KSPN tourism super-priority
+                catalyst_note = "KSPN floor 7%/yr"
+        except Exception:
+            pass
+
+        # Cap at the catalyst-adjusted floor and the universal 30% ceiling
+        base_rate = max(floor_rate, min(0.30, base_rate))
 
         # Bear scenario: appreciation halved, floor at 0% (stagnation, not collapse)
         bear_rate = max(0.0, base_rate * 0.5)
