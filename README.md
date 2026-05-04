@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.19.3 (Catalyst-Aware Appreciation Floor — SEZ / PSN / KSPN)
+**Version:** 2.19.4 (Catalyst-Floor Calibration Alert — Closes the Self-Audit Loop)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,16 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.19.4 (May 4, 2026) — Catalyst-Floor Calibration Alert
+
+The v2.19.3 catalyst floors (SEZ 10%/yr, PSN 8%, KSPN 7%) are hard-coded constants. v2.19.4 adds the missing self-audit loop: when SEZ/PSN/KSPN regions consistently miss their prorated-predicted return by ≥50%, the system surfaces a one-line ⚠ at the top of the PREDICTION REVIEW section telling the investor (or future audit pass) that the floor may be too high.
+
+`detect_calibration_alerts(forecasts)` picks the longest available anchor (12w preferred, 8w fallback, 4w last), groups realizations by catalyst class, excludes listing-shifted samples, and fires when ≥3 regions in the same class miss prediction. Renders in both email and PDF. Suggests a floor based on observed median, capped at 5% minimum.
+
+Semi-automatic on purpose — keeps human judgment on the loop. Full self-adjustment was rejected because Indonesian land prices don't move weekly and early scraper noise could push the system into a self-reinforcing wrong floor (lower itself based on noise, then surface regions as "performing as expected" when actually undermodeled).
+
+Today's run: 0 alerts fire (forecast log only has post-Apr 28 data; thresholds need ≥3 regions per catalyst class and 12w window). Alerts become possible from ~late May 2026 as `forecast_log.jsonl` accumulates.
 
 ### v2.19.3 (May 3, 2026) — Catalyst-Aware Appreciation Floor
 

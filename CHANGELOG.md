@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.19.4] - 2026-05-04 - Catalyst-Floor Calibration Alert
+
+### Added
+- `detect_calibration_alerts(forecasts)` in `prediction_tracker.py` — picks longest available anchor (12w/8w/4w), groups realizations by catalyst class (SEZ / PSN / KSPN via `region_feasibility.zoning_overlays`), excludes listing-shifted samples, fires when ≥3 regions in the same class show realized < 0.5× prorated-predicted.
+- `CalibrationAlert` dataclass + `calibration_alerts_to_email_lines` renderer.
+- Email + PDF integration: alerts render at the TOP of the PREDICTION REVIEW section so they jump out before per-anchor detail.
+
+### Why
+- v2.19.3 catalyst floors are hard-coded constants. Without a feedback loop, an over-aggressive floor would silently produce over-optimistic ROI numbers indefinitely.
+- Semi-automatic was chosen over full self-adjustment to avoid self-reinforcing wrong-floor risk during the noisy v2.16.x post-fix calibration period.
+
+### Verified
+- Catalyst classification correct (SEZ → bitung_kek + batang_industrial_sez, PSN → subang_patimban_industrial, KSPN → lake_toba + labuan_bajo, plain industrial → None).
+- 0 alerts fire on current data (expected — forecast log too thin; alerts become possible from ~late May 2026).
+- Synthetic-test rendering verified for both email and PDF paths.
+- Tests: 26 passed, 22 skipped, 0 failed.
+
 ## [2.19.3] - 2026-05-03 - Catalyst-Aware Appreciation Floor
 
 ### Fixed
