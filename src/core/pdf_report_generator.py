@@ -411,6 +411,7 @@ class PDFReportGenerator:
         try:
             from .prediction_tracker import (
                 load_all_forecasts, build_review, _NOISE_FLOOR_DATE,
+                detect_calibration_alerts,
             )
         except Exception:
             return story
@@ -429,6 +430,32 @@ class PDFReportGenerator:
             self.styles['Normal']
         ))
         story.append(Spacer(1, 8))
+
+        # v2.19.4: catalyst-floor calibration alerts at the top of the section.
+        # Surfaces a ⚠ when SEZ/PSN/KSPN regions consistently miss their
+        # prorated-predicted return — investor (or future audit pass) decides
+        # whether to lower the floor in financial_metrics.
+        try:
+            alerts = detect_calibration_alerts(forecasts)
+        except Exception:
+            alerts = []
+        for a in alerts:
+            story.append(Paragraph(
+                f"<b>⚠ <font color='#CC4400'>{a.catalyst_class} catalyst floor "
+                f"({a.current_floor_pct:.0f}%/yr) may be too high</font></b> — "
+                f"{a.n_regions_missing}/{a.n_regions_total} regions miss prediction by ≥50% "
+                f"at {a.anchor_age_weeks:.0f}w anchor",
+                self.styles['Normal']
+            ))
+            story.append(Paragraph(
+                f"<font size='8'>Realized {a.sample_realized_pct:+.1f}% vs prorated "
+                f"{a.sample_predicted_pct:+.1f}% (ratio {a.avg_realized_ratio:.2f}×). "
+                f"Examples: {', '.join(a.region_examples)}. "
+                f"Consider lowering floor to ~{a.suggested_floor_pct:.0f}%/yr in "
+                f"<i>financial_metrics._estimate_appreciation_rate</i> (manual review).</font>",
+                self.styles['Normal']
+            ))
+            story.append(Spacer(1, 6))
 
         cell = ParagraphStyle('PredCell', parent=self.styles['Normal'], fontSize=8, leading=10)
         header = ParagraphStyle('PredHeader', parent=self.styles['Normal'], fontSize=8, leading=10, textColor=colors.white)

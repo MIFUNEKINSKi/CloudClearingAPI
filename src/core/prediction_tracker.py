@@ -512,6 +512,186 @@ def empty_review_lines(target_age_weeks: float) -> List[str]:
     return out
 
 
+# ---------------------------------------------------------------------------
+# Catalyst-floor calibration alerts (v2.19.4)
+# ---------------------------------------------------------------------------
+# When SEZ/PSN/KSPN catalyst floors are too high relative to what the regions
+# actually deliver, the system silently produces over-optimistic ROI numbers.
+# This block detects that pattern from realizations and surfaces an alert in
+# the prediction-review section. The investor (or future audit pass) decides
+# whether to lower the floor — alert is signal, not action.
+#
+# Why semi-automatic instead of fully self-adjusting: Indonesian land prices
+# don't move weekly. With early scraper noise we'd risk a self-reinforcing
+# wrong floor — the system would lower itself based on noise then surface
+# regions as "performing as expected" when they're actually undermodeled.
+# Human-on-the-loop is safer.
+
+# Maps catalyst overlay → display label + current floor (mirrors
+# financial_metrics._estimate_appreciation_rate). Keep in sync.
+_CATALYST_FLOORS: Dict[str, Tuple[str, float]] = {
+    'sez_designated': ('SEZ', 0.10),
+    'psn_right_of_way': ('PSN', 0.08),
+    'kspn_priority': ('KSPN', 0.07),
+    'kspn_strict': ('KSPN', 0.07),
+}
+
+# Underperformance threshold: realized < this multiple of prorated-predicted
+# is "missing." 0.5 = realized is less than half of what we projected.
+_UNDERPERFORM_RATIO = 0.5
+# Minimum regions in the same class that must miss before we fire an alert.
+# 3 protects against single-region noise (a Bitung KEK listing-pool wobble
+# alone shouldn't condemn the SEZ floor).
+_MIN_REGIONS_TO_ALERT = 3
+
+
+@dataclass
+class CalibrationAlert:
+    catalyst_class: str          # 'SEZ' | 'PSN' | 'KSPN'
+    current_floor_pct: float     # percent, e.g. 10.0
+    n_regions_missing: int       # how many regions in this class showed underperformance
+    n_regions_total: int         # total regions evaluated in this class
+    avg_realized_ratio: float    # mean of (realized / prorated) across the missing regions
+    anchor_age_weeks: float      # how old the anchor we evaluated was
+    sample_realized_pct: float   # mean realized % across missing regions
+    sample_predicted_pct: float  # mean prorated-predicted % across missing regions
+    suggested_floor_pct: float   # what the floor would be if set to observed median
+    region_examples: List[str]   # up to 3 region names for context
+
+
+def _region_catalyst_class(region: str) -> Optional[str]:
+    """Return the catalyst class label for a region, or None.
+    Reads region_feasibility.zoning_overlays. Cached in-process via lru_cache
+    to avoid feasibility-lookup overhead per call.
+    """
+    try:
+        from .region_feasibility import get_feasibility
+        from .market_config import classify_region_tier
+        feas = get_feasibility(region, tier=classify_region_tier(region))
+        overlays = set(feas.zoning_overlays or ())
+        for overlay, (label, _floor) in _CATALYST_FLOORS.items():
+            if overlay in overlays:
+                return label
+    except Exception:
+        pass
+    return None
+
+
+def detect_calibration_alerts(forecasts: List[Forecast],
+                              anchor_age_weeks_options: List[int] = [12, 8, 4]) -> List[CalibrationAlert]:
+    """Identify catalyst classes whose realized appreciation consistently
+    undershoots the floor-derived prediction.
+
+    Strategy: pick the OLDEST anchor with sufficient data (12w preferred,
+    8w next, 4w last). Within that anchor, group catalyst-class regions
+    and check if ≥ _MIN_REGIONS_TO_ALERT of them in the same class show
+    realized < _UNDERPERFORM_RATIO × prorated-predicted. If yes, emit one
+    alert per affected class.
+
+    Excludes listing-shifted realizations from the underperformance check
+    — those reflect coverage change, not market movement.
+    """
+    if not forecasts:
+        return []
+
+    # Pick the longest-window anchor that exists
+    review = None
+    for weeks in anchor_age_weeks_options:
+        # Tolerance scales with age — older anchors get wider tolerance
+        tol = 1.0 + 0.5 * (weeks // 4)
+        candidate = build_review(forecasts, target_age_weeks=float(weeks), tolerance_weeks=tol)
+        if candidate is not None and candidate.realizations:
+            review = candidate
+            break
+
+    if review is None:
+        return []
+
+    # Group realizations by catalyst class (skip listing-shifted samples)
+    by_class: Dict[str, List[Realization]] = {}
+    for rz in review.realizations:
+        if rz.listing_shift_flag or rz.prorated_predicted_pct is None:
+            continue
+        cls = _region_catalyst_class(rz.forecast.region)
+        if cls is None:
+            continue
+        by_class.setdefault(cls, []).append(rz)
+
+    alerts: List[CalibrationAlert] = []
+    for catalyst_class, rzs in by_class.items():
+        # Find current floor for this class
+        current_floor_pct = 5.0
+        for overlay, (label, floor) in _CATALYST_FLOORS.items():
+            if label == catalyst_class:
+                current_floor_pct = floor * 100
+                break
+
+        # Identify underperformers
+        missing = []
+        for rz in rzs:
+            if rz.prorated_predicted_pct <= 0:
+                continue
+            ratio = rz.realized_return_pct / rz.prorated_predicted_pct
+            if ratio < _UNDERPERFORM_RATIO:
+                missing.append((rz, ratio))
+
+        if len(missing) < _MIN_REGIONS_TO_ALERT:
+            continue
+
+        # Compute aggregate stats
+        avg_ratio = statistics.mean(r for _, r in missing)
+        avg_realized = statistics.mean(rz.realized_return_pct for rz, _ in missing)
+        avg_predicted = statistics.mean(rz.prorated_predicted_pct for rz, _ in missing)
+        # Suggested floor: extrapolate from observed ratio. If realized is half
+        # of prorated, the implied annualized rate is roughly half the floor.
+        # Conservative: drop the floor by (1 - avg_ratio), bounded to keep ≥ 5.
+        suggested_floor_pct = max(5.0, current_floor_pct * avg_ratio)
+
+        examples = [rz.forecast.region for rz, _ in sorted(
+            missing, key=lambda pair: pair[1])[:3]]
+
+        alerts.append(CalibrationAlert(
+            catalyst_class=catalyst_class,
+            current_floor_pct=current_floor_pct,
+            n_regions_missing=len(missing),
+            n_regions_total=len(rzs),
+            avg_realized_ratio=avg_ratio,
+            anchor_age_weeks=review.anchor_age_weeks,
+            sample_realized_pct=avg_realized,
+            sample_predicted_pct=avg_predicted,
+            suggested_floor_pct=suggested_floor_pct,
+            region_examples=examples,
+        ))
+    return alerts
+
+
+def calibration_alerts_to_email_lines(alerts: List[CalibrationAlert]) -> List[str]:
+    """Render calibration alerts as plain-text email lines."""
+    if not alerts:
+        return []
+    out: List[str] = []
+    out.append("⚠ CATALYST-FLOOR CALIBRATION ALERT")
+    out.append("-" * 55)
+    for a in alerts:
+        out.append(
+            f"  {a.catalyst_class} floor ({a.current_floor_pct:.0f}%/yr) may be too high — "
+            f"{a.n_regions_missing}/{a.n_regions_total} regions miss prediction by ≥50%"
+        )
+        out.append(
+            f"    Anchor: {a.anchor_age_weeks:.0f}w. Realized {a.sample_realized_pct:+.1f}% "
+            f"vs prorated {a.sample_predicted_pct:+.1f}% (ratio {a.avg_realized_ratio:.2f}×)"
+        )
+        out.append(
+            f"    Examples: {', '.join(a.region_examples)}"
+        )
+        out.append(
+            f"    Consider lowering to ~{a.suggested_floor_pct:.0f}%/yr in "
+            "financial_metrics._estimate_appreciation_rate (manual review required)"
+        )
+    out.append("")
+    return out
+
+
 def build_full_review_section() -> List[str]:
     """Build the complete email section. Returns list of lines (with header).
 
@@ -525,6 +705,18 @@ def build_full_review_section() -> List[str]:
 
     lines.append("PREDICTION REVIEW — How past calls are tracking")
     lines.append("-" * 55)
+
+    # v2.19.4: catalyst-floor calibration alerts at the top of the section so
+    # they jump out before the per-anchor detail. Only fires when ≥3 SEZ/PSN/
+    # KSPN regions miss prorated-predicted by ≥50% in the longest available
+    # anchor — robust to single-region noise. No-op until ~late May 2026 when
+    # post-fix forecast_log accumulates enough data.
+    try:
+        alerts = detect_calibration_alerts(forecasts)
+        if alerts:
+            lines.extend(calibration_alerts_to_email_lines(alerts))
+    except Exception as e:
+        logger.debug(f"Calibration-alert detection skipped: {e}")
 
     rendered_any = False
     for target_weeks, tol in [(4, 1.0), (8, 1.5), (12, 2.0)]:
