@@ -1,0 +1,250 @@
+CLOUDCLEARINGAPI — WEEKLY INVESTMENT BRIEFING
+Report Date: May 14, 2026
+=======================================================
+
+PORTFOLIO OVERVIEW
+  Regions Scored: 68
+  STRONG BUY: 11 | BUY: 16 | WATCH: 17 | PASS: 24
+  Data Quality: 68/68 live market, 68/68 live infrastructure
+  ⚠ 7/68 regions on SAR-only satellite (no optical verification — confidence reduced)
+
+📈 TIER CHANGES SINCE LAST RUN
+-------------------------------------------------------
+  ⬆ UPGRADES (11):
+     🔥 Anyer Carita Coastal: BUY (46.8) → STRONG_BUY (52.8, +6.0pts)
+     🔥 Merak Port Corridor: BUY (44.2) → STRONG_BUY (49.8, +5.5pts)
+     🔥 Palembang Jakabaring Expansion: BUY (47.8) → STRONG_BUY (51.9, +4.2pts)
+     🔥 Serang Cilegon Industrial: BUY (54.8) → STRONG_BUY (52.8, -2.0pts)
+     ✅ Batang Industrial Sez: WATCH (34.9) → BUY (51.3, +16.4pts)
+     ✅ Cirebon Port Industrial: PASS (30.8) → BUY (43.6, +12.8pts)
+     ✅ Makassar Urban Expansion: WATCH (36.2) → BUY (43.3, +7.1pts)
+     ✅ Bakauheni Ferry Corridor: WATCH (39.8) → BUY (42.2, +2.3pts)
+  ⬇ DOWNGRADES (11):
+     ⚠ Manado Tourism Expansion: BUY (43.4) → PASS (23.4, -20.0pts)
+     ⚠ Tangerang Bsd Corridor: BUY (45.7) → WATCH (33.2, -12.5pts)
+     ⚠ Banyuwangi Ferry Corridor: BUY (48.9) → WATCH (38.0, -10.9pts)
+     ⚠ Bogor Puncak Highland: BUY (48.7) → WATCH (41.7, -7.0pts)
+     ⚠ Magelang Borobudur Corridor: WATCH (33.4) → PASS (27.2, -6.3pts)
+
+PREDICTION REVIEW — How past calls are tracking
+-------------------------------------------------------
+Predictions from 4 weeks ago (anchor: 2026-04-19):
+  ⚠️  Anchor predates 2026-04-25 v2.16.x fix wave —
+     deltas reflect scraper recalibration as much as real
+     market movement. Treat directionally; full predictive
+     signal needs anchors after 2026-04-25.
+  ⚠ bandung_north_expansion              BUY        @ Rp  6,047,822/m² *listing-shift
+     Today: Rp  8,500,000/m² (+40.5%, ann saturated (likely data artifact, not market)) vs prorated-predicted +0.4% — ahead
+     ⚠ listing pool shifted to 5 listings — comparison may reflect coverage change rather than market move
+  🔥 batam_industrial_expansion           BUY        @ Rp  4,962,709/m²
+     Today: Rp  5,570,111/m² (+12.2%, ann +437.2%) vs prorated-predicted +0.3% — ahead
+  ⚠ cikarang_mega_industrial             BUY        @ Rp  3,197,000/m² *listing-shift
+     Today: Rp  3,399,981/m² (+6.3%, ann +145.0%) vs prorated-predicted +0.5% — ahead
+     ⚠ listing pool shifted to 20 listings — comparison may reflect coverage change rather than market move
+  ⚠ bandung_east_tech_corridor           WATCH      @ Rp  6,047,822/m² *listing-shift
+     Today: Rp  8,500,000/m² (+40.5%, ann saturated (likely data artifact, not market)) vs prorated-predicted +0.3% — ahead
+     ⚠ listing pool shifted to 5 listings — comparison may reflect coverage change rather than market move
+  🔥 denpasar_north_expansion             WATCH      @ Rp  8,349,194/m²
+     Today: Rp  9,666,667/m² (+15.8%, ann saturated (likely data artifact, not market)) vs prorated-predicted +1.2% — ahead
+  ⏳ surabaya_west_expansion              WATCH      @ Rp 16,496,750/m²
+     Today: Rp 15,500,000/m² (-6.0%, ann -59.6%) vs prorated-predicted +0.3% — lagging
+
+  Tier means (clean samples only): BUY -42.4% / WATCH -35.2%
+  Hit rate: 2/26 STRONG_BUY+BUY moved positively (8%)
+  Excluded: 8 listing-shifted, 3 no current price history
+
+Predictions from 8 weeks ago (anchor: 2026-03-21):
+  ⚠️  Anchor predates 2026-04-25 v2.16.x fix wave —
+     deltas reflect scraper recalibration as much as real
+     market movement. Treat directionally; full predictive
+     signal needs anchors after 2026-04-25.
+  ⏳ gresik_port_industrial               BUY        @ Rp  4,916,250/m²
+     Today: Rp  1,949,333/m² (-60.3%, ann -99.8%) vs prorated-predicted +0.3% — lagging
+  ⏳ malang_south_highland                WATCH      @ Rp  5,985,000/m²
+     Today: Rp  4,472,102/m² (-25.3%, ann -86.0%) vs prorated-predicted +0.2% — lagging
+  ⏳ sidoarjo_delta_development           WATCH      @ Rp  8,645,000/m²
+     Today: Rp  3,690,816/m² (-57.3%, ann -99.7%) vs prorated-predicted +0.7% — lagging
+  ⏳ merak_port_corridor                  WATCH      @ Rp  4,916,250/m²
+     Today: Rp    950,000/m² (-80.7%, ann -100.0%) vs prorated-predicted +0.0% — lagging
+
+  Tier means (clean samples only): WATCH -66.2%
+  Hit rate: 0/1 STRONG_BUY+BUY moved positively (0%)
+
+Predictions from 12 weeks ago: ⏳ Insufficient post-fix history.
+  forecast_log.jsonl writer activated 2026-04-28 (v2.16.9).
+  This window will become meaningful once 4+ weeks of post-2026-04-25
+  history accumulate (target: ~2026-07-18).
+
+PRIORITY OPPORTUNITIES — 🔥 STRONG BUY first, then BUY
+-------------------------------------------------------
+  1. [🔥 STRONG BUY] Anyer Carita Coastal
+     🆕 NEW THIS WEEK at STRONG_BUY tier
+     Score: 52.8/100 | Confidence: 100% | Market: cooling
+     Breakdown: activity 33 × infra 1.15 × market 1.40 × conf 1.00 × news 1.00 × momentum 1.00 = 52.8
+     ✅ leasehold (25-30y) · tourism · coastal_protection · low liquidity
+     Entry Price: Rp 1,769,476/m² → Rp 2,048,389/m² (projected)
+     ROI: 3Y 15.8% | 5Y 27.6%
+     Est. Acquisition (500m²): Rp 1,032,978,676
+     RVI: 0.82 (Moderately undervalued - Buy opportunity) | Momentum: n/a | News: 1→0 (declining)
+     SAR breakdown: 7% construction, 38% clearing (early-stage: heavy clearing)
+     ⚠ Signal mostly SAR (radar 90× optical) — common at ports/coast where ship traffic + water surface change. Verify with satellite imagery before acting.
+     🔗 Listings: https://www.lamudi.co.id/tanah/jual/anyer/?sort=newest
+     🛰️ Imagery:  https://www.google.com/maps/@-6.10000,105.95000,14z/data=!3m1!1e3
+     🗺️ OSM map:  https://www.openstreetmap.org/?bbox=105.85,-6.2,106.05,-6.0
+
+  2. [🔥 STRONG BUY] Serang Cilegon Industrial
+     🆕 NEW THIS WEEK at STRONG_BUY tier
+     Score: 52.8/100 | Confidence: 100% | Market: cooling
+     Breakdown: activity 33 × infra 1.15 × market 1.40 × conf 1.00 × news 1.00 × momentum 1.00 = 52.8
+     ✅ HGB via PT PMA · industrial · high liquidity
+     Entry Price: Rp 1,769,476/m² → Rp 2,101,691/m² (projected)
+     ROI: 3Y 18.8% | 5Y 33.2%
+     Est. Acquisition (500m²): Rp 1,179,925,433
+     RVI: 0.27 (Significantly undervalued - Strong buy signal) | Momentum: n/a | News: 1→1 (stable)
+     SAR breakdown: 12% construction, 41% clearing (early-stage: heavy clearing)
+     ⚠ Signal mostly SAR (radar 99× optical) — common at ports/coast where ship traffic + water surface change. Verify with satellite imagery before acting.
+     🔗 Listings: https://www.lamudi.co.id/tanah/jual/serang/?sort=newest
+     🛰️ Imagery:  https://www.google.com/maps/@-6.00000,106.10000,14z/data=!3m1!1e3
+     🗺️ OSM map:  https://www.openstreetmap.org/?bbox=106.0,-6.1,106.2,-5.9
+
+  3. [🔥 STRONG BUY] Cikarang Mega Industrial
+     📌 Held STRONG_BUY tier for 4 consecutive weeks
+     Score: 52.2/100 | Confidence: 100% | Market: booming
+     Breakdown: activity 32 × infra 1.15 × market 1.40 × conf 1.00 × news 1.00 × momentum 1.00 = 52.2
+     ✅ HGB via PT PMA · industrial · very high liquidity
+     Entry Price: Rp 5,779,986/m² → Rp 12,619,753/m² (projected)
+     ROI: 3Y 118.3% | 5Y 267.5%
+     Est. Acquisition (500m²): Rp 2,889,993,138
+     RVI: 0.60 (Significantly undervalued - Strong buy signal) | Momentum: n/a | News: 6→1 (declining)
+     SAR breakdown: 7% construction, 36% clearing (early-stage: heavy clearing)
+     ⚠ Signal mostly SAR (radar 109× optical) — common at ports/coast where ship traffic + water surface change. Verify with satellite imagery before acting.
+     🔗 Listings: https://www.lamudi.co.id/tanah/jual/cikarang/?sort=newest
+     🛰️ Imagery:  https://www.google.com/maps/@-6.25000,107.20000,14z/data=!3m1!1e3
+     🗺️ OSM map:  https://www.openstreetmap.org/?bbox=107.1,-6.35,107.3,-6.15
+
+  4. [🔥 STRONG BUY] Bekasi Industrial Belt
+     (2nd consecutive week at STRONG_BUY)
+     Score: 52.1/100 | Confidence: 100% | Market: booming
+     Breakdown: activity 32 × infra 1.15 × market 1.40 × conf 1.00 × news 1.00 × momentum 1.00 = 52.1
+     ✅ HGB via PT PMA · mixed · very high liquidity
+     Entry Price: Rp 7,596,419/m² → Rp 10,085,700/m² (projected)
+     ROI: 3Y 32.8% | 5Y 60.4%
+     Est. Acquisition (500m²): Rp 3,798,209,270
+     RVI: 0.78 (Significantly undervalued - Strong buy signal) | Momentum: n/a | News: 17→3 (declining)
+     SAR breakdown: 5% construction, 29% clearing
+     ⚠ Signal mostly SAR (radar 114× optical) — common at ports/coast where ship traffic + water surface change. Verify with satellite imagery before acting.
+     🔗 Listings: https://www.lamudi.co.id/tanah/jual/bekasi/?sort=newest
+     🛰️ Imagery:  https://www.google.com/maps/@-6.25000,107.05000,14z/data=!3m1!1e3
+     🗺️ OSM map:  https://www.openstreetmap.org/?bbox=106.95,-6.35,107.15,-6.15
+
+  5. [🔥 STRONG BUY] Palembang Jakabaring Expansion
+     🆕 NEW THIS WEEK at STRONG_BUY tier
+     Score: 51.9/100 | Confidence: 100% | Market: declining
+     Breakdown: activity 33 × infra 1.15 × market 1.36 × conf 1.00 × news 1.00 × momentum 1.00 = 51.9
+     ✅ HGB via PT PMA · mixed · moderate liquidity
+     Entry Price: Rp 3,580,809/m² → Rp 4,145,235/m² (projected)
+     ROI: 3Y 15.8% | 5Y 27.6%
+     Est. Acquisition (500m²): Rp 1,790,404,740
+     RVI: 0.87 (Moderately undervalued - Buy opportunity) | Momentum: n/a
+     SAR breakdown: 12% construction, 36% clearing (early-stage: heavy clearing)
+     ⚠ Signal mostly SAR (radar 73× optical) — common at ports/coast where ship traffic + water surface change. Verify with satellite imagery before acting.
+     🔗 Listings: https://www.lamudi.co.id/tanah/jual/palembang/?sort=newest
+     🛰️ Imagery:  https://www.google.com/maps/@-2.95000,104.85000,14z/data=!3m1!1e3
+     🗺️ OSM map:  https://www.openstreetmap.org/?bbox=104.75,-3.05,104.95,-2.85
+
+  6. [BUY] Batang Industrial Sez
+     🆕 NEW THIS WEEK at BUY tier
+     Score: 51.3/100 | Confidence: 84% | Market: booming
+     Breakdown: activity 38 × infra 1.00 × market 1.40 × conf 0.96 × news 1.00 × momentum 1.00 = 51.3
+     ✅ HGB via PT PMA · industrial · sez_designated, government_subsidized · low liquidity
+     Entry Price: Rp 2,020,827/m² → Rp 2,870,063/m² (projected)
+     ROI: 3Y 42.0% | 5Y 79.4%
+     Est. Acquisition (500m²): Rp 1,340,766,239
+     RVI: 0.35 (Significantly undervalued - Strong buy signal) | Momentum: n/a | News: 2→1 (declining)
+     SAR breakdown: 14% construction, 55% clearing (early-stage: heavy clearing)
+     🔗 Listings: https://www.lamudi.co.id/tanah/jual/batang/?sort=newest
+     🛰️ Imagery:  https://www.google.com/maps/@-6.90000,109.75000,14z/data=!3m1!1e3
+     🗺️ OSM map:  https://www.openstreetmap.org/?bbox=109.65,-7.0,109.85,-6.8
+
+  7. [🔥 STRONG BUY] Palembang Boom Baru Port
+     (2nd consecutive week at STRONG_BUY)
+     Score: 51.2/100 | Confidence: 100% | Market: declining
+     Breakdown: activity 33 × infra 1.15 × market 1.36 × conf 1.00 × news 1.00 × momentum 1.00 = 51.2
+     ✅ HGB via PT PMA · mixed · high liquidity
+     Entry Price: Rp 3,580,809/m² → Rp 4,145,235/m² (projected)
+     ROI: 3Y 15.8% | 5Y 27.6%
+     Est. Acquisition (500m²): Rp 1,790,404,740
+     RVI: 0.54 (Significantly undervalued - Strong buy signal) | Momentum: n/a
+     SAR breakdown: 12% construction, 38% clearing (early-stage: heavy clearing)
+     ⚠ Signal mostly SAR (radar 89× optical) — common at ports/coast where ship traffic + water surface change. Verify with satellite imagery before acting.
+     🔗 Listings: https://www.lamudi.co.id/tanah/jual/palembang/?sort=newest
+     🛰️ Imagery:  https://www.google.com/maps/@-2.95000,104.80000,14z/data=!3m1!1e3
+     🗺️ OSM map:  https://www.openstreetmap.org/?bbox=104.7,-3.05,104.9,-2.85
+
+  8. [🔥 STRONG BUY] Sidoarjo Delta Development
+     (3rd consecutive week at STRONG_BUY)
+     Score: 51.0/100 | Confidence: 100% | Market: booming
+     Breakdown: activity 32 × infra 1.15 × market 1.40 × conf 1.00 × news 1.00 × momentum 1.00 = 51.0
+     ✅ HGB via PT PMA · mixed · very high liquidity
+     Entry Price: Rp 7,029,090/m² → Rp 11,412,621/m² (projected)
+     ROI: 3Y 62.4% | 5Y 124.3%
+     Est. Acquisition (500m²): Rp 3,514,544,802
+     RVI: 0.73 (Significantly undervalued - Strong buy signal) | Momentum: n/a | News: 1→1 (stable)
+     SAR breakdown: 20% construction, 52% clearing
+     ⚠ Signal mostly SAR (radar 176× optical) — common at ports/coast where ship traffic + water surface change. Verify with satellite imagery before acting.
+     🔗 Listings: https://www.lamudi.co.id/tanah/jual/sidoarjo/?sort=newest
+     🛰️ Imagery:  https://www.google.com/maps/@-7.45000,112.75000,14z/data=!3m1!1e3
+     🗺️ OSM map:  https://www.openstreetmap.org/?bbox=112.65,-7.55,112.85,-7.35
+
+  9. [🔥 STRONG BUY] Purwokerto South Expansion
+     (3rd consecutive week at STRONG_BUY)
+     Score: 49.9/100 | Confidence: 100% | Market: booming
+     Breakdown: activity 31 × infra 1.15 × market 1.40 × conf 1.00 × news 1.00 × momentum 1.00 = 49.9
+     ✅ HGB via PT PMA · mixed · moderate liquidity
+     Entry Price: Rp 3,261,392/m² → Rp 4,198,553/m² (projected)
+     ROI: 3Y 28.7% | 5Y 52.3%
+     Est. Acquisition (500m²): Rp 1,630,695,976
+     RVI: 0.79 (Significantly undervalued - Strong buy signal) | Momentum: n/a | News: 2→1 (declining)
+     SAR breakdown: 11% construction, 29% clearing
+     ⚠ Signal mostly SAR (radar 160× optical) — common at ports/coast where ship traffic + water surface change. Verify with satellite imagery before acting.
+     🔗 Listings: https://www.lamudi.co.id/tanah/jual/purwokerto/?sort=newest
+     🛰️ Imagery:  https://www.google.com/maps/@-7.40000,109.30000,14z/data=!3m1!1e3
+     🗺️ OSM map:  https://www.openstreetmap.org/?bbox=109.2,-7.5,109.4,-7.3
+
+  10. [🔥 STRONG BUY] Merak Port Corridor
+     🆕 NEW THIS WEEK at STRONG_BUY tier
+     Score: 49.8/100 | Confidence: 100% | Market: cooling
+     Breakdown: activity 31 × infra 1.15 × market 1.40 × conf 1.00 × news 1.00 × momentum 1.00 = 49.8
+     ✅ HGB via PT PMA · industrial · coastal_protection · moderate liquidity
+     Entry Price: Rp 1,453,498/m² → Rp 1,682,606/m² (projected)
+     ROI: 3Y 15.8% | 5Y 27.6%
+     Est. Acquisition (500m²): Rp 1,127,617,923
+     RVI: 0.35 (Significantly undervalued - Strong buy signal) | Momentum: n/a | News: 1→0 (declining)
+     SAR breakdown: 9% construction, 40% clearing (early-stage: heavy clearing)
+     ⚠ Signal mostly SAR (radar 257× optical) — common at ports/coast where ship traffic + water surface change. Verify with satellite imagery before acting.
+     🔗 Listings: https://www.lamudi.co.id/tanah/jual/merak/?sort=newest
+     🛰️ Imagery:  https://www.google.com/maps/@-5.85000,106.05000,14z/data=!3m1!1e3
+     🗺️ OSM map:  https://www.openstreetmap.org/?bbox=105.95,-5.95,106.15,-5.75
+
+WATCH LIST (approaching BUY threshold)
+-------------------------------------------------------
+  Medan Belawan Port — 48.6/100 | Rp 2,128,000/m² | declining | headroom: -6.6pts to BUY
+  Bogor Puncak Highland — 41.7/100 | Rp 4,290,921/m² | booming | headroom: 0.3pts to BUY
+  Medan Kuala Namu Corridor — 41.6/100 | Rp 2,128,000/m² | declining | headroom: 0.4pts to BUY
+  Lombok Mandalika Resort — 39.9/100 | Rp 1,705,332/m² | declining | headroom: 2.1pts to BUY
+  Bandar Lampung South Expansion — 39.6/100 | Rp 1,008,702/m² | declining | headroom: 2.4pts to BUY
+
+PASS: 24 regions below threshold (see PDF for details)
+
+RECOMMENDED ACTIONS
+-------------------------------------------------------
+  1. Priority due diligence: Anyer Carita Coastal [🔥 STRONG BUY]
+  2. Focus on the 11 STRONG BUY region(s) first — these are top-decile signals
+  3. Verify land titles and zoning before deploying capital
+  4. Check local notary/PPAT availability for target plot
+  5. Undervalued (RVI < 0.85): Anyer Carita Coastal, Serang Cilegon Industrial, Cikarang Mega Industrial — potential deep value
+
+Full PDF report with Decision Matrix, financial projections, and
+risk analysis attached.
+
+— CloudClearingAPI Automated Report
