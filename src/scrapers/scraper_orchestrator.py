@@ -743,6 +743,21 @@ class LandPriceOrchestrator:
             static = self._find_nearest_benchmark(region_name).get('current_avg', 0)
             static_kind = 'bucket' if static else None
 
+        # v2.19.5: pooled-slug sub-regions must NOT use the history anchor.
+        # Their price-history JSONL is built from the shared parent slug
+        # (subang/balikpapan/bitung) — so the region's "own history" is
+        # actually the pooled price, not the sub-region's. v2.19.1's tighter
+        # 2.5× clamp was being defeated because _get_history_anchor returned
+        # the contaminated history (e.g. subang_pantura_agrarian history
+        # median Rp 850K, within 1.89× of the Rp 450K static → "trusted",
+        # then threshold = 850K×2.5 = 2.1M, so the Rp 1.7M pooled extract
+        # passed). Skipping history here forces the research-validated
+        # static benchmark, which is the whole point of the v2.19.0 split.
+        if region_name in self._POOLED_SLUG_REGIONS:
+            if static:
+                return float(static), f'{static_kind} (pooled-slug: history skipped)'
+            return None, 'unmapped'
+
         history = self._get_history_anchor(region_name)
         if history and static:
             anchor, n = history

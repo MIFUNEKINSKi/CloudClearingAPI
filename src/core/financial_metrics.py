@@ -582,6 +582,17 @@ class FinancialMetricsEngine:
         # Adjust for current market trend
         price_trend = market_data.get('price_trend_30d', 0) / 100  # Convert to decimal
 
+        # v2.19.5: clamp the price-trend contribution. A 30-day trend feeds the
+        # appreciation rate at 40% weight — but 30-day trends are extremely
+        # noisy. Cikarang showed price_trend_30d = +56.3% (a scraper-recovery
+        # artifact: the Lamudi median jumped Rp 2.5M→3.95M when the scraper
+        # started returning more listings, NOT a real market move). Unclamped,
+        # that contributed +22.5 percentage points to appreciation → 29.7%/yr
+        # rate → +118% projected 3yr ROI. Real Indonesian land doesn't move
+        # 56% in a month. Clamp the trend to ±20% before blending so a noisy
+        # month can nudge the rate but not dominate it.
+        price_trend = max(-0.20, min(0.20, price_trend))
+
         # Weight: 60% historical, 40% current trend
         blended_appreciation = (base_appreciation * 0.6) + (price_trend * 0.4)
 
