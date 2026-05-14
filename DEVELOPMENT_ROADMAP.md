@@ -1,7 +1,7 @@
 # CloudClearingAPI Development Roadmap
 
 **Updated:** April 28, 2026
-**Current Version:** v2.19.4 (Catalyst-Floor Calibration Alert)
+**Current Version:** v2.19.5 (Pooled-Slug History Carve-Out + Price-Trend ROI Clamp)
 
 ---
 
@@ -147,6 +147,7 @@ How CloudClearingAPI maps to common DE-job requirements. Track B phases close mo
 
 | Version | Date | Key Features |
 |---|---|---|
+| **v2.19.5** | May 14, 2026 | Two bugs from the May 14 run audit. (1) Pooled-slug history contamination — `subang_pantura_agrarian` accumulated 3 history samples from the shared `subang` slug, so `_resolve_clamp_anchor` trusted the pooled price and the 2.5× clamp was defeated. Pooled-slug regions now skip the history path. (2) Price-trend ROI inflation — Cikarang's +56% scraper-recovery `price_trend_30d` inflated appreciation to 29.7%/yr → +118% 3yr ROI. Trend contribution now clamped to ±20% before blend → Cikarang ~+53% 3yr ROI |
 | **v2.19.4** | May 4, 2026 | Catalyst-floor calibration alert. `detect_calibration_alerts` in prediction_tracker fires ⚠ at top of PREDICTION REVIEW when ≥3 SEZ/PSN/KSPN regions miss prorated-predicted by ≥50%. Semi-automatic — alerts the human, doesn't self-adjust (avoids self-reinforcing wrong-floor risk during noisy post-fix period). 0 alerts today (forecast log too thin); alerts become possible from ~late May 2026 |
 | **v2.19.3** | May 3, 2026 | Catalyst-aware appreciation floor in `_estimate_appreciation_rate`. SEZ regions (sez_designated/government_subsidized overlay) get 10%/yr floor instead of universal 5%; PSN regions 8%; KSPN tourism 7%. Default unchanged. Bitung KEK SEZ 3yr ROI flips from −12.5% to +0.1% (5yr +21.1%) — the v2.19.1 dev-cost fix was correct but the 5% appreciation floor was undershooting SEZ economics |
 | **v2.19.2** | May 3, 2026 | Cron wrapper bug fix. `run_weekly_cron.py:find_latest_output` was matching a legacy `executive_summary_UPDATED.pdf/` directory via `glob()` (reverse-sorted, 'U' > '2' in ASCII), then crashing at `open()` with IsADirectoryError. Fixed via `.is_file()` filter. The launchd cron had been crashing silently every Sunday for ~2 weeks even though the inner pipeline completed cleanly. Schedule restored; next calendar fire Sun May 10 9am |

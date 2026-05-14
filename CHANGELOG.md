@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.19.5] - 2026-05-14 - Pooled-Slug History Carve-Out + Price-Trend ROI Clamp
+
+### Fixed
+- **Pooled-slug history contamination** (`scraper_orchestrator._resolve_clamp_anchor`): the 6 split sub-regions share a Lamudi parent slug, so their price-history JSONLs reflect the pooled price, not the sub-region. `_resolve_clamp_anchor` was returning the contaminated history median when it fell within the 0.5–3.0 static-trust band, defeating v2.19.1's 2.5× clamp. Now pooled-slug regions skip the history path entirely and always use the research-validated static benchmark. `subang_pantura_agrarian` now correctly clamps Rp 1.725M extract → Rp 450K.
+- **Price-trend ROI inflation** (`financial_metrics._estimate_appreciation_rate`): `price_trend_30d` feeds the appreciation rate at 40% weight. Cikarang's +56.3% trend (a scraper-recovery artifact) inflated the rate to 29.7%/yr → +118% projected 3yr ROI. Clamp the trend contribution to ±20% before blending. Cikarang now: 15.2%/yr → ~+53% 3yr land ROI.
+
+### Verified
+- All 6 pooled-slug regions resolve to research static benchmarks; industrial halves still pass, agrarian/SEZ halves clamp correctly.
+- Price-trend clamp: +56% / +30% both clamp to +20%; sane +12% passes through; -40% crash clamps to -20%.
+- Tests: 26 passed, 22 skipped, 0 failed.
+
+### Note
+- Both bugs were latent until v2.19.0's region splits created pooled-slug sub-regions AND enough weekly history accumulated to trip the history-anchor path. The splits + clamp tightening were correct; the history anchor needed a pooled-slug carve-out.
+
 ## [2.19.4] - 2026-05-04 - Catalyst-Floor Calibration Alert
 
 ### Added

@@ -1,6 +1,6 @@
 # CloudClearingAPI: Land Development Investment Intelligence
 
-**Version:** 2.19.4 (Catalyst-Floor Calibration Alert — Closes the Self-Audit Loop)
+**Version:** 2.19.5 (Pooled-Slug History Carve-Out + Price-Trend ROI Clamp)
 **Status:** ✅ Production Ready | 65 Regions | Parallel Scoring (~4x faster) | GEE + OSM + Scraper Caching | Weekly Automated Reports with Email Delivery
 
 ### What is CloudClearingAPI?
@@ -34,6 +34,14 @@ Terraform defines **~70 resources** across **network, data lake, security, compu
 ---
 
 ## Changelog
+
+### v2.19.5 (May 14, 2026) — Pooled-Slug History Carve-Out + Price-Trend ROI Clamp
+
+Two real bugs caught in the May 14 run audit:
+
+**Pooled-slug history contamination.** v2.19.1's tighter 2.5× clamp for the 6 split sub-regions was being defeated. `subang_pantura_agrarian` accumulated 3 price-history samples — but those samples come from the shared `subang` Lamudi slug, so its "own history" (Rp 850K median) is actually the pooled price, not the agrarian sub-region's. Since 850K is within 1.89× of the Rp 450K static anchor, `_resolve_clamp_anchor` trusted it, and the Rp 1.725M industrial-priced extract passed the clamp. Fix: pooled-slug regions now skip the history path entirely and always use the research-validated static benchmark.
+
+**Price-trend ROI inflation.** `cikarang_mega_industrial` showed +118% projected 3yr land ROI. Root cause: `price_trend_30d` = +56.3% — a scraper-recovery artifact (Lamudi median jumped Rp 2.5M→3.95M when the scraper started returning more listings) — fed `_estimate_appreciation_rate` at 40% weight, producing a 29.7%/yr appreciation rate. Real Indonesian land doesn't move 56% in a month. Fix: clamp the price-trend contribution to ±20% before blending. Cikarang now: 15.2%/yr appreciation → ~+53% 3yr land ROI (still aggressive for a genuinely booming corridor, but defensible — not a data artifact).
 
 ### v2.19.4 (May 4, 2026) — Catalyst-Floor Calibration Alert
 
